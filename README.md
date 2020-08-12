@@ -1,2 +1,2 @@
-# DempRep
+# DemoRep
 Test repository
