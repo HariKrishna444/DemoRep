@@ -9,7 +9,7 @@
   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseapp.com https://www.googleapis.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
   font-src 'self' https://fonts.gstatic.com;
-  connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://ce.judge0.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com;
+  connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://ce.judge0.com https://identitytoolkit.googleapis.com;
   img-src 'self' data: blob: https:;
   frame-src 'none'; object-src 'none'; media-src 'self' blob:;
 ">
@@ -943,9 +943,7 @@ select.inp option{background:var(--ink3)}
           <span id="btn-reg-txt">Create Account</span>
         </button>
       </div>
-      <p style="text-align:center;font-size:.68rem;color:var(--muted);margin-top:16px;font-family:var(--ff-mono)">
-        Demo mode active — Firebase credentials not set. All features work locally.
-      </p>
+
     </div>
   </div>
 </div>
@@ -1422,13 +1420,6 @@ select.inp option{background:var(--ink3)}
          allow read, write: if request.auth != null &&
            draftId.matches(request.auth.uid + '_.*');
        }
-       // Snapshots — students write their own, profs read all
-       match /snapshots/{snapId} {
-         allow create: if request.auth != null &&
-           request.resource.data.userId == request.auth.uid;
-         allow read: if request.auth != null &&
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
-       }
        // Exams — profs write, students read
        match /exams/{examId} {
          allow read: if request.auth != null;
@@ -1468,7 +1459,7 @@ const MAX_VIOLATIONS     = 2; // strict: 2 violations = terminate
 /* ═══════════════════════════════════════════════════════════════
    STATE
    ═══════════════════════════════════════════════════════════════ */
-let firebaseReady = false;
+const firebaseReady = true; // Firebase is always required
 let auth, db;
 let currentUser = null;
 let currentRole = 'prof';        // 'prof' | 'stu'
@@ -1501,81 +1492,39 @@ let codeSnapshots    = [];
 let monaco_editor  = null;
 let monacoReady    = false;
 
-// Simulated live students for demo
-const DEMO_STUDENTS = [
-  {name:'Ravi Kumar',    status:'online', vios:0},
-  {name:'Priya Sharma',  status:'online', vios:0},
-  {name:'Arjun Reddy',   status:'flagged',vios:2},
-  {name:'Sneha Patel',   status:'online', vios:1},
-  {name:'Kiran Babu',    status:'idle',   vios:0},
-  {name:'Divya Nair',    status:'online', vios:0},
-];
-
-// Mock leaderboard data
-const MOCK_LB = [
-  {name:'Ravi Kumar',  score:100,time:'18:24'},
-  {name:'Priya Sharma',score:100,time:'22:11'},
-  {name:'Divya Nair',  score:90, time:'28:05'},
-  {name:'Sneha Patel', score:85, time:'31:40'},
-];
 
 /* ═══════════════════════════════════════════════════════════════
    INIT — Phase 2 upgraded with Firebase persistence + role loading
    ═══════════════════════════════════════════════════════════════ */
 function initApp() {
-  // ── Firebase readiness check ───────────────────────────────
-  // We check authDomain (not apiKey) because authDomain is always
-  // a Firebase-owned domain when properly configured, making it a
-  // reliable indicator that real credentials have been supplied.
-  const fbConfigured = FB_CONFIG.authDomain &&
-                       !FB_CONFIG.authDomain.includes('REPLACE') &&
-                       FB_CONFIG.authDomain.endsWith('.firebaseapp.com');
-  try {
-    if (fbConfigured) {
-      // ── Firebase boot ─────────────────────────────────────
-      firebase.initializeApp(FB_CONFIG);
-      auth = firebase.auth();
-      db   = firebase.firestore();
+  // Firebase boot — always required
+  firebase.initializeApp(FB_CONFIG);
+  auth = firebase.auth();
+  db   = firebase.firestore();
 
-      // PHASE 2: Enable Firestore offline persistence.
-      // Students won't lose code if their internet drops mid-exam.
-      db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-        // 'failed-precondition' = more than one tab open; okay to ignore
-        // 'unimplemented' = browser doesn't support it; okay to ignore
-        console.warn('Firestore persistence skipped:', err.code);
-      });
+  // Enable Firestore offline persistence so students don't lose
+  // code if their internet drops mid-exam.
+  db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+    console.warn('Firestore persistence skipped:', err.code);
+  });
 
-      firebaseReady = true;
-    }
-  } catch(e) { /* demo mode — Firebase not configured, that's fine */ }
-
-  // Always seed local demo questions as a fallback.
-  // When Firestore is live, loadQuestionsFromFirestore() will
-  // replace these with real data from the questions_public collection.
-  seedDemoQuestions();
 
   setTimeout(() => {
     document.getElementById('loader').classList.add('gone');
-    if (firebaseReady) {
-      // ── Firebase Auth state listener ───────────────────────
-      // Fires on every load (session restore) + login/logout
-      auth.onAuthStateChanged(async u => {
-        if (u) {
-          currentUser = u;
-          // PHASE 2: Load role from Firestore users/{uid}
-          await loadUserRole(u.uid);
-          // PHASE 2: Load live questions from questions_public/
-          await loadQuestionsFromFirestore();
-          onAuthSuccess();
-        } else {
-          showPage('login');
-        }
-      });
-    } else {
-      showPage('login');
-      toast('🎮 Demo mode — Firebase not configured. All features work locally!','warn',6000);
-    }
-  }, 2200);
+
+    // Auth state listener: fires on page load (session restore)
+    // and on every sign-in / sign-out.
+    auth.onAuthStateChanged(async u => {
+      if (u) {
+        currentUser = u;
+        await loadUserRole(u.uid);
+        await loadQuestionsFromFirestore();
+        onAuthSuccess();
+      } else {
+        showPage('login');
+      }
+    });
+  }, 1800);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1584,7 +1533,6 @@ function initApp() {
    Creates the document if it does not exist yet (first login).
    ───────────────────────────────────────────────────────────── */
 async function loadUserRole(uid) {
-  if (!firebaseReady || !db) return;
   try {
     const snap = await db.collection('users').doc(uid).get();
     if (snap.exists) {
@@ -1612,86 +1560,25 @@ async function loadUserRole(uid) {
 /* ─────────────────────────────────────────────────────────────
    PHASE 2: loadQuestionsFromFirestore
    Pulls all questions from the questions_public collection and
-   replaces the local demo array. Hidden test cases live in
+   replaces the local questions array. Hidden test cases live in
    questions_private and are never sent to students.
    ───────────────────────────────────────────────────────────── */
 async function loadQuestionsFromFirestore() {
-  if (!firebaseReady || !db) return; // stay on demo data in demo mode
+  // Loads live questions from Firestore; replaces any local data.
   try {
     const snap = await db.collection('questions_public')
       .orderBy('createdAt', 'asc')   // keep professor creation order
       .get();
-    if (!snap.empty) {
-      // Replace local demo questions with live Firestore data
-      questions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-    // If questions_public is empty, demo questions stay as fallback
+    questions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch(e) {
-    console.warn('loadQuestionsFromFirestore failed (using demo data):', e);
+    console.warn('loadQuestionsFromFirestore failed:', e);
+    toast('Failed to load questions from server. Please refresh.', 'err');
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════
    QUESTIONS SEED
    ═══════════════════════════════════════════════════════════════ */
-function seedDemoQuestions() {
-  questions = [
-    {
-      id:'two-sum', title:'Two Sum', diff:'easy', points:100, tags:['Array','Hash Map'],
-      desc:`Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>. You may assume exactly one solution exists.`,
-      example:'nums = [2,7,11,15], target = 9 → [0,1]',
-      constraints:['2 ≤ nums.length ≤ 10⁴','−10⁹ ≤ nums[i] ≤ 10⁹','−10⁹ ≤ target ≤ 10⁹'],
-      testcases:[
-        {input:'2 7 11 15\n9',  expected:'0 1'},
-        {input:'3 2 4\n6',      expected:'1 2'},
-        {input:'3 3\n6',        expected:'0 1'},
-      ],
-      templates:{
-        python:`nums = list(map(int, input().split()))\ntarget = int(input())\nseen = {}\nfor i, n in enumerate(nums):\n    d = target - n\n    if d in seen:\n        print(seen[d], i)\n        break\n    seen[n] = i`,
-        javascript:`const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\nconst nums = lines[0].split(' ').map(Number);\nconst t = Number(lines[1]);\nconst m = new Map();\nfor(let i=0;i<nums.length;i++){\n  const d=t-nums[i];\n  if(m.has(d)){console.log(m.get(d),i);break;}\n  m.set(nums[i],i);\n}`,
-        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  vector<int>v;\n  string l; getline(cin,l);\n  istringstream ss(l); int x;\n  while(ss>>x) v.push_back(x);\n  int t; cin>>t;\n  map<int,int>seen;\n  for(int i=0;i<v.size();i++){\n    int d=t-v[i];\n    if(seen.count(d)){cout<<seen[d]<<\" \"<<i;return 0;}\n    seen[v[i]]=i;\n  }\n}`,
-        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    String[]p=sc.nextLine().split(\" \");\n    int t=sc.nextInt();\n    Map<Integer,Integer>m=new HashMap<>();\n    for(int i=0;i<p.length;i++){\n      int n=Integer.parseInt(p[i]),d=t-n;\n      if(m.containsKey(d)){System.out.println(m.get(d)+\" \"+i);return;}\n      m.put(n,i);\n    }\n  }\n}`,
-        c:`#include<stdio.h>\nint main(){\n  int a[10000],n=0,t;\n  // parse first line then target\n  while(scanf(\"%d\",&a[n])==1) n++;\n  t=a[--n];\n  for(int i=0;i<n;i++) for(int j=i+1;j<n;j++)\n    if(a[i]+a[j]==t){printf(\"%d %d\",i,j);return 0;}\n}`,
-      }
-    },
-    {
-      id:'palindrome', title:'Valid Palindrome', diff:'easy', points:80, tags:['String','Two Pointers'],
-      desc:`A phrase is a palindrome if after converting to lowercase and removing non-alphanumeric characters, it reads the same forward and backward. Given string <code>s</code>, return <code>true</code> or <code>false</code>.`,
-      example:'"A man, a plan, a canal: Panama" → true',
-      constraints:['1 ≤ s.length ≤ 2×10⁵','s consists of printable ASCII'],
-      testcases:[
-        {input:'A man, a plan, a canal: Panama', expected:'true'},
-        {input:'race a car',                     expected:'false'},
-        {input:' ',                               expected:'true'},
-      ],
-      templates:{
-        python:`s = input()\nc = ''.join(ch.lower() for ch in s if ch.isalnum())\nprint('true' if c == c[::-1] else 'false')`,
-        javascript:`const s=require('fs').readFileSync('/dev/stdin','utf8').trim();\nconst c=s.replace(/[^a-zA-Z0-9]/g,'').toLowerCase();\nconsole.log(c===c.split('').reverse().join('')?'true':'false');`,
-        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  string s,c; getline(cin,s);\n  for(char x:s) if(isalnum(x)) c+=tolower(x);\n  string r=c; reverse(r.begin(),r.end());\n  cout<<(c==r?"true":"false");\n}`,
-        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    String s=sc.nextLine().replaceAll("[^a-zA-Z0-9]","").toLowerCase();\n    System.out.println(s.equals(new StringBuilder(s).reverse().toString()));\n  }\n}`,
-        c:`#include<stdio.h>\n#include<ctype.h>\n#include<string.h>\nint main(){\n  char s[200010],c[200010]; int n=0;\n  fgets(s,sizeof(s),stdin);\n  for(int i=0;s[i];i++) if(isalnum(s[i])) c[n++]=tolower(s[i]);\n  c[n]=0;\n  char r[200010]; strcpy(r,c);\n  for(int i=0;i<n/2;i++){char t=r[i];r[i]=r[n-1-i];r[n-1-i]=t;}\n  printf(\"%s\",strcmp(c,r)==0?\"true\":\"false\");\n}`,
-      }
-    },
-    {
-      id:'max-subarray', title:"Maximum Subarray (Kadane's)", diff:'med', points:150, tags:['Array','DP'],
-      desc:`Given an integer array <code>nums</code>, find the contiguous subarray which has the largest sum and return its sum.`,
-      example:'nums = [-2,1,-3,4,-1,2,1,-5,4] → 6  (subarray [4,-1,2,1])',
-      constraints:['1 ≤ nums.length ≤ 10⁵','−10⁴ ≤ nums[i] ≤ 10⁴'],
-      testcases:[
-        {input:'-2 1 -3 4 -1 2 1 -5 4', expected:'6'},
-        {input:'5 4 -1 7 8',             expected:'23'},
-        {input:'-1',                      expected:'-1'},
-      ],
-      templates:{
-        python:`nums=list(map(int,input().split()))\nmax_s=cur=nums[0]\nfor n in nums[1:]:\n    cur=max(n,cur+n)\n    max_s=max(max_s,cur)\nprint(max_s)`,
-        javascript:`const nums=require('fs').readFileSync('/dev/stdin','utf8').trim().split(' ').map(Number);\nlet mx=nums[0],cur=nums[0];\nfor(let i=1;i<nums.length;i++){cur=Math.max(nums[i],cur+nums[i]);mx=Math.max(mx,cur);}\nconsole.log(mx);`,
-        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  vector<int>v; int x;\n  while(cin>>x) v.push_back(x);\n  int mx=v[0],cur=v[0];\n  for(int i=1;i<v.size();i++){cur=max(v[i],cur+v[i]);mx=max(mx,cur);}\n  cout<<mx;\n}`,
-        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    List<Integer>l=new ArrayList<>();\n    while(sc.hasNextInt())l.add(sc.nextInt());\n    int mx=l.get(0),cur=mx;\n    for(int i=1;i<l.size();i++){cur=Math.max(l.get(i),cur+l.get(i));mx=Math.max(mx,cur);}\n    System.out.println(mx);\n  }\n}`,
-        c:`#include<stdio.h>\nint main(){\n  int a[100001],n=0,x;\n  while(scanf(\"%d\",&x)==1) a[n++]=x;\n  int mx=a[0],cur=a[0];\n  for(int i=1;i<n;i++){cur=cur+a[i]>a[i]?cur+a[i]:a[i];mx=mx>cur?mx:cur;}\n  printf(\"%d\",mx);\n}`,
-      }
-    },
-  ];
-}
 
 /* ═══════════════════════════════════════════════════════════════
    ROUTING
@@ -1729,45 +1616,43 @@ async function handleLogin() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
   if (!email) { toast('Enter your email','warn'); return; }
+  if (!pass)  { toast('Enter your password','warn'); return; }
 
   const btn = document.getElementById('btn-login');
   document.getElementById('btn-login-txt').textContent = 'Signing in...';
   btn.disabled = true;
 
-  if (!firebaseReady) {
-    // Demo mode
-    await sleep(700);
-    currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0] + (currentRole==='prof'?' (Prof)':'')};
-    onAuthSuccess();
-    btn.disabled = false;
-    document.getElementById('btn-login-txt').textContent = 'Sign In';
-    return;
-  }
   try {
     const c = await auth.signInWithEmailAndPassword(email, pass);
-    currentUser = c.user; onAuthSuccess();
-  } catch(e) { toast('Login failed: '+e.message,'err'); }
+    currentUser = c.user;
+    // Role is loaded inside onAuthStateChanged; call onAuthSuccess directly
+    // only when signing in manually (state change fires separately on reload).
+    await loadUserRole(c.user.uid);
+    await loadQuestionsFromFirestore();
+    onAuthSuccess();
+  } catch(e) {
+    toast('Login failed: ' + e.message, 'err');
+  }
   btn.disabled = false;
   document.getElementById('btn-login-txt').textContent = 'Sign In';
 }
 
 async function handleRegister() {
   const email = document.getElementById('l-email').value.trim();
-  const pass  = document.getElementById('l-pass').value || 'demo123';
+  const pass  = document.getElementById('l-pass').value;
   if (!email) { toast('Enter your email','warn'); return; }
+  if (!pass || pass.length < 6) { toast('Password must be at least 6 characters','warn'); return; }
 
-  if (!firebaseReady) {
-    currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0]};
-    onAuthSuccess(); return;
-  }
   try {
     const c = await auth.createUserWithEmailAndPassword(email, pass);
-    // Set a displayName derived from email so it appears in violations/submissions
+    // Set displayName from email prefix so it appears in violations/submissions
     const name = email.split('@')[0];
     await c.user.updateProfile({ displayName: name });
     currentUser = c.user;
+    await loadUserRole(c.user.uid);
+    await loadQuestionsFromFirestore();
     onAuthSuccess();
-  } catch(e) { toast('Register failed: '+e.message,'err'); }
+  } catch(e) { toast('Register failed: ' + e.message, 'err'); }
 }
 
 function onAuthSuccess() {
@@ -1795,7 +1680,7 @@ function logout() {
   if (examActive && !confirm('⚠️ You are in an active exam!\nLogging out will lose your unsaved progress.\n\nAre you sure you want to leave?')) {
     return;
   }
-  if (firebaseReady) auth.signOut().catch(()=>{});
+  auth.signOut().catch(()=>{});
   currentUser = null; examActive = false;
   stopTimer(); stopSnapshots();
   disableAntiCheat(); disableDOMGuard();
@@ -1815,11 +1700,13 @@ function profNav(panel) {
 }
 
 function renderProfDashboard() {
+  // Stats derived from real Firestore data via liveStudentMap and violations[]
+  const liveStudents = Object.values(liveStudentMap);
   document.getElementById('s-questions').textContent = questions.length;
-  document.getElementById('s-active').textContent    = DEMO_STUDENTS.filter(s=>s.status==='online').length;
-  document.getElementById('s-flagged').textContent   = DEMO_STUDENTS.filter(s=>s.vios>0).length;
+  document.getElementById('s-active').textContent    = liveStudents.filter(s=>s.status==='online'||s.status==='submitted').length;
+  document.getElementById('s-flagged').textContent   = liveStudents.filter(s=>s.vios&&s.vios.length>0).length;
   document.getElementById('s-submitted').textContent = submissions.length;
-  document.getElementById('live-count').textContent  = DEMO_STUDENTS.length;
+  document.getElementById('live-count').textContent  = liveStudents.length;
   document.getElementById('vio-count-badge').textContent = violations.length;
 
   // dash violations
@@ -1857,8 +1744,6 @@ function renderProfPanel(panel) {
    - Cards are clickable: openStudentDetail() shows a sidebar with
      that student's full violation log and latest code snapshot.
 
-   When in demo mode:
-   - Falls back to rendering DEMO_STUDENTS as before.
    ═══════════════════════════════════════════════════════════════ */
 
 // Live monitor state
@@ -1874,12 +1759,6 @@ let selectedMonitorUid = null; // for detail panel
    ─────────────────────────────────────────────────────────────── */
 function startMonitorListener() {
   stopMonitorListener(); // clean up previous listener
-
-  if (!firebaseReady || !db) {
-    // Demo mode — just render static demo data
-    renderMonitor();
-    return;
-  }
 
   // Listen to violations in real time
   monitorUnsubViolations = db.collection('violations')
@@ -1941,24 +1820,13 @@ function stopMonitorListener() {
 
 /* ── renderMonitor ────────────────────────────────────────────
    Renders the live grid. When Firestore is active, liveStudentMap
-   is populated by the listeners above. In demo mode, falls back
-   to DEMO_STUDENTS.
+   is populated by the listeners above.
    ─────────────────────────────────────────────────────────────── */
 function renderMonitor() {
   const g = document.getElementById('monitor-grid');
 
-  // Build student list from Firestore live data or demo fallback
-  let students;
-  if (firebaseReady && Object.keys(liveStudentMap).length > 0) {
-    students = Object.values(liveStudentMap);
-  } else {
-    // Demo fallback — static array
-    const name = currentUser?.displayName?.split(' ')[0] || 'You';
-    students = [...DEMO_STUDENTS];
-    if (examActive && currentRole === 'stu') {
-      students.push({ name, uid: currentUser?.uid, status: 'online', vios: Array(totalVioCount).fill({}), score: null });
-    }
-  }
+  // Build student list from real-time Firestore data (liveStudentMap)
+  const students = Object.values(liveStudentMap);
 
   document.getElementById('live-count').textContent = students.length;
 
@@ -2006,8 +1874,7 @@ function renderMonitor() {
 function openStudentDetail(uid) {
   const s = liveStudentMap[uid];
   if (!s) {
-    // Demo student — no Firestore data available
-    toast('Student detail only available in live Firebase mode','info');
+    toast('Student data not found','warn');
     return;
   }
   selectedMonitorUid = uid;
@@ -2172,17 +2039,8 @@ function saveQuestion() {
     }
   };
 
-  questions.push(q);
-  closeAddQ();
-  renderQList();
-  document.getElementById('s-questions').textContent = questions.length;
-  toast(`Question "${title}" added!`,'ok');
-
-  // PHASE 2: Persist to Firestore.
-  // Public question info goes to questions_public/ (students can read).
-  // Hidden test cases go to questions_private/ (professors only).
-  if (firebaseReady && db) {
-    const publicData = {
+  // Save to Firestore first; update local array on success only
+  const publicData = {
       title:       q.title,
       description: q.desc,            // problem statement
       exampleInput:  q.example,       // visible example (not a hidden TC)
@@ -2204,19 +2062,36 @@ function saveQuestion() {
       questionId: q.id,
     };
 
-    // Write both documents with the same ID so they pair up
-    Promise.all([
+  // Write both documents with the same ID so they pair up
+  try {
+    await Promise.all([
       db.collection('questions_public').doc(q.id).set(publicData),
       db.collection('questions_private').doc(q.id).set(privateData),
-    ]).catch(e => console.warn('saveQuestion Firestore error:', e));
+    ]);
+    questions.push(q);
+    closeAddQ();
+    renderQList();
+    document.getElementById('s-questions').textContent = questions.length;
+    toast(`Question "${q.title}" saved!`, 'ok');
+  } catch(e) {
+    toast('Failed to save question: ' + e.message, 'err');
+    console.error('saveQuestion Firestore error:', e);
   }
 }
 
-function deleteQuestion(id) {
-  if (!confirm('Delete this question?')) return;
-  questions = questions.filter(q=>q.id!==id);
-  renderQList();
-  toast('Question deleted','warn');
+async function deleteQuestion(id) {
+  if (!confirm('Delete this question? This cannot be undone.')) return;
+  try {
+    await Promise.all([
+      db.collection('questions_public').doc(id).delete(),
+      db.collection('questions_private').doc(id).delete(),
+    ]);
+    questions = questions.filter(q => q.id !== id);
+    renderQList();
+    toast('Question deleted', 'warn');
+  } catch(e) {
+    toast('Failed to delete: ' + e.message, 'err');
+  }
 }
 
 function exportViolations() {
@@ -2746,7 +2621,7 @@ function logViolation(type, category, detail) {
 
   // PHASE 2: Write violation to Firestore violations/ collection.
   // Professors see these instantly in the Live Monitor and Violations panel.
-  if (firebaseReady && db) {
+  if (db) {
     db.collection('violations').add({
       ...entry,
       userId:              currentUser?.uid || 'unknown',
@@ -2792,7 +2667,7 @@ function startSnapshots() {
    Students can recover their draft if they accidentally refresh.
    ───────────────────────────────────────────────────────────── */
 async function saveDraftToFirestore() {
-  if (!firebaseReady || !db || !currentUser || !currentQ) return;
+  if (!currentUser || !currentQ) return;
   if (!monaco_editor) return;
   const draftId = `${currentUser.uid}_${currentQ.id}`;
   setSaveIndicator('saving'); // PRIORITY 4: show saving state
@@ -2816,7 +2691,7 @@ async function saveDraftToFirestore() {
    the blank template.
    ───────────────────────────────────────────────────────────── */
 async function loadDraftFromFirestore(qId) {
-  if (!firebaseReady || !db || !currentUser) return null;
+  if (!currentUser) return null;
   try {
     const draftId = `${currentUser.uid}_${qId}`;
     const snap = await db.collection('drafts').doc(draftId).get();
@@ -2874,12 +2749,11 @@ function saveSnapshot(reason) {
   // PHASE 2: Save snapshot to Firestore for professor review.
   // This lets professors see how a student's code evolved over time,
   // which helps detect copying or sudden jumps in complexity.
-  if (firebaseReady && db && currentUser) {
+  if (currentUser) {
     db.collection('snapshots').add({
       userId:     currentUser.uid,
       problemId:  currentQ?.id || 'unknown',
-      examId:     window._activeExamId || null,
-      timestamp:  firebase.firestore.FieldValue.serverTimestamp(),
+      examId:     window._activeExamId || null,  // set this when exams/ integration is done
       ...snap,
     }).catch(e => console.warn('saveSnapshot Firestore error:', e));
   }
@@ -3111,8 +2985,6 @@ function b64d(s) {
   try { return decodeURIComponent(escape(atob(s))); } catch { return s; }
 }
 
-function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
-
 /* ═══════════════════════════════════════════════════════════════
    RUN CODE
    ═══════════════════════════════════════════════════════════════ */
@@ -3172,8 +3044,6 @@ async function runCode() {
      Firestore rules block students from reading it directly).
    - Hidden TCs are NEVER rendered in the UI — students only see
      "Hidden Test N" with pass/fail, no input/output shown.
-   - If Firestore is unavailable (demo mode) we fall back to the
-     local testcases[] which are the visible ones only.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── fetchHiddenTestcases ─────────────────────────────────────
@@ -3187,7 +3057,6 @@ async function runCode() {
    rejected by Firestore rules and we fall back gracefully.
    ─────────────────────────────────────────────────────────────── */
 async function fetchHiddenTestcases(questionId) {
-  if (!firebaseReady || !db) return []; // demo mode — no hidden TCs
   try {
     const snap = await db.collection('questions_private').doc(questionId).get();
     if (!snap.exists) return [];
@@ -3315,7 +3184,7 @@ async function submitCode() {
 
   // PHASE 2: Write submission to Firestore submissions/ collection.
   // This lets the professor see all results in real-time on the dashboard.
-  if (firebaseReady && db && currentUser) {
+  if (currentUser) {
     db.collection('submissions').add({
       ...sub,
       userId:      currentUser.uid,
@@ -3366,19 +3235,45 @@ function showResults(results, passed, total, totalMs, score, allOk) {
   renderLB(score);
 }
 
-function renderLB(myScore) {
-  const name = currentUser?.displayName||currentUser?.email?.split('@')[0]||'You';
-  const all = [...MOCK_LB, {name:name+' (You)',score:myScore,time:elapsed()}]
-    .sort((a,b)=>b.score-a.score);
+async function renderLB(myScore) {
+  const myName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'You';
   const rc = ['g','s','b'];
-  document.getElementById('lb-body').innerHTML = all.slice(0,8).map((e,i)=>`
-    <div class="lb-r ${e.name.includes('(You)')?'me':''}">
-      <div class="lb-rank ${rc[i]||''}">${i+1}</div>
-      <div class="lb-name">${e.name}</div>
-      <div class="lb-score">${e.score}%</div>
-      <div class="lb-time">${e.time}</div>
-    </div>
-  `).join('');
+  const lbEl = document.getElementById('lb-body');
+  lbEl.innerHTML = '<div style="color:var(--muted);font-size:.78rem">Loading leaderboard…</div>';
+
+  try {
+    // Fetch top submissions from Firestore, ordered by score desc then by timestamp asc
+    const snap = await db.collection('submissions')
+      .where('questionId', '==', currentQ?.id || '')
+      .orderBy('score', 'desc')
+      .orderBy('timestamp', 'asc')
+      .limit(8)
+      .get();
+
+    const rows = snap.docs.map(d => {
+      const s = d.data();
+      return { name: s.student || 'Unknown', score: s.score, time: s.time || '—' };
+    });
+
+    // Always include the current student's result
+    const meEntry = { name: myName + ' (You)', score: myScore, time: elapsed() };
+    const meAlreadyIn = rows.some(r => r.name === myName || r.name === myName + ' (You)');
+    if (!meAlreadyIn) rows.push(meEntry);
+
+    const sorted = rows.sort((a,b) => b.score - a.score).slice(0,8);
+
+    lbEl.innerHTML = sorted.map((e,i) => `
+      <div class="lb-r ${e.name.includes('(You)')?'me':''}">
+        <div class="lb-rank ${rc[i]||''}">${i+1}</div>
+        <div class="lb-name">${e.name}</div>
+        <div class="lb-score">${e.score}%</div>
+        <div class="lb-time">${e.time}</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    console.warn('renderLB failed:', e);
+    lbEl.innerHTML = `<div style="color:var(--muted);font-size:.78rem">Leaderboard unavailable.</div>`;
+  }
 }
 
 function elapsed() {
@@ -3481,25 +3376,18 @@ async function createExam() {
     durationMins:     duration,
     questionIds:      selectedQIds,
     allowedLanguages: allowedLangs,
-    createdBy:        currentUser?.uid || 'demo',
-    createdAt:        firebaseReady
-      ? firebase.firestore.FieldValue.serverTimestamp()
-      : new Date().toISOString(),
+    createdBy:        currentUser?.uid,
+    createdAt:        firebase.firestore.FieldValue.serverTimestamp(),
     status:           'scheduled',  // scheduled | active | ended
   };
 
   // PHASE 2: Save exam config to Firestore exams/ collection
-  if (firebaseReady && db) {
-    try {
-      await db.collection('exams').add(exam);
-      toast(`✅ Exam "${name}" created and saved!`, 'ok', 5000);
-    } catch(e) {
-      toast('Firestore error: ' + e.message, 'err');
-      return;
-    }
-  } else {
-    // Demo mode — just confirm locally
-    toast(`✅ Exam "${name}" created! (Demo mode — not persisted)`, 'ok', 5000);
+  try {
+    await db.collection('exams').add(exam);
+    toast(`✅ Exam "${name}" created!`, 'ok', 5000);
+  } catch(e) {
+    toast('Failed to create exam: ' + e.message, 'err');
+    return;
   }
 
   // Navigate to dashboard to see the exam listed
