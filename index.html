@@ -6,7 +6,7 @@
 <title>ExamShield — College Coding Exam Platform</title>
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self' https://www.gstatic.com https://identitytoolkit.googleapis.com https://firestore.googleapis.com https://*.firebaseio.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://ce.judge0.com;
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseapp.com https://www.googleapis.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://*.firebaseapp.com https://www.googleapis.com; worker-src blob: 'self';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
   font-src 'self' https://fonts.gstatic.com;
   connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://*.gstatic.com https://ce.judge0.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com;
@@ -164,14 +164,6 @@ textarea.inp{resize:vertical;min-height:80px}
 select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
-/* ═══════════════════════════════════════════════════
-   ██       ██████   ██████  ██ ███    ██
-   ██      ██    ██ ██       ██ ████   ██
-   ██      ██    ██ ██   ███ ██ ██ ██  ██
-   ██      ██    ██ ██    ██ ██ ██  ██ ██
-   ███████  ██████   ██████  ██ ██   ████
-   PAGE: LOGIN / ROLE SELECT
-   ═══════════════════════════════════════════════════ */
 #page-login{align-items:center;justify-content:center;padding:40px 20px;
   background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent)}
 .login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
@@ -235,14 +227,6 @@ select.inp option{background:var(--ink3)}
 }
 .avatar.prof-av{background:linear-gradient(135deg,var(--amber),#ff8c00)}
 
-/* ═══════════════════════════════════════════════════
-   ██████  ██████   ██████  ███████
-   ██   ██ ██   ██ ██    ██ ██
-   ██████  ██████  ██    ██ █████
-   ██      ██   ██ ██    ██ ██
-   ██      ██   ██  ██████  ██
-   PAGE: PROFESSOR DASHBOARD
-   ═══════════════════════════════════════════════════ */
 #page-prof{flex-direction:column}
 .prof-main{flex:1;display:grid;grid-template-columns:260px 1fr;min-height:0}
 
@@ -1322,116 +1306,10 @@ select.inp option{background:var(--ink3)}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
 
 <script>
-/* ═══════════════════════════════════════════════════════════════
-   ██████╗  ██████╗  ███╗   ██╗███████╗██╗ ██████╗
-  ██╔════╝ ██╔═══██╗ ████╗  ██║██╔════╝██║██╔════╝
-  ██║      ██║   ██║ ██╔██╗ ██║█████╗  ██║██║  ███╗
-  ██║      ██║   ██║ ██║╚██╗██║██╔══╝  ██║██║   ██║
-  ╚██████╗ ╚██████╔╝ ██║ ╚████║██║     ██║╚██████╔╝
-   ╚═════╝  ╚═════╝  ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
-   ═══════════════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════════════════════
-   PHASE 2 — FIREBASE SDK SETUP
-   ─────────────────────────────────────────────────────────────
-   STEP 1: Go to https://console.firebase.google.com
-   STEP 2: Create a project called "examshield"
-   STEP 3: Click "Add app" → Web → Register
-   STEP 4: Copy YOUR config keys below (replace every value)
-   STEP 5: In Firebase console:
-           → Authentication → Enable Email/Password sign-in
-           → Firestore Database → Create database (production mode)
-   ─────────────────────────────────────────────────────────────
-   FIRESTORE COLLECTIONS STRUCTURE:
-   ─────────────────────────────────────────────────────────────
-   users/
-     {uid}/
-       email, displayName, role ("prof" | "stu"),
-       createdAt, lastLogin
-
-   exams/
-     {examId}/
-       name, startTime, endTime, durationMins,
-       questionIds[], allowedLanguages[], createdBy (profUid)
-
-   questions_public/          ← Students can read this
-     {questionId}/
-       title, description, exampleInput, exampleOutput,
-       constraints[], marks, difficulty, tags[], examId
-
-   questions_private/         ← Only professors can read
-     {questionId}/
-       hiddenTestcases[{ input, expectedOutput }]
-       (matches same {questionId} as questions_public)
-
-   submissions/
-     {submissionId}/
-       userId, questionId, examId, language, code,
-       score, passed, total, status, timestamp,
-       snapshotCount, executionTimeMs
-
-   violations/
-     {violationId}/
-       userId, questionId, examId, type, category,
-       detail, timestamp, integrityScoreAtTime
-
-   drafts/
-     {userId}_{questionId}/
-       code, language, savedAt
-       (auto-saved drafts every 2 min so students don't lose work)
-   ─────────────────────────────────────────────────────────────
-   FIRESTORE SECURITY RULES (paste in Firebase Console → Rules):
-
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       // Users can only read/write their own data
-       match /users/{uid} {
-         allow read, write: if request.auth.uid == uid;
-       }
-       // Public questions — any authenticated user can read
-       match /questions_public/{qId} {
-         allow read: if request.auth != null;
-         allow write: if request.auth != null &&
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
-       }
-       // Private questions — professors only
-       match /questions_private/{qId} {
-         allow read, write: if request.auth != null &&
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
-       }
-       // Submissions — users write their own, profs read all
-       match /submissions/{sid} {
-         allow create: if request.auth != null &&
-           request.resource.data.userId == request.auth.uid;
-         allow read: if request.auth != null;
-       }
-       // Violations — same as submissions
-       match /violations/{vid} {
-         allow create: if request.auth != null;
-         allow read: if request.auth != null &&
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
-       }
-       // Drafts — users read/write only their own
-       match /drafts/{draftId} {
-         allow read, write: if request.auth != null &&
-           draftId.matches(request.auth.uid + '_.*');
-       }
-       // Exams — profs write, students read
-       match /exams/{examId} {
-         allow read: if request.auth != null;
-         allow write: if request.auth != null &&
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
-       }
-     }
-   }
-   ═══════════════════════════════════════════════════════════════ */
-
-// ── 🔥 REPLACE THESE VALUES WITH YOUR FIREBASE PROJECT CONFIG ──
-// Get them from: Firebase Console → Project Settings → Your Apps
 const FB_CONFIG = {
   apiKey:            "AIzaSyDT6VSLhxIE6c8k53XxX0QOxRW9ztuyI0s",          // Web API key
   authDomain:        "test-9b65e.firebaseapp.com",     // Auth domain
@@ -1522,22 +1400,25 @@ async function initApp() {
       auth = firebase.auth();
       db   = firebase.firestore();
 
-      // PHASE 2: Enable Firestore offline persistence.
-      // Students won't lose code if their internet drops mid-exam.
-      db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-        // 'failed-precondition' = more than one tab open; okay to ignore
-        // 'unimplemented' = browser doesn't support it; okay to ignore
-        console.warn('Firestore persistence skipped:', err.code);
-      });
+      // Enable offline persistence — students keep their code if internet drops.
+      // Silence the deprecation warning by trying the new settings API first;
+      // fall back to the legacy call if the compat SDK doesn't support it.
+      try {
+        db.settings({ cache: { kind: 'persistentMultipleTab' } });
+      } catch(_) {
+        db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+          if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
+            console.warn('Firestore persistence skipped:', err.code);
+          }
+        });
+      }
 
       firebaseReady = true;
     }
   } catch(e) { /* demo mode — Firebase not configured, that's fine */ }
 
-  // Always seed local demo questions as a fallback.
-  // When Firestore is live, loadQuestionsFromFirestore() will
-  // replace these with real data from the questions_public collection.
-  seedDemoQuestions();
+  // questions[] starts empty; populated by loadQuestionsFromFirestore()
+  // after auth. No demo data is seeded when Firebase is configured.
 
   setTimeout(() => {
     document.getElementById('loader').classList.add('gone');
@@ -1603,95 +1484,91 @@ async function loadUserRole(uid) {
    questions_private and are never sent to students.
    ───────────────────────────────────────────────────────────── */
 async function loadQuestionsFromFirestore() {
-  if (!firebaseReady || !db) return; // stay on demo data in demo mode
+  if (!firebaseReady || !db) return;
   try {
-    const snap = await db.collection('questions_public')
-      .orderBy('createdAt', 'asc')   // keep professor creation order
-      .get();
-    if (!snap.empty) {
-      // Replace local demo questions with live Firestore data
-      questions = snap.docs.map(doc => {
+    // ── Step 1: Find the active exam (status='active' OR within time window) ──
+    const now = new Date();
+    const examsSnap = await db.collection('exams').get();
+    let activeExam = null;
+
+    examsSnap.docs.forEach(doc => {
+      const e = doc.data();
+      const start = e.startTime ? new Date(e.startTime) : null;
+      const end   = e.endTime   ? new Date(e.endTime)   : null;
+      // Treat an exam as active if current time is within its window
+      if (start && end && now >= start && now <= end) {
+        activeExam = { id: doc.id, ...e };
+      }
+    });
+
+    window._activeExam    = activeExam;   // used by startExam / submitCode
+    window._activeExamId  = activeExam?.id || null;
+
+    if (currentRole === 'prof') {
+      // ── Professor: load ALL questions in the bank ────────────
+      const allSnap = await db.collection('questions_public')
+        .orderBy('createdAt', 'asc').get();
+      questions = allSnap.docs.map(doc => {
         const d = doc.data();
         return {
           id:          doc.id,
           title:       d.title        || '',
-          desc:        d.description  || d.desc    || '',   // saved as 'description'
-          example:     d.exampleInput || d.example || '',   // saved as 'exampleInput'
+          desc:        d.description  || d.desc    || '',
+          example:     d.exampleInput || d.example || '',
           constraints: Array.isArray(d.constraints) ? d.constraints : [],
-          points:      d.marks        ?? d.points  ?? 0,    // saved as 'marks'
-          diff:        d.difficulty   || d.diff    || 'easy', // saved as 'difficulty'
+          points:      d.marks        ?? d.points  ?? 0,
+          diff:        d.difficulty   || d.diff    || 'easy',
           tags:        Array.isArray(d.tags)      ? d.tags      : [],
           testcases:   Array.isArray(d.testcases) ? d.testcases : [],
           templates:   d.templates    || {},
         };
       });
+      return;
     }
-    // If questions_public is empty, demo questions stay as fallback
+
+    // ── Student: only show questions from the active exam ─────
+    if (!activeExam) {
+      questions = [];   // no active exam → "no exam" screen
+      return;
+    }
+
+    const qIds = activeExam.questionIds || [];
+    if (!qIds.length) { questions = []; return; }
+
+    // Fetch assigned questions in chunks of 10 (Firestore 'in' limit)
+    const chunks = [];
+    for (let i = 0; i < qIds.length; i += 10) chunks.push(qIds.slice(i, i+10));
+
+    let docs = [];
+    for (const chunk of chunks) {
+      const snap = await db.collection('questions_public')
+        .where(firebase.firestore.FieldPath.documentId(), 'in', chunk)
+        .get();
+      docs = docs.concat(snap.docs);
+    }
+
+    questions = docs.map(doc => {
+      const d = doc.data();
+      return {
+        id:          doc.id,
+        title:       d.title        || '',
+        desc:        d.description  || d.desc    || '',
+        example:     d.exampleInput || d.example || '',
+        constraints: Array.isArray(d.constraints) ? d.constraints : [],
+        points:      d.marks        ?? d.points  ?? 0,
+        diff:        d.difficulty   || d.diff    || 'easy',
+        tags:        Array.isArray(d.tags)      ? d.tags      : [],
+        testcases:   Array.isArray(d.testcases) ? d.testcases : [],
+        templates:   d.templates    || {},
+      };
+    });
+
+    // Preserve professor's question order from the exam config
+    questions.sort((a,b) => qIds.indexOf(a.id) - qIds.indexOf(b.id));
+
   } catch(e) {
     console.warn('loadQuestionsFromFirestore failed (using demo data):', e);
   }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   QUESTIONS SEED
-   ═══════════════════════════════════════════════════════════════ */
-function seedDemoQuestions() {
-  questions = [
-    {
-      id:'two-sum', title:'Two Sum', diff:'easy', points:100, tags:['Array','Hash Map'],
-      desc:`Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>. You may assume exactly one solution exists.`,
-      example:'nums = [2,7,11,15], target = 9 → [0,1]',
-      constraints:['2 ≤ nums.length ≤ 10⁴','−10⁹ ≤ nums[i] ≤ 10⁹','−10⁹ ≤ target ≤ 10⁹'],
-      testcases:[
-        {input:'2 7 11 15\n9',  expected:'0 1'},
-        {input:'3 2 4\n6',      expected:'1 2'},
-        {input:'3 3\n6',        expected:'0 1'},
-      ],
-      templates:{
-        python:`nums = list(map(int, input().split()))\ntarget = int(input())\nseen = {}\nfor i, n in enumerate(nums):\n    d = target - n\n    if d in seen:\n        print(seen[d], i)\n        break\n    seen[n] = i`,
-        javascript:`const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\nconst nums = lines[0].split(' ').map(Number);\nconst t = Number(lines[1]);\nconst m = new Map();\nfor(let i=0;i<nums.length;i++){\n  const d=t-nums[i];\n  if(m.has(d)){console.log(m.get(d),i);break;}\n  m.set(nums[i],i);\n}`,
-        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  vector<int>v;\n  string l; getline(cin,l);\n  istringstream ss(l); int x;\n  while(ss>>x) v.push_back(x);\n  int t; cin>>t;\n  map<int,int>seen;\n  for(int i=0;i<v.size();i++){\n    int d=t-v[i];\n    if(seen.count(d)){cout<<seen[d]<<\" \"<<i;return 0;}\n    seen[v[i]]=i;\n  }\n}`,
-        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    String[]p=sc.nextLine().split(\" \");\n    int t=sc.nextInt();\n    Map<Integer,Integer>m=new HashMap<>();\n    for(int i=0;i<p.length;i++){\n      int n=Integer.parseInt(p[i]),d=t-n;\n      if(m.containsKey(d)){System.out.println(m.get(d)+\" \"+i);return;}\n      m.put(n,i);\n    }\n  }\n}`,
-        c:`#include<stdio.h>\nint main(){\n  int a[10000],n=0,t;\n  // parse first line then target\n  while(scanf(\"%d\",&a[n])==1) n++;\n  t=a[--n];\n  for(int i=0;i<n;i++) for(int j=i+1;j<n;j++)\n    if(a[i]+a[j]==t){printf(\"%d %d\",i,j);return 0;}\n}`,
-      }
-    },
-    {
-      id:'palindrome', title:'Valid Palindrome', diff:'easy', points:80, tags:['String','Two Pointers'],
-      desc:`A phrase is a palindrome if after converting to lowercase and removing non-alphanumeric characters, it reads the same forward and backward. Given string <code>s</code>, return <code>true</code> or <code>false</code>.`,
-      example:'"A man, a plan, a canal: Panama" → true',
-      constraints:['1 ≤ s.length ≤ 2×10⁵','s consists of printable ASCII'],
-      testcases:[
-        {input:'A man, a plan, a canal: Panama', expected:'true'},
-        {input:'race a car',                     expected:'false'},
-        {input:' ',                               expected:'true'},
-      ],
-      templates:{
-        python:`s = input()\nc = ''.join(ch.lower() for ch in s if ch.isalnum())\nprint('true' if c == c[::-1] else 'false')`,
-        javascript:`const s=require('fs').readFileSync('/dev/stdin','utf8').trim();\nconst c=s.replace(/[^a-zA-Z0-9]/g,'').toLowerCase();\nconsole.log(c===c.split('').reverse().join('')?'true':'false');`,
-        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  string s,c; getline(cin,s);\n  for(char x:s) if(isalnum(x)) c+=tolower(x);\n  string r=c; reverse(r.begin(),r.end());\n  cout<<(c==r?"true":"false");\n}`,
-        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    String s=sc.nextLine().replaceAll("[^a-zA-Z0-9]","").toLowerCase();\n    System.out.println(s.equals(new StringBuilder(s).reverse().toString()));\n  }\n}`,
-        c:`#include<stdio.h>\n#include<ctype.h>\n#include<string.h>\nint main(){\n  char s[200010],c[200010]; int n=0;\n  fgets(s,sizeof(s),stdin);\n  for(int i=0;s[i];i++) if(isalnum(s[i])) c[n++]=tolower(s[i]);\n  c[n]=0;\n  char r[200010]; strcpy(r,c);\n  for(int i=0;i<n/2;i++){char t=r[i];r[i]=r[n-1-i];r[n-1-i]=t;}\n  printf(\"%s\",strcmp(c,r)==0?\"true\":\"false\");\n}`,
-      }
-    },
-    {
-      id:'max-subarray', title:"Maximum Subarray (Kadane's)", diff:'med', points:150, tags:['Array','DP'],
-      desc:`Given an integer array <code>nums</code>, find the contiguous subarray which has the largest sum and return its sum.`,
-      example:'nums = [-2,1,-3,4,-1,2,1,-5,4] → 6  (subarray [4,-1,2,1])',
-      constraints:['1 ≤ nums.length ≤ 10⁵','−10⁴ ≤ nums[i] ≤ 10⁴'],
-      testcases:[
-        {input:'-2 1 -3 4 -1 2 1 -5 4', expected:'6'},
-        {input:'5 4 -1 7 8',             expected:'23'},
-        {input:'-1',                      expected:'-1'},
-      ],
-      templates:{
-        python:`nums=list(map(int,input().split()))\nmax_s=cur=nums[0]\nfor n in nums[1:]:\n    cur=max(n,cur+n)\n    max_s=max(max_s,cur)\nprint(max_s)`,
-        javascript:`const nums=require('fs').readFileSync('/dev/stdin','utf8').trim().split(' ').map(Number);\nlet mx=nums[0],cur=nums[0];\nfor(let i=1;i<nums.length;i++){cur=Math.max(nums[i],cur+nums[i]);mx=Math.max(mx,cur);}\nconsole.log(mx);`,
-        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  vector<int>v; int x;\n  while(cin>>x) v.push_back(x);\n  int mx=v[0],cur=v[0];\n  for(int i=1;i<v.size();i++){cur=max(v[i],cur+v[i]);mx=max(mx,cur);}\n  cout<<mx;\n}`,
-        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    List<Integer>l=new ArrayList<>();\n    while(sc.hasNextInt())l.add(sc.nextInt());\n    int mx=l.get(0),cur=mx;\n    for(int i=1;i<l.size();i++){cur=Math.max(l.get(i),cur+l.get(i));mx=Math.max(mx,cur);}\n    System.out.println(mx);\n  }\n}`,
-        c:`#include<stdio.h>\nint main(){\n  int a[100001],n=0,x;\n  while(scanf(\"%d\",&x)==1) a[n++]=x;\n  int mx=a[0],cur=a[0];\n  for(int i=1;i<n;i++){cur=cur+a[i]>a[i]?cur+a[i]:a[i];mx=mx>cur?mx:cur;}\n  printf(\"%d\",mx);\n}`,
-      }
-    },
-  ];
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2237,6 +2114,14 @@ function exportViolations() {
    STUDENT EXAM PAGE
    ═══════════════════════════════════════════════════════════════ */
 function renderStuPage() {
+  const exam = window._activeExam || null;
+  const now  = new Date();
+
+  // ── Update exam title in hero ──────────────────────────────
+  const titleEl = document.getElementById('exam-title');
+  if (titleEl && exam) titleEl.textContent = exam.name || 'Active Exam';
+
+  // ── Stats ──────────────────────────────────────────────────
   document.getElementById('hs-q').textContent   = questions.length;
   document.getElementById('hs-sol').textContent = solvedIds.size;
   document.getElementById('hs-pts').textContent = [...solvedIds].reduce((a,id)=>{
@@ -2244,12 +2129,57 @@ function renderStuPage() {
   },0);
 
   const grid = document.getElementById('exam-grid');
-  if (!questions.length) { grid.innerHTML='<p style="color:var(--muted)">No questions available yet. Ask your professor.</p>'; return; }
+
+  // ── No active exam / exam ended ────────────────────────────
+  if (!firebaseReady) {
+    // Demo mode — show demo questions normally
+  } else if (!exam) {
+    // Check if there's a future exam scheduled
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px">
+        <div style="font-size:3rem;margin-bottom:16px">🏁</div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--head);margin-bottom:8px">No Active Exam</div>
+        <div style="color:var(--muted);font-size:.88rem;max-width:380px;margin:0 auto;line-height:1.7">
+          There is no exam running right now.<br>
+          Your professor hasn't started one yet, or the exam window has closed.
+        </div>
+      </div>`;
+    return;
+  } else {
+    // Check if exam time window has passed
+    const end = exam.endTime ? new Date(exam.endTime) : null;
+    if (end && now > end) {
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:60px 20px">
+          <div style="font-size:3rem;margin-bottom:16px">⏰</div>
+          <div style="font-size:1.2rem;font-weight:700;color:var(--head);margin-bottom:8px">Exam Has Ended</div>
+          <div style="color:var(--muted);font-size:.88rem;max-width:380px;margin:0 auto;line-height:1.7">
+            The exam "<strong style="color:var(--body)">${exam.name}</strong>" closed at
+            ${end.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.
+            <br>Contact your professor if you think this is an error.
+          </div>
+        </div>`;
+      return;
+    }
+  }
+
+  // ── No questions in the active exam ───────────────────────
+  if (!questions.length) {
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px">
+        <div style="font-size:3rem;margin-bottom:16px">📋</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--head);margin-bottom:8px">No Questions Yet</div>
+        <div style="color:var(--muted);font-size:.88rem">Your professor hasn't added any questions to this exam.</div>
+      </div>`;
+    return;
+  }
+
+  // ── Render question cards ──────────────────────────────────
   grid.innerHTML = questions.map((q,i)=>`
     <div class="exam-card ${solvedIds.has(q.id)?'solved':''}" onclick="startExam('${q.id}')">
       <div class="ec-num">PROBLEM ${i+1}</div>
       <div class="ec-title">${q.title}</div>
-      <div class="ec-desc">${q.desc.replace(/<[^>]+>/g,'').substring(0,100)}...</div>
+      <div class="ec-desc">${(q.desc||'').replace(/<[^>]+>/g,'').substring(0,100)}...</div>
       <div class="ec-footer">
         <span class="diff ${q.diff}">${q.diff}</span>
         <div class="chip-row">${(q.tags||[]).slice(0,2).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
@@ -2359,34 +2289,7 @@ function onFSChange() {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ████████╗██╗███╗   ███╗███████╗██████╗
-      ██╔══╝██║████╗ ████║██╔════╝██╔══██╗
-      ██║   ██║██╔████╔██║█████╗  ██████╔╝
-      ██║   ██║██║╚██╔╝██║██╔══╝  ██╔══██╗
-      ██║   ██║██║ ╚═╝ ██║███████╗██║  ██║
-      ╚═╝   ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
-
-   ANTI-CHEAT ENGINE
-   ═══════════════════════════════════════════════════════════════ */
-
 let acEnabled = false;
-
-/* ── 1. Tab switch (blur + visibilitychange) ─────────────────── */
-/*
-  "Always Active Window" extensions spoof focus by:
-    • intercepting blur and suppressing it entirely, OR
-    • firing blur + immediate focus to fake a rapid recovery.
-
-  We defend in three layers:
-    a) hasFocus polling — if the page CLAIMS to be visible but
-       hasFocus() returns false for >2 s, a spoofer is likely active.
-    b) Blur/vis cross-check — a blur with no matching visibilitychange
-       is suspicious when visibility stays "visible" (spoofer blocked blur
-       from propagating but forgot to fake visibilityState).
-    c) Hidden-count drift — if the tab goes hidden many times without
-       any matching blur, we log a "focus-spoof" violation.
-*/
 let _lastBlurTime    = 0;
 let _lastHiddenTime  = 0;
 let _hiddenNoBlurCnt = 0;
@@ -2483,51 +2386,6 @@ function onKeyDown(e) {
   }
   lastKeystroke = now;
 }
-
-/* ── 4. Extension detection — REMOVED (Priority 5) ─────────────
-   The previous EXT_SIGNATURES checks (DOM class sniffing, window
-   property checks, fetch/XHR string comparisons) were removed
-   because they produce too many false positives:
-
-   • class*="copilot" fires on unrelated UI frameworks
-   • typeof window.chatgptExtension fires on sites that define
-     that property for their own reasons
-   • (window.fetch+'').includes('intercept') fires whenever any
-     script uses a service worker or fetch polyfill
-
-   False positives wrongly penalise honest students and erode trust
-   in the platform.
-
-   WHAT WE KEEP INSTEAD:
-   ✓ DOM Guard (MutationObserver below) — removes injected iframes
-     and elements in real time, which is reliable and low false-positive
-   ✓ Paste block — prevents copy-pasting from external sources
-   ✓ Tab-switch detection — catches students opening AI sites
-   ✓ Context-menu block — prevents "open in new tab" tricks
-   ✓ Integrity score — records all the above for professor review
-
-   If you want extension detection in the future, a browser extension
-   (chrome.devtools API or manifest v3 declarativeNetRequest) is the
-   correct approach — not JS property sniffing from a web page.
-   ─────────────────────────────────────────────────────────────── */
-
-// probeExtensions and showExtBanner are intentionally removed.
-// The setInterval that called probeExtensions is also removed below.
-
-/* ── 5. DOM Guard (MutationObserver) ─────────────────────────── */
-/*
-  Watches the entire document (not just body) so we catch scripts
-  injected into <head> as well as <body>.
-
-  Removal targets:
-    • <iframe> / <object>  — injected overlays / AI panels
-    • <script> with a src  — injected remote scripts
-    • elements whose id/class/text match AI-assistant signatures
-
-  Injected inline <script> tags (no src) are NOT removed because
-  they execute synchronously before the observer fires; we log them
-  instead so the professor can review.
-*/
 function setupDOMGuard() {
   disableDOMGuard();
   const SUSPICIOUS = ['gpt','copilot','ai-assist','tabnine','codeium','cheat','answer'];
@@ -2616,30 +2474,6 @@ function disableAntiCheat() {
   document.removeEventListener('webkitfullscreenchange', onFSChange);
   document.getElementById('ac-overlay').classList.remove('show');
 }
-
-/* ── Central violation handler ───────────────────────────────── */
-/* ═══════════════════════════════════════════════════════════════
-   PRIORITY 3 — INTEGRITY SCORE SYSTEM (replaces hard termination)
-   ─────────────────────────────────────────────────────────────
-   Instead of a 2-strike termination, each violation deducts from
-   the student's integrity score (0–100). The response escalates:
-
-     Score ≥ 70  → warn toast + show overlay (green bar)
-     Score 40–69 → stronger warning + shake animation (amber bar)
-     Score < 40  → final warning: one more = terminate (red bar)
-     Score ≤ 0   → terminate exam (cannot recover)
-
-   Different violation types carry different weights:
-     tab-switch / fullscreen-exit  → -15
-     paste attempt                 → -10
-     devtools                      → -20
-     extension detected            → -12
-     dom-guard injection           → -25
-
-   The integrity score is stored on the submission so the
-   professor can see it alongside the code and violations.
-   Hard termination only happens at score 0 — not after N strikes.
-   ═══════════════════════════════════════════════════════════════ */
 
 // Penalty weights per violation type
 const INTEGRITY_PENALTIES = {
@@ -2771,16 +2605,6 @@ function updateIntegrity(delta) {
   el.className = `integrity-bar${integrityScore<40?' bad':integrityScore<70?' warn':''}`;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   CODE SNAPSHOTS (every 2 min)
-   ═══════════════════════════════════════════════════════════════ */
-/* ─────────────────────────────────────────────────────────────
-   Code Snapshots + PHASE 2 Draft auto-save
-   Runs every 2 minutes. Saves to:
-     - local codeSnapshots[] array (always)
-     - Firestore snapshots/ sub-collection (if Firebase active)
-     - Firestore drafts/{uid}_{qid} (so student can recover on refresh)
-   ───────────────────────────────────────────────────────────── */
 function startSnapshots() {
   stopSnapshots();
   snapshotInterval = setInterval(() => {
@@ -2789,13 +2613,6 @@ function startSnapshots() {
   }, 2 * 60 * 1000);
 }
 
-/* ─────────────────────────────────────────────────────────────
-   PHASE 2: saveDraftToFirestore
-   Saves the current code as a draft in the drafts/ collection.
-   Draft ID = "{userId}_{questionId}" so it overwrites the previous
-   draft (no orphaned documents piling up).
-   Students can recover their draft if they accidentally refresh.
-   ───────────────────────────────────────────────────────────── */
 async function saveDraftToFirestore() {
   if (!firebaseReady || !db || !currentUser || !currentQ) return;
   if (!monaco_editor) return;
@@ -2814,12 +2631,7 @@ async function saveDraftToFirestore() {
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   PHASE 2: loadDraftFromFirestore
-   Called when a student opens a question they already started.
-   If a draft exists, offers to restore it instead of showing
-   the blank template.
-   ───────────────────────────────────────────────────────────── */
+
 async function loadDraftFromFirestore(qId) {
   if (!firebaseReady || !db || !currentUser) return null;
   try {
@@ -2831,13 +2643,7 @@ async function loadDraftFromFirestore(qId) {
   }
   return null;
 }
-/* ── PRIORITY 4: setSaveIndicator ────────────────────────────
-   Controls the small "Saved / Saving…" pill in the editor topbar.
-   States:
-     'saved'   → green dot, "Saved" text, fades out after 3s
-     'saving'  → amber dot, "Saving…" stays visible
-     'unsaved' → muted dot, "Unsaved" stays visible
-   ─────────────────────────────────────────────────────────── */
+
 function setSaveIndicator(state) {
   const wrap = document.getElementById('save-indicator');
   const dot  = document.getElementById('save-dot');
@@ -2913,7 +2719,16 @@ function pad(n){ return String(n).padStart(2,'0'); }
    MONACO EDITOR
    ═══════════════════════════════════════════════════════════════ */
 function loadMonaco() {
-  require.config({paths:{vs:'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'}});
+  require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'}});
+  // Defensive loader: if require itself is undefined (CDN blocked),
+  // show a clear error in the console panel rather than silently failing.
+  if (typeof require === 'undefined') {
+    outLine('err', '⛔ Monaco editor could not load (CDN blocked by browser or network).');
+    outLine('warn', 'Try opening the file from a local web server instead of file://, or check your internet connection.');
+    const btn = document.getElementById('btn-sub');
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Submit'; }
+    return;
+  }
   require(['vs/editor/editor.main'], mono => {
     window._mono = mono;
     if (monaco_editor) { monaco_editor.dispose(); monaco_editor=null; }
@@ -2958,12 +2773,6 @@ function loadMonaco() {
       window._lastCodeLen = monaco_editor.getValue().length;
     });
 
-    /* ── PRIORITY 4: Auto-save on every keystroke (debounced) ──
-       Saves the draft to Firestore 3 seconds after the student
-       stops typing. Shows a "Saved" indicator in the editor bar.
-       This replaces the 2-min interval as the primary save trigger
-       (the interval is kept as a belt-and-suspenders backup).
-       ─────────────────────────────────────────────────────────── */
     let autoSaveTimer = null;
     monaco_editor.onDidChangeModelContent(() => {
       window._lastCodeLen = monaco_editor.getValue().length;
@@ -3100,14 +2909,19 @@ async function j0submit(code, langId, stdin) {
   return (await res.json()).token;
 }
 
-async function j0poll(token, attempts=15) {
+async function j0poll(token, attempts=30) {
   for (let i=0;i<attempts;i++) {
-    await sleep(1000);
-    const res = await fetch(`${J0_BASE}/submissions/${token}?base64_encoded=true`,{headers:j0headers()});
-    const d = await res.json();
-    if (d.status?.id>=3) return d;
+    await sleep(Math.min(1500 + i * 200, 4000));
+    try {
+      const res = await fetch(`${J0_BASE}/submissions/${token}?base64_encoded=true&fields=status,stdout,stderr,compile_output,time,memory`,{headers:j0headers()});
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (d.status?.id >= 3) return d;
+    } catch(e) {
+      if (i === attempts-1) throw e;
+    }
   }
-  throw new Error('Timeout');
+  throw new Error('Timeout — Judge0 did not respond after ' + attempts + ' attempts');
 }
 
 function b64d(s) {
@@ -3163,33 +2977,6 @@ async function runCode() {
   btn.disabled=false; btn.textContent='▶ Run';
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SUBMIT CODE
-   ═══════════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════════
-   PRIORITY 1 — HIDDEN TESTCASE BACKEND
-   ─────────────────────────────────────────────────────────────
-   How it works:
-   - questions_public/ holds visible TCs (sample cases only)
-   - questions_private/ holds ALL test cases including hidden ones
-   - At submit time we fetch the private doc (server-side read,
-     Firestore rules block students from reading it directly).
-   - Hidden TCs are NEVER rendered in the UI — students only see
-     "Hidden Test N" with pass/fail, no input/output shown.
-   - If Firestore is unavailable (demo mode) we fall back to the
-     local testcases[] which are the visible ones only.
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ── fetchHiddenTestcases ─────────────────────────────────────
-   Reads questions_private/{questionId} from Firestore.
-   Returns array of { input, expectedOutput } objects.
-   Returns [] if Firestore is unavailable or the doc is missing.
-   Students cannot call this directly — Firestore rules require
-   the "prof" role to read questions_private/ (see security rules
-   comment near FB_CONFIG). The fetch happens server-side via
-   the authenticated user's token; a student's token will be
-   rejected by Firestore rules and we fall back gracefully.
-   ─────────────────────────────────────────────────────────────── */
 async function fetchHiddenTestcases(questionId) {
   if (!firebaseReady || !db) return []; // demo mode — no hidden TCs
   try {
@@ -3414,19 +3201,6 @@ function initResize() {
   document.addEventListener('mouseup',()=>{drag=false;document.body.style.cursor='';document.body.style.userSelect='';});
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   PHASE 3 — PROFESSOR DASHBOARD: CREATE EXAM
-   ─────────────────────────────────────────────────────────────
-   Renders question checkboxes inside the Create Exam panel and
-   saves the exam config to Firestore exams/ collection.
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ─────────────────────────────────────────────────────────────
-   renderCreateExamPanel
-   Populates the question checklist with all questions currently
-   in the question bank so the professor can pick which ones
-   belong to this exam.
-   ───────────────────────────────────────────────────────────── */
 function renderCreateExamPanel() {
   const list = document.getElementById('ex-q-checklist');
   if (!list) return;
@@ -3448,12 +3222,6 @@ function renderCreateExamPanel() {
   `).join('');
 }
 
-/* ─────────────────────────────────────────────────────────────
-   createExam — Phase 3 must-have feature
-   Reads the form, builds the exam config, and saves it to
-   Firestore exams/ collection so the system knows which
-   questions are active and for how long.
-   ───────────────────────────────────────────────────────────── */
 async function createExam() {
   const name     = document.getElementById('ex-name').value.trim();
   const start    = document.getElementById('ex-start').value;
@@ -3506,15 +3274,16 @@ async function createExam() {
     toast(`✅ Exam "${name}" created! (Demo mode — not persisted)`, 'ok', 5000);
   }
 
+  // Update the in-memory active exam so the prof dashboard reflects it immediately
+  if (firebaseReady && db) {
+    // Re-check for active exam and reload questions so prof dashboard is fresh
+    await loadQuestionsFromFirestore();
+  }
   // Navigate to dashboard to see the exam listed
   profNav('dashboard');
 }
 
-/* ─────────────────────────────────────────────────────────────
-   exportResults — Phase 3 feature: export all submissions as CSV
-   Includes student name, problem, language, score, violations.
-   Professor can open this in Excel / Google Sheets.
-   ───────────────────────────────────────────────────────────── */
+
 function exportResults() {
   if (!submissions.length) { toast('No results to export yet','warn'); return; }
   const headers = ['Student','Problem','Language','Score (%)','Status','Violations','Time'];
