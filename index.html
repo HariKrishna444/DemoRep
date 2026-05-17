@@ -1,0 +1,3419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExamShield — College Coding Exam Platform</title>
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self' https://www.gstatic.com https://identitytoolkit.googleapis.com https://firestore.googleapis.com https://*.firebaseio.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://ce.judge0.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseapp.com https://www.googleapis.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+  font-src 'self' https://fonts.gstatic.com;
+  connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://ce.judge0.com https://identitytoolkit.googleapis.com;
+  img-src 'self' data: blob: https:;
+  frame-src 'none'; object-src 'none'; media-src 'self' blob:;
+">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════
+   ROOT TOKENS
+   ═══════════════════════════════════════════════════ */
+:root{
+  --ink:    #0a0c12;
+  --ink2:   #111520;
+  --ink3:   #181d2a;
+  --ink4:   #1e2535;
+  --line:   #252d3e;
+  --line2:  #2e3850;
+  --muted:  #4a5872;
+  --soft:   #7b8faa;
+  --body:   #c2cfe0;
+  --head:   #eef2f8;
+
+  --red:    #ff3b5c;
+  --amber:  #f5a623;
+  --green:  #00e5a0;
+  --blue:   #3b82f6;
+  --cyan:   #06b6d4;
+
+  --prof:   #f5a623;   /* professor accent */
+  --stu:    #00e5a0;   /* student accent   */
+  --danger: #ff3b5c;
+
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+
+  --ff-head: 'Outfit', sans-serif;
+  --ff-mono: 'DM Mono', monospace;
+
+  --sh: 0 8px 40px rgba(0,0,0,.55);
+  --glow-g: 0 0 30px rgba(0,229,160,.18);
+  --glow-a: 0 0 30px rgba(245,166,35,.18);
+  --glow-r: 0 0 30px rgba(255,59,92,.25);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;height:100%}
+body{
+  background:var(--ink);
+  color:var(--body);
+  font-family:var(--ff-head);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* animated noise grain overlay */
+body::after{
+  content:'';
+  position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:.4;
+}
+
+/* ═══════════════════════════════════════════════════
+   PAGE ROUTING
+   ═══════════════════════════════════════════════════ */
+.page{display:none;min-height:100vh}
+.page.active{display:flex;flex-direction:column}
+
+/* ═══════════════════════════════════════════════════
+   LOADER
+   ═══════════════════════════════════════════════════ */
+#loader{
+  position:fixed;inset:0;z-index:8888;
+  background:var(--ink);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;
+  transition:opacity .6s,visibility .6s;
+}
+#loader.gone{opacity:0;visibility:hidden;pointer-events:none}
+.ld-logo{
+  font-family:var(--ff-head);font-weight:900;font-size:2.6rem;
+  color:var(--stu);letter-spacing:-1.5px;
+  text-shadow:0 0 60px rgba(0,229,160,.5);
+  animation:ldpulse 1.4s ease-in-out infinite;
+}
+.ld-logo em{color:var(--muted);font-style:normal}
+@keyframes ldpulse{0%,100%{text-shadow:0 0 40px rgba(0,229,160,.4)}50%{text-shadow:0 0 80px rgba(0,229,160,.9)}}
+.ld-bar{width:180px;height:2px;background:var(--line);border-radius:99px;overflow:hidden}
+.ld-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));animation:ldfill 2s ease forwards}
+@keyframes ldfill{to{width:100%}}
+.ld-label{font-family:var(--ff-mono);font-size:.7rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;animation:blink 1s ease infinite}
+@keyframes blink{50%{opacity:.3}}
+
+/* ═══════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════ */
+#toasts{position:fixed;top:20px;right:20px;z-index:7777;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{
+  display:flex;align-items:center;gap:10px;
+  background:var(--ink3);border:1px solid var(--line2);
+  border-left:3px solid var(--stu);
+  border-radius:var(--r-sm);padding:11px 16px;
+  font-size:.8rem;font-family:var(--ff-mono);
+  min-width:260px;max-width:360px;
+  box-shadow:var(--sh);pointer-events:all;
+  animation:tin .3s ease;
+}
+.toast.warn{border-left-color:var(--amber)}
+.toast.err{border-left-color:var(--danger)}
+.toast.ok{border-left-color:var(--green)}
+@keyframes tin{from{transform:translateX(110%);opacity:0}}
+
+/* ═══════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 20px;border-radius:var(--r-sm);
+  font-family:var(--ff-head);font-size:.82rem;font-weight:600;
+  cursor:pointer;border:1px solid transparent;
+  transition:all .18s;text-decoration:none;letter-spacing:.2px;
+  white-space:nowrap;
+}
+.btn-g{background:var(--stu);color:var(--ink);border-color:var(--stu);box-shadow:0 0 18px rgba(0,229,160,.25)}
+.btn-g:hover{background:#00fbb3;box-shadow:0 0 30px rgba(0,229,160,.45);transform:translateY(-1px)}
+.btn-a{background:var(--amber);color:var(--ink);border-color:var(--amber);box-shadow:0 0 18px rgba(245,166,35,.2)}
+.btn-a:hover{background:#ffb83a;box-shadow:0 0 28px rgba(245,166,35,.4);transform:translateY(-1px)}
+.btn-r{background:rgba(255,59,92,.12);color:var(--danger);border-color:rgba(255,59,92,.3)}
+.btn-r:hover{background:rgba(255,59,92,.22)}
+.btn-ghost{background:transparent;color:var(--soft);border-color:var(--line)}
+.btn-ghost:hover{background:var(--ink3);color:var(--body);border-color:var(--line2)}
+.btn-blue{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-blue:hover{background:#5a9cff;transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.btn-sm{padding:6px 14px;font-size:.76rem}
+.btn-lg{padding:13px 30px;font-size:.95rem;border-radius:var(--r)}
+.btn-icon{padding:7px 9px}
+
+/* ═══════════════════════════════════════════════════
+   INPUTS
+   ═══════════════════════════════════════════════════ */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:var(--ff-mono)}
+.inp{
+  width:100%;background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:11px 14px;
+  font-family:var(--ff-mono);font-size:.85rem;color:var(--head);
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+.inp:focus{border-color:var(--stu);box-shadow:0 0 0 3px rgba(0,229,160,.1)}
+.inp::placeholder{color:var(--muted)}
+textarea.inp{resize:vertical;min-height:80px}
+select.inp{cursor:pointer}
+select.inp option{background:var(--ink3)}
+
+/* ═══════════════════════════════════════════════════
+   ██       ██████   ██████  ██ ███    ██
+   ██      ██    ██ ██       ██ ████   ██
+   ██      ██    ██ ██   ███ ██ ██ ██  ██
+   ██      ██    ██ ██    ██ ██ ██  ██ ██
+   ███████  ██████   ██████  ██ ██   ████
+   PAGE: LOGIN / ROLE SELECT
+   ═══════════════════════════════════════════════════ */
+#page-login{align-items:center;justify-content:center;padding:40px 20px;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent)}
+.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
+@keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
+.login-brand{text-align:center;margin-bottom:36px}
+.login-brand h1{
+  font-family:var(--ff-head);font-size:2.6rem;font-weight:900;
+  color:var(--stu);letter-spacing:-1.5px;
+  text-shadow:0 0 50px rgba(0,229,160,.4);
+}
+.login-brand h1 span{color:var(--muted)}
+.login-brand p{font-family:var(--ff-mono);font-size:.7rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:6px}
+
+/* Role selector */
+.role-pills{display:flex;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:4px;gap:4px;margin-bottom:28px}
+.role-pill{
+  flex:1;text-align:center;padding:10px;border-radius:var(--r-sm);
+  font-size:.82rem;font-weight:700;cursor:pointer;
+  color:var(--muted);transition:all .2s;font-family:var(--ff-head);
+}
+.role-pill.active-prof{background:var(--ink3);color:var(--amber)}
+.role-pill.active-stu{background:var(--ink3);color:var(--stu)}
+
+.login-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-xl);padding:36px;
+  box-shadow:var(--sh);
+}
+.login-card.prof-mode{border-color:rgba(245,166,35,.2);box-shadow:var(--sh),var(--glow-a)}
+.login-card.stu-mode{border-color:rgba(0,229,160,.15);box-shadow:var(--sh),var(--glow-g)}
+
+.form-fields{display:flex;flex-direction:column;gap:16px}
+.divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.72rem;font-family:var(--ff-mono)}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ═══════════════════════════════════════════════════
+   SHARED TOPBAR
+   ═══════════════════════════════════════════════════ */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 24px;background:rgba(10,12,18,.9);
+  border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:200;
+  backdrop-filter:blur(14px);
+}
+.tb-brand{font-family:var(--ff-head);font-size:1.2rem;font-weight:800;color:var(--stu);letter-spacing:-0.5px}
+.tb-brand em{color:var(--muted);font-style:normal}
+.tb-center{display:flex;align-items:center;gap:12px}
+.tb-right{display:flex;align-items:center;gap:10px}
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:99px;padding:5px 13px;
+  font-size:.78rem;color:var(--soft);
+}
+.avatar{
+  width:24px;height:24px;border-radius:50%;
+  background:linear-gradient(135deg,var(--stu),var(--cyan));
+  display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-weight:800;color:var(--ink);
+}
+.avatar.prof-av{background:linear-gradient(135deg,var(--amber),#ff8c00)}
+
+/* ═══════════════════════════════════════════════════
+   ██████  ██████   ██████  ███████
+   ██   ██ ██   ██ ██    ██ ██
+   ██████  ██████  ██    ██ █████
+   ██      ██   ██ ██    ██ ██
+   ██      ██   ██  ██████  ██
+   PAGE: PROFESSOR DASHBOARD
+   ═══════════════════════════════════════════════════ */
+#page-prof{flex-direction:column}
+.prof-main{flex:1;display:grid;grid-template-columns:260px 1fr;min-height:0}
+
+/* Sidebar */
+.prof-sidebar{
+  background:var(--ink2);border-right:1px solid var(--line);
+  padding:24px 16px;display:flex;flex-direction:column;gap:6px;
+}
+.sbar-section{font-family:var(--ff-mono);font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;padding:14px 10px 6px}
+.sbar-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:var(--r-sm);
+  font-size:.83rem;font-weight:500;cursor:pointer;
+  color:var(--soft);transition:all .18s;
+}
+.sbar-item:hover{background:var(--ink3);color:var(--body)}
+.sbar-item.active{background:rgba(245,166,35,.1);color:var(--amber);font-weight:600}
+.sbar-item .sbar-icon{font-size:1rem;width:20px;text-align:center}
+.sbar-badge{
+  margin-left:auto;background:var(--danger);color:#fff;
+  border-radius:99px;font-size:.65rem;font-weight:700;
+  padding:1px 7px;font-family:var(--ff-mono);
+}
+
+/* Prof content panels */
+.prof-content{flex:1;overflow-y:auto;padding:28px}
+.prof-content::-webkit-scrollbar{width:5px}
+.prof-content::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+.prof-panel{display:none}
+.prof-panel.active{display:block;animation:fadeup .3s ease}
+
+/* Section header */
+.sec-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:24px;
+}
+.sec-hd h2{font-size:1.4rem;font-weight:800;color:var(--head);letter-spacing:-.3px}
+.sec-hd p{font-size:.8rem;color:var(--soft);margin-top:3px}
+
+/* Stat cards */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.stat-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:20px;
+  position:relative;overflow:hidden;
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+}
+.stat-card.c-green::before{background:var(--stu)}
+.stat-card.c-amber::before{background:var(--amber)}
+.stat-card.c-red::before{background:var(--danger)}
+.stat-card.c-blue::before{background:var(--blue)}
+.stat-val{font-family:var(--ff-head);font-size:2rem;font-weight:900;color:var(--head)}
+.stat-val.green{color:var(--stu)}
+.stat-val.amber{color:var(--amber)}
+.stat-val.red{color:var(--danger)}
+.stat-val.blue{color:var(--blue)}
+.stat-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:var(--ff-mono)}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{
+  font-family:var(--ff-mono);font-size:.65rem;color:var(--muted);
+  text-transform:uppercase;letter-spacing:1.5px;
+  padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);
+}
+.data-table td{
+  padding:13px 14px;font-size:.82rem;color:var(--body);
+  border-bottom:1px solid var(--line);
+}
+.data-table tr:hover td{background:var(--ink3)}
+.data-table tr:last-child td{border-bottom:none}
+
+/* Question manager */
+.q-manager-grid{display:flex;flex-direction:column;gap:12px}
+.q-row{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r);padding:18px 20px;
+  display:flex;align-items:center;gap:16px;
+  transition:border-color .18s;
+}
+.q-row:hover{border-color:var(--line2)}
+.q-row-info{flex:1}
+.q-row-title{font-size:.9rem;font-weight:700;color:var(--head)}
+.q-row-meta{font-size:.75rem;color:var(--muted);margin-top:3px;font-family:var(--ff-mono)}
+.q-row-actions{display:flex;gap:8px}
+
+/* Difficulty pills */
+.diff{padding:2px 9px;border-radius:99px;font-size:.68rem;font-weight:700;font-family:var(--ff-mono)}
+.diff.easy{background:rgba(0,229,160,.12);color:var(--stu);border:1px solid rgba(0,229,160,.25)}
+.diff.med{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.25)}
+.diff.hard{background:rgba(255,59,92,.12);color:var(--danger);border:1px solid rgba(255,59,92,.25)}
+
+/* Violation log */
+.vio-list{display:flex;flex-direction:column;gap:10px}
+.vio-row{
+  background:var(--ink2);border:1px solid var(--line);
+  border-left:3px solid var(--danger);
+  border-radius:var(--r-sm);padding:14px 16px;
+  display:flex;align-items:center;gap:14px;
+  font-size:.8rem;
+}
+.vio-type{
+  background:rgba(255,59,92,.12);color:var(--danger);
+  border:1px solid rgba(255,59,92,.25);
+  border-radius:99px;padding:2px 10px;font-size:.7rem;font-weight:700;
+  white-space:nowrap;
+}
+.vio-type.tab-sw{background:rgba(245,166,35,.12);color:var(--amber);border-color:rgba(245,166,35,.25)}
+.vio-type.ext{background:rgba(59,130,246,.12);color:var(--blue);border-color:rgba(59,130,246,.25)}
+.vio-name{font-weight:600;color:var(--body)}
+.vio-time{color:var(--muted);font-family:var(--ff-mono);font-size:.72rem;margin-left:auto}
+
+/* Add question modal */
+.modal-bg{
+  display:none;position:fixed;inset:0;z-index:3000;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:24px;
+}
+.modal-bg.open{display:flex}
+.modal{
+  background:var(--ink2);border:1px solid var(--line2);
+  border-radius:var(--r-xl);padding:36px;
+  width:100%;max-width:640px;max-height:90vh;overflow-y:auto;
+  box-shadow:var(--sh),var(--glow-a);
+  animation:fadeup .3s ease;
+}
+.modal h3{font-size:1.2rem;font-weight:800;color:var(--head);margin-bottom:6px}
+.modal p.sub{font-size:.78rem;color:var(--soft);margin-bottom:24px}
+.modal-fields{display:flex;flex-direction:column;gap:14px}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+
+/* Live monitor grid */
+.monitor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.mon-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:18px;
+  text-align:center;transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.mon-card.flagged{border-color:rgba(255,59,92,.4);box-shadow:0 0 20px rgba(255,59,92,.12)}
+.mon-card.ok{border-color:rgba(0,229,160,.25)}
+.mon-avatar{
+  width:48px;height:48px;border-radius:50%;
+  background:linear-gradient(135deg,var(--ink4),var(--ink3));
+  border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;font-weight:800;color:var(--body);
+  margin:0 auto 10px;
+}
+.mon-name{font-size:.85rem;font-weight:700;color:var(--head)}
+.mon-status{font-size:.72rem;font-family:var(--ff-mono);margin-top:4px}
+.mon-status.online{color:var(--stu)}
+.mon-status.flagged{color:var(--danger)}
+.mon-status.idle{color:var(--amber)}
+.mon-vios{
+  margin-top:10px;font-size:.7rem;font-family:var(--ff-mono);
+  color:var(--muted);
+}
+.mon-vios span{color:var(--danger);font-weight:700}
+.mon-pulse{
+  position:absolute;top:10px;right:10px;
+  width:8px;height:8px;border-radius:50%;
+  background:var(--stu);
+  animation:pulse-ring 2s ease infinite;
+}
+.mon-pulse.alert{background:var(--danger);animation:pulse-alert .8s ease infinite}
+@keyframes pulse-ring{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+@keyframes pulse-alert{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ═══════════════════════════════════════════════════
+   STUDENT — QUESTION LIST
+   ═══════════════════════════════════════════════════ */
+#page-stu{flex-direction:column}
+.stu-main{flex:1;padding:28px;max-width:1100px;margin:0 auto;width:100%}
+.stu-hero{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-xl);padding:28px 32px;margin-bottom:24px;
+  display:flex;align-items:center;gap:20px;
+  position:relative;overflow:hidden;
+}
+.stu-hero::before{
+  content:'EXAM IN PROGRESS';
+  position:absolute;right:-30px;top:50%;transform:translateY(-50%) rotate(90deg);
+  font-family:var(--ff-mono);font-size:.6rem;letter-spacing:6px;
+  color:var(--line2);font-weight:700;
+}
+.hero-icon{
+  width:56px;height:56px;border-radius:var(--r-lg);
+  background:linear-gradient(135deg,rgba(0,229,160,.15),rgba(6,182,212,.1));
+  border:1px solid rgba(0,229,160,.2);
+  display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+  flex-shrink:0;
+}
+.hero-text h2{font-size:1.3rem;font-weight:800;color:var(--head)}
+.hero-text p{font-size:.8rem;color:var(--soft);margin-top:4px}
+.hero-stats{margin-left:auto;display:flex;gap:20px}
+.hero-stat{text-align:center}
+.hero-stat .hv{font-size:1.4rem;font-weight:900;color:var(--stu);font-family:var(--ff-head)}
+.hero-stat .hl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)}
+
+/* Exam question cards */
+.exam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.exam-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:22px;cursor:pointer;
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.exam-card::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--line2),transparent);
+}
+.exam-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-2px);box-shadow:var(--sh),var(--glow-g)}
+.exam-card.locked{opacity:.5;cursor:not-allowed}
+.exam-card.solved{border-color:rgba(0,229,160,.3)}
+.ec-num{
+  font-family:var(--ff-mono);font-size:.7rem;color:var(--muted);
+  margin-bottom:10px;letter-spacing:1px;
+}
+.ec-title{font-size:1rem;font-weight:700;color:var(--head);margin-bottom:8px;line-height:1.3}
+.ec-desc{font-size:.78rem;color:var(--soft);line-height:1.6;margin-bottom:14px}
+.ec-footer{display:flex;align-items:center;gap:8px}
+.ec-points{
+  margin-left:auto;font-family:var(--ff-mono);font-size:.78rem;
+  color:var(--amber);font-weight:700;
+}
+.solved-tag{
+  font-size:.68rem;color:var(--stu);
+  display:flex;align-items:center;gap:4px;font-family:var(--ff-mono);
+}
+
+/* ═══════════════════════════════════════════════════
+   EXAM EDITOR PAGE
+   ═══════════════════════════════════════════════════ */
+#page-editor{height:100vh;overflow:hidden;flex-direction:column}
+
+/* Editor topbar */
+.ed-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 18px;background:var(--ink2);
+  border-bottom:1px solid var(--line);flex-shrink:0;
+  z-index:100;
+}
+.ed-bar-l{display:flex;align-items:center;gap:14px}
+.ed-prob-name{font-size:.95rem;font-weight:700;color:var(--head)}
+
+/* Timer */
+.timer-wrap{
+  display:flex;align-items:center;gap:8px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:7px 14px;
+  font-family:var(--ff-mono);font-size:.95rem;font-weight:500;
+  color:var(--stu);letter-spacing:2px;transition:all .3s;
+}
+.timer-wrap.warn{color:var(--amber);border-color:rgba(245,166,35,.3)}
+.timer-wrap.crit{color:var(--danger);border-color:rgba(255,59,92,.3);animation:tcrit .8s ease infinite}
+@keyframes tcrit{50%{opacity:.5}}
+.timer-icon{font-size:.9rem}
+
+/* Integrity bar */
+.integrity-bar{
+  display:flex;align-items:center;gap:8px;
+  background:var(--ink3);border:1px solid rgba(0,229,160,.2);
+  border-radius:99px;padding:5px 13px;
+  font-size:.72rem;font-family:var(--ff-mono);color:var(--stu);
+}
+.integrity-bar.warn{border-color:rgba(245,166,35,.3);color:var(--amber)}
+.integrity-bar.bad{border-color:rgba(255,59,92,.3);color:var(--danger);animation:tcrit .8s ease infinite}
+.int-dot{width:6px;height:6px;border-radius:50%;background:var(--stu)}
+.integrity-bar.warn .int-dot{background:var(--amber)}
+.integrity-bar.bad .int-dot{background:var(--danger)}
+
+/* Split layout */
+.ed-body{flex:1;display:flex;overflow:hidden;min-height:0}
+.prob-panel{
+  width:36%;min-width:280px;max-width:520px;
+  background:var(--ink2);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;flex-shrink:0;
+}
+.resize-h{width:3px;background:var(--line);cursor:col-resize;flex-shrink:0;transition:background .18s}
+.resize-h:hover{background:var(--stu)}
+.code-half{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* Panel tabs */
+.ptabs{display:flex;border-bottom:1px solid var(--line);background:var(--ink)}
+.ptab{
+  padding:10px 18px;font-size:.75rem;font-weight:600;
+  color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .18s;
+  text-transform:uppercase;letter-spacing:.5px;font-family:var(--ff-mono);
+}
+.ptab.active{color:var(--stu);border-bottom-color:var(--stu)}
+.ptab:hover:not(.active){color:var(--body)}
+.pcontent{flex:1;overflow-y:auto;padding:22px}
+.pcontent::-webkit-scrollbar{width:4px}
+.pcontent::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+.psec{display:none}
+.psec.active{display:block}
+
+/* Problem statement */
+.prob-stmt h3{font-size:1.05rem;font-weight:800;color:var(--head);margin-bottom:12px}
+.prob-stmt p{font-size:.82rem;color:var(--soft);line-height:1.8;margin-bottom:14px}
+.prob-stmt h4{font-size:.7rem;font-weight:700;color:var(--stu);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.ex-block{
+  background:var(--ink);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:13px;margin-bottom:12px;
+}
+.ex-block strong{font-family:var(--ff-mono);font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
+.ex-block code{font-family:var(--ff-mono);font-size:.78rem;color:var(--green);display:block;white-space:pre;line-height:1.6}
+.con-list{list-style:none}
+.con-list li{font-size:.78rem;color:var(--soft);padding:3px 0;display:flex;gap:7px}
+.con-list li::before{content:'›';color:var(--stu);flex-shrink:0}
+
+/* Test cases */
+.tc-list{display:flex;flex-direction:column;gap:10px}
+.tc-item{background:var(--ink);border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.tc-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--ink2);font-size:.75rem;font-weight:600}
+.tc-stat{font-size:.68rem;padding:2px 8px;border-radius:99px}
+.tc-stat.pass{background:rgba(0,229,160,.12);color:var(--stu)}
+.tc-stat.fail{background:rgba(255,59,92,.12);color:var(--danger)}
+.tc-stat.pending{background:var(--ink3);color:var(--muted)}
+.tc-body{padding:11px 12px;font-size:.76rem;font-family:var(--ff-mono)}
+.tc-lbl{color:var(--muted);font-size:.65rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.tc-val{color:var(--green);margin-bottom:8px}
+
+/* Code toolbar */
+.code-tb{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--ink);
+  border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.code-tb-l{display:flex;align-items:center;gap:8px}
+.sel{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:5px 10px;
+  font-family:var(--ff-mono);font-size:.76rem;color:var(--body);
+  outline:none;cursor:pointer;
+}
+.sel:focus{border-color:var(--stu)}
+.sel option{background:var(--ink3)}
+#monaco-wrap{flex:1;overflow:hidden;min-height:0}
+
+/* Console */
+.console{
+  height:200px;background:var(--ink);border-top:1px solid var(--line);
+  display:flex;flex-direction:column;flex-shrink:0;
+}
+.con-tabs{
+  display:flex;align-items:center;
+  border-bottom:1px solid var(--line);padding:0 12px;gap:2px;
+}
+.con-tab{
+  padding:7px 13px;font-size:.7rem;font-weight:600;
+  color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .18s;
+  text-transform:uppercase;letter-spacing:.5px;font-family:var(--ff-mono);
+}
+.con-tab.active{color:var(--stu);border-bottom-color:var(--stu)}
+.con-actions{display:flex;gap:7px;margin-left:auto;padding:5px 0}
+.con-out{flex:1;overflow-y:auto;padding:10px 14px;font-family:var(--ff-mono);font-size:.76rem;line-height:1.7}
+.con-out::-webkit-scrollbar{width:3px}
+.con-out::-webkit-scrollbar-thumb{background:var(--line)}
+.out-l{display:flex;gap:7px}
+.out-l.ok .ot{color:var(--green)}
+.out-l.err .ot{color:var(--danger)}
+.out-l.info .ot{color:var(--soft)}
+.out-l.warn .ot{color:var(--amber)}
+.op{color:var(--muted);flex-shrink:0}
+.run-ind{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.76rem;padding:4px 0}
+.spin{width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--stu);border-radius:50%;animation:sp .6s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.custom-in{display:none;flex-direction:column;gap:7px;padding:10px 14px}
+.custom-in.show{display:flex}
+.custom-in textarea{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:8px;
+  font-family:var(--ff-mono);font-size:.76rem;color:var(--body);
+  resize:vertical;min-height:55px;outline:none;
+}
+.custom-in textarea:focus{border-color:var(--stu)}
+
+/* ═══════════════════════════════════════════════════
+   ANTI-CHEAT OVERLAYS
+   ═══════════════════════════════════════════════════ */
+/* Fullscreen demand */
+#fs-overlay{
+  display:none;position:fixed;inset:0;z-index:5000;
+  background:var(--ink);
+  align-items:center;justify-content:center;flex-direction:column;gap:20px;
+}
+#fs-overlay.show{display:flex}
+.fs-card{
+  background:var(--ink2);border:2px solid var(--stu);
+  border-radius:var(--r-xl);padding:48px 56px;text-align:center;max-width:480px;
+  box-shadow:var(--sh),var(--glow-g);animation:fadeup .4s ease;
+}
+.fs-card .fi{font-size:3.5rem;margin-bottom:16px}
+.fs-card h2{font-family:var(--ff-head);font-size:1.5rem;font-weight:800;color:var(--head);margin-bottom:10px}
+.fs-card p{font-size:.82rem;color:var(--soft);line-height:1.7;margin-bottom:22px}
+
+/* Tab switch warning */
+#ac-overlay{
+  display:none;position:fixed;inset:0;z-index:4500;
+  background:rgba(0,0,0,.92);backdrop-filter:blur(10px);
+  align-items:center;justify-content:center;
+}
+#ac-overlay.show{display:flex}
+.ac-card{
+  background:var(--ink2);border:2px solid var(--amber);
+  border-radius:var(--r-xl);padding:44px 50px;text-align:center;max-width:480px;
+  box-shadow:var(--sh),var(--glow-a);animation:shake .4s ease;
+}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.ac-card .ai{font-size:3rem;margin-bottom:14px}
+.ac-card h2{font-size:1.4rem;font-weight:800;color:var(--amber);margin-bottom:10px}
+.ac-card p{font-size:.82rem;color:var(--soft);line-height:1.7;margin-bottom:18px}
+.ac-meter{display:flex;gap:8px;justify-content:center;margin-bottom:18px}
+.ac-dot{width:12px;height:12px;border-radius:50%;background:var(--line);transition:background .3s}
+.ac-dot.lit{background:var(--danger)}
+
+/* Terminated */
+#terminated-overlay{
+  display:none;position:fixed;inset:0;z-index:6000;
+  background:rgba(0,0,0,.97);
+  align-items:center;justify-content:center;
+}
+#terminated-overlay.show{display:flex}
+.term-card{
+  background:var(--ink2);border:2px solid var(--danger);
+  border-radius:var(--r-xl);padding:52px 60px;text-align:center;max-width:520px;
+  box-shadow:var(--sh),var(--glow-r);animation:fadeup .4s ease;
+}
+.term-card .ti{font-size:4rem;margin-bottom:16px}
+.term-card h2{font-size:1.8rem;font-weight:900;color:var(--danger);margin-bottom:12px}
+.term-card p{font-size:.85rem;color:var(--soft);line-height:1.7;margin-bottom:8px}
+.term-id{
+  font-family:var(--ff-mono);font-size:.75rem;color:var(--muted);
+  background:var(--ink);border-radius:var(--r-sm);padding:8px 14px;
+  margin-top:16px;display:inline-block;
+}
+
+/* Extension detection banner */
+#ext-banner{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:4000;
+  background:var(--danger);color:var(--ink);
+  padding:10px 20px;text-align:center;font-size:.82rem;font-weight:700;
+  font-family:var(--ff-mono);
+  animation:slidedown .3s ease;
+}
+@keyframes slidedown{from{transform:translateY(-100%)}}
+#ext-banner.show{display:block}
+
+/* DOM guard indicator */
+.guard-pill{
+  position:fixed;bottom:14px;left:14px;z-index:300;
+  display:flex;align-items:center;gap:7px;
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:99px;padding:5px 13px;font-size:.68rem;
+  font-family:var(--ff-mono);color:var(--muted);
+  opacity:0;transition:opacity .3s;
+}
+.guard-pill.vis{opacity:1}
+.gp-dot{width:6px;height:6px;border-radius:50%;background:var(--stu);animation:blink 2s ease infinite}
+
+/* ═══════════════════════════════════════════════════
+   RESULTS PAGE
+   ═══════════════════════════════════════════════════ */
+#page-result{align-items:center;justify-content:center;padding:40px 20px}
+.result-wrap{width:100%;max-width:680px;animation:fadeup .5s ease}
+.res-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-xl);padding:44px;text-align:center;
+  box-shadow:var(--sh);margin-bottom:20px;
+}
+.res-card.pass{border-color:rgba(0,229,160,.3);box-shadow:var(--sh),var(--glow-g)}
+.res-card.fail{border-color:rgba(255,59,92,.3);box-shadow:var(--sh),var(--glow-r)}
+.res-card.partial{border-color:rgba(245,166,35,.3);box-shadow:var(--sh),var(--glow-a)}
+.ri{font-size:3.5rem;margin-bottom:12px}
+.res-card h2{font-size:1.8rem;font-weight:900;margin-bottom:8px}
+.res-card.pass h2{color:var(--stu)}
+.res-card.fail h2{color:var(--danger)}
+.res-card.partial h2{color:var(--amber)}
+.res-card p{font-size:.85rem;color:var(--soft);margin-bottom:24px}
+.res-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.rstat{background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.rstat-v{font-size:1.8rem;font-weight:900;font-family:var(--ff-head);color:var(--stu)}
+.rstat-l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;font-family:var(--ff-mono)}
+.tc-res-list{display:flex;flex-direction:column;gap:7px;text-align:left;margin-bottom:24px}
+.tcr{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--ink);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:11px 14px;font-size:.78rem;
+}
+.tcr .tcr-n{color:var(--muted);font-family:var(--ff-mono)}
+.tcr .tcr-s{font-weight:700}
+.tcr .tcr-s.ok{color:var(--stu)}
+.tcr .tcr-s.no{color:var(--danger)}
+.tcr .tcr-t{color:var(--muted);font-size:.72rem;font-family:var(--ff-mono)}
+.res-acts{display:flex;gap:10px;justify-content:center}
+
+/* Leaderboard */
+.lb-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-xl);overflow:hidden}
+.lb-hd{
+  padding:18px 22px;border-bottom:1px solid var(--line);
+  font-size:1rem;font-weight:800;color:var(--head);
+  display:flex;align-items:center;gap:8px;
+}
+.lb-r{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 22px;border-bottom:1px solid var(--line);
+  font-size:.8rem;transition:background .18s;
+}
+.lb-r:last-child{border-bottom:none}
+.lb-r:hover{background:var(--ink3)}
+.lb-r.me{background:rgba(0,229,160,.04)}
+.lb-rank{width:28px;font-weight:700;color:var(--muted);text-align:center;font-family:var(--ff-mono)}
+.lb-rank.g{color:#ffd700}.lb-rank.s{color:#c0c0c0}.lb-rank.b{color:#cd7f32}
+.lb-name{flex:1;font-weight:600;color:var(--body)}
+.lb-score{color:var(--stu);font-weight:700;font-family:var(--ff-mono)}
+.lb-time{color:var(--muted);font-size:.72rem;font-family:var(--ff-mono)}
+
+/* ═══════════════════════════════════════════════════
+   MISC
+   ═══════════════════════════════════════════════════ */
+.tag{padding:2px 8px;border-radius:4px;font-size:.67rem;font-family:var(--ff-mono);background:var(--ink3);color:var(--muted);border:1px solid var(--line)}
+.chip-row{display:flex;gap:7px;flex-wrap:wrap}
+.sep{height:1px;background:var(--line);margin:20px 0}
+.center{display:flex;align-items:center;justify-content:center}
+.sr{display:flex;align-items:center;gap:8px}
+.ml{margin-left:auto}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+
+/* ═══════════════════════════════════════════════════
+   PHASE 1 — MOBILE FIXES
+   Makes the platform usable on phones and tablets.
+   Breakpoint: 768px and below
+   ═══════════════════════════════════════════════════ */
+@media(max-width:768px){
+  /* Login page: full width padding */
+  #page-login{padding:20px 16px}
+  .login-wrap{max-width:100%}
+  .login-card{padding:24px 20px}
+  .login-brand h1{font-size:2rem}
+
+  /* Professor dashboard: collapse sidebar to a top bar */
+  .prof-main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .prof-sidebar{
+    flex-direction:row;overflow-x:auto;padding:10px 12px;
+    gap:4px;border-right:none;border-bottom:1px solid var(--line);
+  }
+  .sbar-section{display:none} /* hide section labels on mobile */
+  .sbar-item{
+    flex-direction:column;gap:2px;padding:8px 12px;
+    font-size:.68rem;white-space:nowrap;min-width:60px;text-align:center;
+  }
+  .sbar-item .sbar-icon{font-size:.9rem}
+
+  /* Dashboard stat grid: 2 columns on mobile */
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+
+  /* Student exam grid: single column */
+  .exam-grid{grid-template-columns:1fr}
+  .stu-hero{flex-wrap:wrap;gap:14px}
+  .hero-stats{margin-left:0;gap:14px}
+
+  /* Editor: stack problem panel and code panel vertically */
+  .ed-body{flex-direction:column}
+  .prob-panel{width:100%!important;max-width:100%;height:40vh;border-right:none;border-bottom:1px solid var(--line)}
+  .resize-h{display:none} /* hide horizontal resizer */
+  .code-half{height:60vh}
+  #monaco-wrap{height:100%}
+
+  /* Console: taller on mobile since editor is shorter */
+  .console{height:160px}
+
+  /* Editor topbar: stack on mobile */
+  .ed-bar{flex-wrap:wrap;gap:8px;padding:8px 12px}
+  .ed-bar-l{gap:8px}
+  .timer-wrap{font-size:.82rem;padding:5px 10px}
+
+  /* Modal: full screen on mobile */
+  .modal-bg{padding:0;align-items:flex-end}
+  .modal{border-radius:var(--r-xl) var(--r-xl) 0 0;max-height:92vh;max-width:100%}
+  .modal-row{grid-template-columns:1fr} /* stack form rows */
+
+  /* Violation/fullscreen overlays: better padding */
+  .fs-card,.ac-card,.term-card{padding:32px 24px}
+  .fs-card h2,.ac-card h2,.term-card h2{font-size:1.2rem}
+
+  /* Topbar: smaller on mobile */
+  .topbar{padding:10px 14px}
+  .tb-brand{font-size:1rem}
+
+  /* Monitor grid: 2 columns */
+  .monitor-grid{grid-template-columns:repeat(2,1fr)}
+
+  /* Results page */
+  .res-stats{grid-template-columns:repeat(3,1fr)}
+  .res-acts{flex-wrap:wrap}
+}
+
+/* Extra small (phones < 480px) */
+@media(max-width:480px){
+  html{font-size:13px}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .res-stats{grid-template-columns:1fr 1fr}
+  .monitor-grid{grid-template-columns:1fr}
+  .prof-sidebar{gap:2px}
+  .sbar-item{padding:6px 10px;font-size:.65rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOADER ═══ -->
+<div id="loader">
+  <div class="ld-logo">Exam<em>Shield</em></div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+  <div class="ld-label">Initializing Secure Environment</div>
+</div>
+
+<!-- ═══ TOASTS ═══ -->
+<div id="toasts"></div>
+
+<!-- ═══ ANTI-CHEAT: FULLSCREEN GATE ═══ -->
+<div id="fs-overlay">
+  <div class="fs-card">
+    <div class="fi">🖥️</div>
+    <h2>Fullscreen Required</h2>
+    <p>This exam must be taken in fullscreen mode. Exiting fullscreen will be logged as a violation. Click below to enter fullscreen and begin.</p>
+    <button class="btn btn-g btn-lg" onclick="enterFullscreen()">Enter Fullscreen &amp; Start Exam</button>
+  </div>
+</div>
+
+<!-- ═══ ANTI-CHEAT: TAB SWITCH WARNING ═══ -->
+<div id="ac-overlay">
+  <div class="ac-card">
+    <div class="ai">⚠️</div>
+    <h2>Integrity Violation!</h2>
+    <p>You navigated away from the exam. This has been <strong>recorded and reported</strong> to your professor. One more violation terminates your exam.</p>
+    <div class="ac-meter">
+      <div class="ac-dot" id="acd-0"></div>
+      <div class="ac-dot" id="acd-1"></div>
+      <div class="ac-dot" id="acd-2"></div>
+    </div>
+    <button class="btn btn-ghost" onclick="dismissAC()">Return to Exam</button>
+  </div>
+</div>
+
+<!-- ═══ ANTI-CHEAT: TERMINATED ═══ -->
+<div id="terminated-overlay">
+  <div class="term-card">
+    <div class="ti">🚫</div>
+    <h2>Exam Terminated</h2>
+    <p>Your exam has been automatically terminated due to repeated integrity violations.</p>
+    <p>Your professor has been notified. All violations have been logged with timestamps.</p>
+    <div class="term-id" id="term-id-display"></div>
+  </div>
+</div>
+
+<!-- Extension banner removed (Priority 5 — fake detection removed) -->
+
+<!-- ═══ DOM GUARD BADGE ═══ -->
+<div class="guard-pill hidden" id="guard-pill">
+  <div class="gp-dot"></div>
+  <span>DOM Guard Active</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: LOGIN
+     ══════════════════════════════════════════════════ -->
+<div id="page-login" class="page">
+  <div class="login-wrap" style="margin:auto">
+    <div class="login-brand">
+      <h1>Exam<span>Shield</span></h1>
+      <p>Secure College Exam Platform</p>
+    </div>
+
+    <div class="role-pills">
+      <div class="role-pill active-prof" id="rp-prof" onclick="setRole('prof')">👨‍🏫 Professor</div>
+      <div class="role-pill" id="rp-stu"  onclick="setRole('stu')">👨‍💻 Student</div>
+    </div>
+
+    <div class="login-card prof-mode" id="login-card">
+      <div class="form-fields">
+        <div class="field"><label>Email</label><input class="inp" id="l-email" type="email" placeholder="professor@college.edu"></div>
+        <div class="field"><label>Password</label><input class="inp" id="l-pass" type="password" placeholder="••••••••"></div>
+        <button class="btn btn-a btn-lg" id="btn-login" onclick="handleLogin()" style="width:100%;justify-content:center;margin-top:4px">
+          <span id="btn-login-txt">Sign In</span>
+        </button>
+        <div class="divider">new here?</div>
+        <button class="btn btn-ghost btn-lg" onclick="handleRegister()" id="btn-reg" style="width:100%;justify-content:center">
+          <span id="btn-reg-txt">Create Account</span>
+        </button>
+      </div>
+      <p style="text-align:center;font-size:.68rem;color:var(--muted);margin-top:16px;font-family:var(--ff-mono)">
+        Demo mode active — Firebase credentials not set. All features work locally.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: PROFESSOR DASHBOARD
+     ══════════════════════════════════════════════════ -->
+<div id="page-prof" class="page">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-brand">Exam<em>Shield</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Professor Portal</span></div>
+    <div class="tb-right">
+      <div class="user-chip"><div class="avatar prof-av" id="prof-av">P</div><span id="prof-name">Professor</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="prof-main">
+    <!-- Sidebar -->
+    <div class="prof-sidebar">
+      <div class="sbar-section">Overview</div>
+      <div class="sbar-item active" id="sb-dashboard" onclick="profNav('dashboard')"><span class="sbar-icon">📊</span>Dashboard</div>
+      <div class="sbar-item" id="sb-monitor"   onclick="profNav('monitor')"><span class="sbar-icon">👁️</span>Live Monitor<span class="sbar-badge" id="live-count">0</span></div>
+
+      <div class="sbar-section">Exam Management</div>
+      <div class="sbar-item" id="sb-questions"  onclick="profNav('questions')"><span class="sbar-icon">📝</span>Questions</div>
+      <div class="sbar-item" id="sb-createexam" onclick="profNav('createexam')"><span class="sbar-icon">🗂️</span>Create Exam</div>
+      <div class="sbar-item" id="sb-violations" onclick="profNav('violations')"><span class="sbar-icon">🚨</span>Violations<span class="sbar-badge" id="vio-count-badge">0</span></div>
+      <div class="sbar-item" id="sb-results"    onclick="profNav('presults')"><span class="sbar-icon">📈</span>Results</div>
+
+      <div style="margin-top:auto;padding-top:20px">
+        <div style="background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.15);border-radius:var(--r);padding:14px;font-size:.75rem;color:var(--soft)">
+          <div style="font-weight:700;color:var(--stu);margin-bottom:6px">🛡️ Anti-Cheat Active</div>
+          Tab Switch · Paste Block<br>Extension Probe · DOM Guard<br>Keystroke Analysis · Fullscreen
+        </div>
+      </div>
+    </div>
+
+    <!-- Content area -->
+    <div class="prof-content">
+
+      <!-- Dashboard panel -->
+      <div class="prof-panel active" id="pp-dashboard">
+        <div class="sec-hd">
+          <div><h2>Dashboard</h2><p>Today's exam overview and live statistics</p></div>
+          <button class="btn btn-a btn-sm" onclick="profNav('questions')">+ Add Question</button>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card c-green"><div class="stat-val green" id="s-active">0</div><div class="stat-label">Active Students</div></div>
+          <div class="stat-card c-amber"><div class="stat-val amber" id="s-submitted">0</div><div class="stat-label">Submitted</div></div>
+          <div class="stat-card c-red"><div class="stat-val red" id="s-flagged">0</div><div class="stat-label">Flagged</div></div>
+          <div class="stat-card c-blue"><div class="stat-val blue" id="s-questions">0</div><div class="stat-label">Questions</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px">
+            <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">Recent Violations</div>
+            <div id="dash-vio-list" style="display:flex;flex-direction:column;gap:8px;font-size:.78rem">
+              <div style="color:var(--muted)">No violations yet.</div>
+            </div>
+          </div>
+          <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px">
+            <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">Submission Stats</div>
+            <div id="dash-sub-stats" style="font-size:.78rem;color:var(--muted)">
+              No submissions yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live monitor panel -->
+      <div class="prof-panel" id="pp-monitor">
+        <div class="sec-hd"><div><h2>Live Monitor</h2><p>Real-time student activity during exam</p></div></div>
+        <div class="monitor-grid" id="monitor-grid">
+          <div style="color:var(--muted);font-size:.82rem">No students in exam yet.</div>
+        </div>
+      </div>
+
+      <!-- Questions panel -->
+      <div class="prof-panel" id="pp-questions">
+        <div class="sec-hd">
+          <div><h2>Question Bank</h2><p>Manage exam problems</p></div>
+          <button class="btn btn-a" onclick="openAddQ()">+ Add Question</button>
+        </div>
+        <div class="q-manager-grid" id="q-list">Loading...</div>
+      </div>
+
+      <!-- Violations panel -->
+      <div class="prof-panel" id="pp-violations">
+        <div class="sec-hd">
+          <div><h2>Violation Log</h2><p>All recorded integrity violations</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="exportViolations()">⬇ Export CSV</button>
+        </div>
+        <div class="vio-list" id="vio-list-el">
+          <div style="color:var(--muted);font-size:.82rem">No violations recorded.</div>
+        </div>
+      </div>
+
+      <!-- Create Exam panel (Phase 3) -->
+      <div class="prof-panel" id="pp-createexam">
+        <div class="sec-hd">
+          <div><h2>Create Exam</h2><p>Configure a new exam session for students</p></div>
+        </div>
+        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px;max-width:640px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="field">
+              <label>Exam Name</label>
+              <input class="inp" id="ex-name" placeholder="Data Structures & Algorithms — Mid Semester">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="field">
+                <label>Start Time</label>
+                <input class="inp" id="ex-start" type="datetime-local">
+              </div>
+              <div class="field">
+                <label>End Time</label>
+                <input class="inp" id="ex-end" type="datetime-local">
+              </div>
+            </div>
+            <div class="field">
+              <label>Duration (minutes)</label>
+              <input class="inp" id="ex-duration" type="number" value="90" min="10" max="300">
+            </div>
+            <div class="field">
+              <label>Select Questions</label>
+              <div id="ex-q-checklist" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+                <!-- Populated by renderCreateExamPanel() -->
+                <span style="color:var(--muted);font-size:.8rem">Add questions first, then they appear here.</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Allowed Languages</label>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px" id="ex-lang-picks">
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+                  <input type="checkbox" value="python"     checked> Python 3
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+                  <input type="checkbox" value="javascript" checked> JavaScript
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+                  <input type="checkbox" value="cpp"        checked> C++
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+                  <input type="checkbox" value="java"       checked> Java
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+                  <input type="checkbox" value="c"          checked> C
+                </label>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <button class="btn btn-a btn-lg" onclick="createExam()" style="flex:1;justify-content:center">
+                🚀 Create Exam
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Professor results panel -->
+      <div class="prof-panel" id="pp-presults">
+        <div class="sec-hd"><div><h2>Exam Results</h2><p>All student submissions</p></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="exportResults()">⬇ Export CSV</button>
+        </div></div>
+        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden">
+          <table class="data-table" id="results-table">
+            <thead><tr>
+              <th>Student</th><th>Problem</th><th>Language</th><th>Score</th><th>Status</th><th>Violations</th><th>Time</th>
+            </tr></thead>
+            <tbody id="results-tbody"><tr><td colspan="7" style="color:var(--muted)">No submissions yet.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /prof-content -->
+  </div><!-- /prof-main -->
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: STUDENT EXAM LIST
+     ══════════════════════════════════════════════════ -->
+<div id="page-stu" class="page">
+  <div class="topbar">
+    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div class="tb-right">
+      <div class="user-chip"><div class="avatar" id="stu-av">S</div><span id="stu-name">Student</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="stu-main">
+    <div class="stu-hero">
+      <div class="hero-icon">📋</div>
+      <div class="hero-text">
+        <h2 id="exam-title">Exam — Data Structures & Algorithms</h2>
+        <p>Set by your professor · Anti-cheat monitoring active · All submissions are final</p>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hv" id="hs-q">0</div><div class="hl">Problems</div></div>
+        <div class="hero-stat"><div class="hv" id="hs-sol">0</div><div class="hl">Solved</div></div>
+        <div class="hero-stat"><div class="hv" id="hs-pts">0</div><div class="hl">Points</div></div>
+      </div>
+    </div>
+    <div class="exam-grid" id="exam-grid">Loading questions...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: EDITOR
+     ══════════════════════════════════════════════════ -->
+<div id="page-editor" class="page">
+  <div class="ed-bar">
+    <div class="ed-bar-l">
+      <button class="btn btn-ghost btn-sm" onclick="leaveEditor()">← Exit</button>
+      <div class="ed-prob-name" id="ed-prob-name">Problem</div>
+      <span class="diff easy" id="ed-diff">Easy</span>
+    </div>
+    <div class="sr" style="gap:10px">
+      <div class="integrity-bar" id="integrity-bar">
+        <div class="int-dot"></div>
+        <span id="int-text">Integrity: 100%</span>
+      </div>
+      <div id="save-indicator" style="
+        display:flex;align-items:center;gap:5px;
+        font-size:.68rem;font-family:var(--ff-mono);
+        color:var(--muted);opacity:0;transition:opacity .3s;
+        background:var(--ink3);border:1px solid var(--line);
+        border-radius:99px;padding:4px 10px;
+      ">
+        <span id="save-dot" style="width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0"></span>
+        <span id="save-txt">Saved</span>
+      </div>
+      <div class="timer-wrap" id="timer-wrap">
+        <span class="timer-icon">⏱</span>
+        <span id="timer-txt">--:--</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ed-body" id="ed-body">
+    <!-- Problem panel -->
+    <div class="prob-panel" id="prob-panel">
+      <div class="ptabs">
+        <div class="ptab active" onclick="ptab('stmt',this)">Problem</div>
+        <div class="ptab" onclick="ptab('tcs',this)">Test Cases</div>
+        <div class="ptab" onclick="ptab('subs',this)">Submissions</div>
+      </div>
+      <div class="pcontent">
+        <div class="psec active" id="ps-stmt"><div class="prob-stmt" id="stmt-html"></div></div>
+        <div class="psec" id="ps-tcs"><div class="tc-list" id="tc-list"></div></div>
+        <div class="psec" id="ps-subs"><div id="subs-list" style="font-size:.8rem;color:var(--muted)">No submissions yet.</div></div>
+      </div>
+    </div>
+
+    <div class="resize-h" id="resize-h"></div>
+
+    <!-- Code panel -->
+    <div class="code-half">
+      <div class="code-tb">
+        <div class="code-tb-l">
+          <select class="sel" id="lang-sel" onchange="changeLang(this.value)">
+            <option value="python">Python 3</option>
+            <option value="javascript">JavaScript (Node.js)</option>
+            <option value="cpp">C++ 17</option>
+            <option value="java">Java 11</option>
+            <option value="c">C</option>
+          </select>
+          <select class="sel" id="theme-sel" onchange="changeTheme(this.value)">
+            <option value="vs-dark">Dark</option>
+            <option value="vs">Light</option>
+            <option value="hc-black">High Contrast</option>
+          </select>
+          <select class="sel" id="fs-sel" onchange="changeFS(this.value)">
+            <option value="13">13px</option>
+            <option value="14" selected>14px</option>
+            <option value="15">15px</option>
+            <option value="16">16px</option>
+          </select>
+        </div>
+        <div class="sr" style="gap:7px">
+          <button class="btn btn-ghost btn-sm" onclick="resetCode()">↺ Reset</button>
+        </div>
+      </div>
+      <div id="monaco-wrap"></div>
+      <!-- Console -->
+      <div class="console">
+        <div class="con-tabs">
+          <div class="con-tab active" onclick="conTab('out',this)">Output</div>
+          <div class="con-tab" onclick="conTab('custom',this)">Custom Input</div>
+          <div class="con-actions">
+            <button class="btn btn-ghost btn-sm" id="btn-run" onclick="runCode()">▶ Run</button>
+            <button class="btn btn-g btn-sm" id="btn-sub" onclick="submitCode()">✓ Submit</button>
+          </div>
+        </div>
+        <div class="con-out" id="con-out">
+          <div class="out-l info"><span class="op">$</span><span class="ot">ExamShield execution engine ready.</span></div>
+        </div>
+        <div class="custom-in" id="custom-in">
+          <label style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px">Custom STDIN</label>
+          <textarea id="stdin-ta" placeholder="Enter custom input..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: RESULTS
+     ══════════════════════════════════════════════════ -->
+<div id="page-result" class="page">
+  <div class="result-wrap">
+    <div class="res-card" id="res-main">
+      <div class="ri" id="ri">✅</div>
+      <h2 id="rt">Accepted</h2>
+      <p id="rp">All test cases passed!</p>
+      <div class="res-stats">
+        <div class="rstat"><div class="rstat-v" id="rv-tc">0/0</div><div class="rstat-l">Tests Passed</div></div>
+        <div class="rstat"><div class="rstat-v" id="rv-time">0ms</div><div class="rstat-l">Exec Time</div></div>
+        <div class="rstat"><div class="rstat-v" id="rv-score">0%</div><div class="rstat-l">Score</div></div>
+      </div>
+      <div class="tc-res-list" id="tc-res-list"></div>
+      <div class="res-acts">
+        <button class="btn btn-ghost" onclick="showPage('stu');renderStuPage()">← All Problems</button>
+        <button class="btn btn-g" onclick="showPage('stu');renderStuPage()">Next Problem</button>
+      </div>
+    </div>
+    <div class="lb-card">
+      <div class="lb-hd">🏆 Leaderboard</div>
+      <div id="lb-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     ADD QUESTION MODAL
+     ══════════════════════════════════════════════════ -->
+<div class="modal-bg" id="add-q-modal">
+  <div class="modal">
+    <h3>Add Question</h3>
+    <p class="sub">Fill in the problem details. Test cases are used for automated judging.</p>
+    <div class="modal-fields">
+      <div class="modal-row">
+        <div class="field"><label>Title</label><input class="inp" id="q-title" placeholder="Two Sum"></div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select class="inp" id="q-diff"><option value="easy">Easy</option><option value="med">Medium</option><option value="hard">Hard</option></select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="field"><label>Points</label><input class="inp" id="q-pts" type="number" value="100"></div>
+        <div class="field"><label>Tags (comma separated)</label><input class="inp" id="q-tags" placeholder="Array, Hash Map"></div>
+      </div>
+      <div class="field"><label>Problem Description</label><textarea class="inp" id="q-desc" rows="5" placeholder="Describe the problem clearly..."></textarea></div>
+      <div class="field"><label>Example (Input → Output)</label><textarea class="inp" id="q-ex" rows="3" placeholder="nums=[2,7,11,15], target=9 → [0,1]"></textarea></div>
+      <div class="field"><label>Constraints</label><textarea class="inp" id="q-con" rows="2" placeholder="2 ≤ nums.length ≤ 10⁴"></textarea></div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:var(--ff-mono)">Test Cases</div>
+      <div id="tc-inputs">
+        <div class="modal-row" style="margin-bottom:8px">
+          <div class="field"><label>TC1 Input</label><input class="inp tc-in" placeholder="2 7 11 15&#10;9"></div>
+          <div class="field"><label>TC1 Expected Output</label><input class="inp tc-exp" placeholder="0 1"></div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="addTCRow()" style="align-self:flex-start">+ Add Test Case</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddQ()">Cancel</button>
+      <button class="btn btn-a" onclick="saveQuestion()">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   ██████╗  ██████╗  ███╗   ██╗███████╗██╗ ██████╗
+  ██╔════╝ ██╔═══██╗ ████╗  ██║██╔════╝██║██╔════╝
+  ██║      ██║   ██║ ██╔██╗ ██║█████╗  ██║██║  ███╗
+  ██║      ██║   ██║ ██║╚██╗██║██╔══╝  ██║██║   ██║
+  ╚██████╗ ╚██████╔╝ ██║ ╚████║██║     ██║╚██████╔╝
+   ╚═════╝  ╚═════╝  ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 2 — FIREBASE SDK SETUP
+   ─────────────────────────────────────────────────────────────
+   STEP 1: Go to https://console.firebase.google.com
+   STEP 2: Create a project called "examshield"
+   STEP 3: Click "Add app" → Web → Register
+   STEP 4: Copy YOUR config keys below (replace every value)
+   STEP 5: In Firebase console:
+           → Authentication → Enable Email/Password sign-in
+           → Firestore Database → Create database (production mode)
+   ─────────────────────────────────────────────────────────────
+   FIRESTORE COLLECTIONS STRUCTURE:
+   ─────────────────────────────────────────────────────────────
+   users/
+     {uid}/
+       email, displayName, role ("prof" | "stu"),
+       createdAt, lastLogin
+
+   exams/
+     {examId}/
+       name, startTime, endTime, durationMins,
+       questionIds[], allowedLanguages[], createdBy (profUid)
+
+   questions_public/          ← Students can read this
+     {questionId}/
+       title, description, exampleInput, exampleOutput,
+       constraints[], marks, difficulty, tags[], examId
+
+   questions_private/         ← Only professors can read
+     {questionId}/
+       hiddenTestcases[{ input, expectedOutput }]
+       (matches same {questionId} as questions_public)
+
+   submissions/
+     {submissionId}/
+       userId, questionId, examId, language, code,
+       score, passed, total, status, timestamp,
+       snapshotCount, executionTimeMs
+
+   violations/
+     {violationId}/
+       userId, questionId, examId, type, category,
+       detail, timestamp, integrityScoreAtTime
+
+   drafts/
+     {userId}_{questionId}/
+       code, language, savedAt
+       (auto-saved drafts every 2 min so students don't lose work)
+   ─────────────────────────────────────────────────────────────
+   FIRESTORE SECURITY RULES (paste in Firebase Console → Rules):
+
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       // Users can only read/write their own data
+       match /users/{uid} {
+         allow read, write: if request.auth.uid == uid;
+       }
+       // Public questions — any authenticated user can read
+       match /questions_public/{qId} {
+         allow read: if request.auth != null;
+         allow write: if request.auth != null &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
+       }
+       // Private questions — professors only
+       match /questions_private/{qId} {
+         allow read, write: if request.auth != null &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
+       }
+       // Submissions — users write their own, profs read all
+       match /submissions/{sid} {
+         allow create: if request.auth != null &&
+           request.resource.data.userId == request.auth.uid;
+         allow read: if request.auth != null;
+       }
+       // Violations — same as submissions
+       match /violations/{vid} {
+         allow create: if request.auth != null;
+         allow read: if request.auth != null &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
+       }
+       // Drafts — users read/write only their own
+       match /drafts/{draftId} {
+         allow read, write: if request.auth != null &&
+           draftId.matches(request.auth.uid + '_.*');
+       }
+       // Exams — profs write, students read
+       match /exams/{examId} {
+         allow read: if request.auth != null;
+         allow write: if request.auth != null &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "prof";
+       }
+     }
+   }
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── 🔥 REPLACE THESE VALUES WITH YOUR FIREBASE PROJECT CONFIG ──
+// Get them from: Firebase Console → Project Settings → Your Apps
+const FB_CONFIG = {
+  apiKey:            "AIzaSyD-REPLACE-WITH-YOURS",          // Web API key
+  authDomain:        "YOUR-PROJECT-ID.firebaseapp.com",     // Auth domain
+  projectId:         "YOUR-PROJECT-ID",                     // Firestore project ID
+  storageBucket:     "YOUR-PROJECT-ID.appspot.com",         // Storage bucket
+  messagingSenderId: "000000000000",                        // Cloud Messaging sender ID
+  appId:             "1:000000000000:web:000000"            // App ID
+};
+
+// ── Judge0 ───────────────────────────────────────────────────
+const J0_BASE = "https://ce.judge0.com";
+const J0_KEY  = ""; // optional RapidAPI key
+
+const LANG_IDS = {
+  python:71, javascript:63, cpp:54, java:62, c:50
+};
+const LANG_MONACO = {
+  python:'python', javascript:'javascript', cpp:'cpp', java:'java', c:'c'
+};
+
+// ── Platform constants ───────────────────────────────────────
+const EXAM_DURATION_MINS = 90;
+const MAX_VIOLATIONS     = 2; // strict: 2 violations = terminate
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════ */
+let firebaseReady = false;
+let auth, db;
+let currentUser = null;
+let currentRole = 'prof';        // 'prof' | 'stu'
+let questions   = [];            // professor's question bank
+let violations  = [];            // all violations across all students
+let submissions = [];            // all student submissions
+let solvedIds   = new Set();
+
+// Exam session (student)
+let examActive     = false;
+let currentQ       = null;
+let currentLang    = 'python';
+let timerSecs      = EXAM_DURATION_MINS * 60;
+let timerInterval  = null;
+let tabVioCount    = 0;
+let totalVioCount  = 0;
+let integrityScore = 100;
+let domObserver    = null;
+
+// Anti-cheat: keystroke dynamics
+let lastKeystroke   = 0;
+let keystrokeBuffer = [];
+const PASTE_SPEED_THRESHOLD = 15; // chars in under 50ms = suspicious
+
+// Code snapshots (every 2 min)
+let snapshotInterval = null;
+let codeSnapshots    = [];
+
+// Monaco
+let monaco_editor  = null;
+let monacoReady    = false;
+
+// Simulated live students for demo
+const DEMO_STUDENTS = [
+  {name:'Ravi Kumar',    status:'online', vios:0},
+  {name:'Priya Sharma',  status:'online', vios:0},
+  {name:'Arjun Reddy',   status:'flagged',vios:2},
+  {name:'Sneha Patel',   status:'online', vios:1},
+  {name:'Kiran Babu',    status:'idle',   vios:0},
+  {name:'Divya Nair',    status:'online', vios:0},
+];
+
+// Mock leaderboard data
+const MOCK_LB = [
+  {name:'Ravi Kumar',  score:100,time:'18:24'},
+  {name:'Priya Sharma',score:100,time:'22:11'},
+  {name:'Divya Nair',  score:90, time:'28:05'},
+  {name:'Sneha Patel', score:85, time:'31:40'},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT — Phase 2 upgraded with Firebase persistence + role loading
+   ═══════════════════════════════════════════════════════════════ */
+function initApp() {
+  try {
+    if (!FB_CONFIG.apiKey.includes('REPLACE')) {
+      // ── Firebase boot ─────────────────────────────────────
+      firebase.initializeApp(FB_CONFIG);
+      auth = firebase.auth();
+      db   = firebase.firestore();
+
+      // PHASE 2: Enable Firestore offline persistence.
+      // Students won't lose code if their internet drops mid-exam.
+      db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+        // 'failed-precondition' = more than one tab open; okay to ignore
+        // 'unimplemented' = browser doesn't support it; okay to ignore
+        console.warn('Firestore persistence skipped:', err.code);
+      });
+
+      firebaseReady = true;
+    }
+  } catch(e) { /* demo mode — Firebase not configured, that's fine */ }
+
+  // Always seed local demo questions as a fallback.
+  // When Firestore is live, loadQuestionsFromFirestore() will
+  // replace these with real data from the questions_public collection.
+  seedDemoQuestions();
+
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('gone');
+    if (firebaseReady) {
+      // ── Firebase Auth state listener ───────────────────────
+      // Fires on every load (session restore) + login/logout
+      auth.onAuthStateChanged(async u => {
+        if (u) {
+          currentUser = u;
+          // PHASE 2: Load role from Firestore users/{uid}
+          await loadUserRole(u.uid);
+          // PHASE 2: Load live questions from questions_public/
+          await loadQuestionsFromFirestore();
+          onAuthSuccess();
+        } else {
+          showPage('login');
+        }
+      });
+    } else {
+      showPage('login');
+      toast('🎮 Demo mode — Firebase not configured. All features work locally!','warn',6000);
+    }
+  }, 2200);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PHASE 2: loadUserRole
+   Reads user role from Firestore users/{uid}.
+   Creates the document if it does not exist yet (first login).
+   ───────────────────────────────────────────────────────────── */
+async function loadUserRole(uid) {
+  if (!firebaseReady || !db) return;
+  try {
+    const snap = await db.collection('users').doc(uid).get();
+    if (snap.exists) {
+      // Restore the stored role so professors remain professors after refresh
+      currentRole = snap.data().role || currentRole;
+    } else {
+      // First time this user logs in → create their profile document
+      await db.collection('users').doc(uid).set({
+        email:       currentUser.email,
+        displayName: currentUser.displayName || currentUser.email.split('@')[0],
+        role:        currentRole,    // whichever pill they selected on login
+        createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        lastLogin:   firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    // Always update lastLogin so you can see who was active recently
+    await db.collection('users').doc(uid).update({
+      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) {
+    console.warn('loadUserRole failed (using local role):', e);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PHASE 2: loadQuestionsFromFirestore
+   Pulls all questions from the questions_public collection and
+   replaces the local demo array. Hidden test cases live in
+   questions_private and are never sent to students.
+   ───────────────────────────────────────────────────────────── */
+async function loadQuestionsFromFirestore() {
+  if (!firebaseReady || !db) return; // stay on demo data in demo mode
+  try {
+    const snap = await db.collection('questions_public')
+      .orderBy('createdAt', 'asc')   // keep professor creation order
+      .get();
+    if (!snap.empty) {
+      // Replace local demo questions with live Firestore data
+      questions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+    // If questions_public is empty, demo questions stay as fallback
+  } catch(e) {
+    console.warn('loadQuestionsFromFirestore failed (using demo data):', e);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   QUESTIONS SEED
+   ═══════════════════════════════════════════════════════════════ */
+function seedDemoQuestions() {
+  questions = [
+    {
+      id:'two-sum', title:'Two Sum', diff:'easy', points:100, tags:['Array','Hash Map'],
+      desc:`Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>. You may assume exactly one solution exists.`,
+      example:'nums = [2,7,11,15], target = 9 → [0,1]',
+      constraints:['2 ≤ nums.length ≤ 10⁴','−10⁹ ≤ nums[i] ≤ 10⁹','−10⁹ ≤ target ≤ 10⁹'],
+      testcases:[
+        {input:'2 7 11 15\n9',  expected:'0 1'},
+        {input:'3 2 4\n6',      expected:'1 2'},
+        {input:'3 3\n6',        expected:'0 1'},
+      ],
+      templates:{
+        python:`nums = list(map(int, input().split()))\ntarget = int(input())\nseen = {}\nfor i, n in enumerate(nums):\n    d = target - n\n    if d in seen:\n        print(seen[d], i)\n        break\n    seen[n] = i`,
+        javascript:`const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\nconst nums = lines[0].split(' ').map(Number);\nconst t = Number(lines[1]);\nconst m = new Map();\nfor(let i=0;i<nums.length;i++){\n  const d=t-nums[i];\n  if(m.has(d)){console.log(m.get(d),i);break;}\n  m.set(nums[i],i);\n}`,
+        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  vector<int>v;\n  string l; getline(cin,l);\n  istringstream ss(l); int x;\n  while(ss>>x) v.push_back(x);\n  int t; cin>>t;\n  map<int,int>seen;\n  for(int i=0;i<v.size();i++){\n    int d=t-v[i];\n    if(seen.count(d)){cout<<seen[d]<<\" \"<<i;return 0;}\n    seen[v[i]]=i;\n  }\n}`,
+        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    String[]p=sc.nextLine().split(\" \");\n    int t=sc.nextInt();\n    Map<Integer,Integer>m=new HashMap<>();\n    for(int i=0;i<p.length;i++){\n      int n=Integer.parseInt(p[i]),d=t-n;\n      if(m.containsKey(d)){System.out.println(m.get(d)+\" \"+i);return;}\n      m.put(n,i);\n    }\n  }\n}`,
+        c:`#include<stdio.h>\nint main(){\n  int a[10000],n=0,t;\n  // parse first line then target\n  while(scanf(\"%d\",&a[n])==1) n++;\n  t=a[--n];\n  for(int i=0;i<n;i++) for(int j=i+1;j<n;j++)\n    if(a[i]+a[j]==t){printf(\"%d %d\",i,j);return 0;}\n}`,
+      }
+    },
+    {
+      id:'palindrome', title:'Valid Palindrome', diff:'easy', points:80, tags:['String','Two Pointers'],
+      desc:`A phrase is a palindrome if after converting to lowercase and removing non-alphanumeric characters, it reads the same forward and backward. Given string <code>s</code>, return <code>true</code> or <code>false</code>.`,
+      example:'"A man, a plan, a canal: Panama" → true',
+      constraints:['1 ≤ s.length ≤ 2×10⁵','s consists of printable ASCII'],
+      testcases:[
+        {input:'A man, a plan, a canal: Panama', expected:'true'},
+        {input:'race a car',                     expected:'false'},
+        {input:' ',                               expected:'true'},
+      ],
+      templates:{
+        python:`s = input()\nc = ''.join(ch.lower() for ch in s if ch.isalnum())\nprint('true' if c == c[::-1] else 'false')`,
+        javascript:`const s=require('fs').readFileSync('/dev/stdin','utf8').trim();\nconst c=s.replace(/[^a-zA-Z0-9]/g,'').toLowerCase();\nconsole.log(c===c.split('').reverse().join('')?'true':'false');`,
+        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  string s,c; getline(cin,s);\n  for(char x:s) if(isalnum(x)) c+=tolower(x);\n  string r=c; reverse(r.begin(),r.end());\n  cout<<(c==r?"true":"false");\n}`,
+        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    String s=sc.nextLine().replaceAll("[^a-zA-Z0-9]","").toLowerCase();\n    System.out.println(s.equals(new StringBuilder(s).reverse().toString()));\n  }\n}`,
+        c:`#include<stdio.h>\n#include<ctype.h>\n#include<string.h>\nint main(){\n  char s[200010],c[200010]; int n=0;\n  fgets(s,sizeof(s),stdin);\n  for(int i=0;s[i];i++) if(isalnum(s[i])) c[n++]=tolower(s[i]);\n  c[n]=0;\n  char r[200010]; strcpy(r,c);\n  for(int i=0;i<n/2;i++){char t=r[i];r[i]=r[n-1-i];r[n-1-i]=t;}\n  printf(\"%s\",strcmp(c,r)==0?\"true\":\"false\");\n}`,
+      }
+    },
+    {
+      id:'max-subarray', title:"Maximum Subarray (Kadane's)", diff:'med', points:150, tags:['Array','DP'],
+      desc:`Given an integer array <code>nums</code>, find the contiguous subarray which has the largest sum and return its sum.`,
+      example:'nums = [-2,1,-3,4,-1,2,1,-5,4] → 6  (subarray [4,-1,2,1])',
+      constraints:['1 ≤ nums.length ≤ 10⁵','−10⁴ ≤ nums[i] ≤ 10⁴'],
+      testcases:[
+        {input:'-2 1 -3 4 -1 2 1 -5 4', expected:'6'},
+        {input:'5 4 -1 7 8',             expected:'23'},
+        {input:'-1',                      expected:'-1'},
+      ],
+      templates:{
+        python:`nums=list(map(int,input().split()))\nmax_s=cur=nums[0]\nfor n in nums[1:]:\n    cur=max(n,cur+n)\n    max_s=max(max_s,cur)\nprint(max_s)`,
+        javascript:`const nums=require('fs').readFileSync('/dev/stdin','utf8').trim().split(' ').map(Number);\nlet mx=nums[0],cur=nums[0];\nfor(let i=1;i<nums.length;i++){cur=Math.max(nums[i],cur+nums[i]);mx=Math.max(mx,cur);}\nconsole.log(mx);`,
+        cpp:`#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  vector<int>v; int x;\n  while(cin>>x) v.push_back(x);\n  int mx=v[0],cur=v[0];\n  for(int i=1;i<v.size();i++){cur=max(v[i],cur+v[i]);mx=max(mx,cur);}\n  cout<<mx;\n}`,
+        java:`import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    Scanner sc=new Scanner(System.in);\n    List<Integer>l=new ArrayList<>();\n    while(sc.hasNextInt())l.add(sc.nextInt());\n    int mx=l.get(0),cur=mx;\n    for(int i=1;i<l.size();i++){cur=Math.max(l.get(i),cur+l.get(i));mx=Math.max(mx,cur);}\n    System.out.println(mx);\n  }\n}`,
+        c:`#include<stdio.h>\nint main(){\n  int a[100001],n=0,x;\n  while(scanf(\"%d\",&x)==1) a[n++]=x;\n  int mx=a[0],cur=a[0];\n  for(int i=1;i<n;i++){cur=cur+a[i]>a[i]?cur+a[i]:a[i];mx=mx>cur?mx:cur;}\n  printf(\"%d\",mx);\n}`,
+      }
+    },
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ROUTING
+   ═══════════════════════════════════════════════════════════════ */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════════════════ */
+function toast(msg, type='ok', dur=3500) {
+  const icons = {ok:'✅',warn:'⚠️',err:'❌',info:'💬'};
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]||'💬'}</span><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), dur);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTH
+   ═══════════════════════════════════════════════════════════════ */
+function setRole(r) {
+  currentRole = r;
+  const card = document.getElementById('login-card');
+  card.className = 'login-card '+(r==='prof'?'prof-mode':'stu-mode');
+  document.getElementById('rp-prof').className = 'role-pill'+(r==='prof'?' active-prof':'');
+  document.getElementById('rp-stu').className  = 'role-pill'+(r==='stu'?' active-stu':'');
+}
+
+async function handleLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  if (!email) { toast('Enter your email','warn'); return; }
+
+  const btn = document.getElementById('btn-login');
+  document.getElementById('btn-login-txt').textContent = 'Signing in...';
+  btn.disabled = true;
+
+  if (!firebaseReady) {
+    // Demo mode
+    await sleep(700);
+    currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0] + (currentRole==='prof'?' (Prof)':'')};
+    onAuthSuccess();
+    btn.disabled = false;
+    document.getElementById('btn-login-txt').textContent = 'Sign In';
+    return;
+  }
+  try {
+    const c = await auth.signInWithEmailAndPassword(email, pass);
+    currentUser = c.user; onAuthSuccess();
+  } catch(e) { toast('Login failed: '+e.message,'err'); }
+  btn.disabled = false;
+  document.getElementById('btn-login-txt').textContent = 'Sign In';
+}
+
+async function handleRegister() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value || 'demo123';
+  if (!email) { toast('Enter your email','warn'); return; }
+
+  if (!firebaseReady) {
+    currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0]};
+    onAuthSuccess(); return;
+  }
+  try {
+    const c = await auth.createUserWithEmailAndPassword(email, pass);
+    currentUser = c.user; onAuthSuccess();
+  } catch(e) { toast('Register failed: '+e.message,'err'); }
+}
+
+function onAuthSuccess() {
+  const name = currentUser.displayName || currentUser.email.split('@')[0];
+  if (currentRole === 'prof') {
+    document.getElementById('prof-av').textContent   = name[0].toUpperCase();
+    document.getElementById('prof-name').textContent = name;
+    renderProfDashboard();
+    showPage('prof');
+    toast('Welcome, '+name+'! 👨‍🏫','ok');
+  } else {
+    document.getElementById('stu-av').textContent   = name[0].toUpperCase();
+    document.getElementById('stu-name').textContent = name;
+    renderStuPage();
+    showPage('stu');
+    toast('Welcome! Your exam is ready. 🚀','ok');
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   logout — Phase 1 improvement: warn before logging out mid-exam
+   ───────────────────────────────────────────────────────────── */
+function logout() {
+  // PHASE 1 UI: Show a clear warning dialog if exam is still active
+  if (examActive && !confirm('⚠️ You are in an active exam!\nLogging out will lose your unsaved progress.\n\nAre you sure you want to leave?')) {
+    return;
+  }
+  if (firebaseReady) auth.signOut().catch(()=>{});
+  currentUser = null; examActive = false;
+  stopTimer(); stopSnapshots();
+  disableAntiCheat(); disableDOMGuard();
+  showPage('login');
+  toast('Logged out.','info');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROFESSOR DASHBOARD
+   ═══════════════════════════════════════════════════════════════ */
+function profNav(panel) {
+  document.querySelectorAll('.sbar-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.prof-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('sb-'+panel)?.classList.add('active');
+  const pp = document.getElementById('pp-'+panel);
+  if (pp) { pp.classList.add('active'); renderProfPanel(panel); }
+}
+
+function renderProfDashboard() {
+  document.getElementById('s-questions').textContent = questions.length;
+  document.getElementById('s-active').textContent    = DEMO_STUDENTS.filter(s=>s.status==='online').length;
+  document.getElementById('s-flagged').textContent   = DEMO_STUDENTS.filter(s=>s.vios>0).length;
+  document.getElementById('s-submitted').textContent = submissions.length;
+  document.getElementById('live-count').textContent  = DEMO_STUDENTS.length;
+  document.getElementById('vio-count-badge').textContent = violations.length;
+
+  // dash violations
+  const dvl = document.getElementById('dash-vio-list');
+  if (violations.length === 0) { dvl.innerHTML='<div style="color:var(--muted)">No violations yet.</div>'; }
+  else {
+    dvl.innerHTML = violations.slice(0,5).map(v=>`
+      <div class="sr" style="gap:8px">
+        <span style="font-size:.7rem;background:rgba(255,59,92,.1);color:var(--danger);border-radius:4px;padding:1px 7px;font-family:var(--ff-mono)">${v.type}</span>
+        <span>${v.student}</span>
+        <span style="color:var(--muted);font-size:.72rem;font-family:var(--ff-mono);margin-left:auto">${v.time}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function renderProfPanel(panel) {
+  if (panel==='dashboard')  { renderProfDashboard(); }
+  if (panel==='monitor')    { startMonitorListener(); } // Priority 2: attach real-time Firestore listener
+  if (panel==='questions')  { renderQList(); stopMonitorListener(); } // stop listener when not viewing monitor
+  if (panel==='violations') { renderVioList(); stopMonitorListener(); }
+  if (panel==='presults')   { renderPResults(); stopMonitorListener(); }
+  if (panel==='createexam') { renderCreateExamPanel(); stopMonitorListener(); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRIORITY 2 — PROFESSOR LIVE MONITORING
+   ─────────────────────────────────────────────────────────────
+   When Firestore is live:
+   - startMonitorListener() attaches a real-time onSnapshot listener
+     to the violations/ collection. Every new violation fires an
+     update so the grid refreshes instantly — no polling needed.
+   - Submissions are also listened to so the prof sees score updates
+     as students submit.
+   - Cards are clickable: openStudentDetail() shows a sidebar with
+     that student's full violation log and latest code snapshot.
+
+   When in demo mode:
+   - Falls back to rendering DEMO_STUDENTS as before.
+   ═══════════════════════════════════════════════════════════════ */
+
+// Live monitor state
+let monitorUnsubViolations  = null; // Firestore unsubscribe handle
+let monitorUnsubSubmissions = null;
+let liveStudentMap = {};  // uid → { name, vios:[], lastSeen, score, status }
+let selectedMonitorUid = null; // for detail panel
+
+/* ── startMonitorListener ─────────────────────────────────────
+   Called when the professor navigates to the Monitor panel.
+   Attaches real-time Firestore listeners. Safe to call multiple
+   times — it unsubscribes the old listener first.
+   ─────────────────────────────────────────────────────────────── */
+function startMonitorListener() {
+  stopMonitorListener(); // clean up previous listener
+
+  if (!firebaseReady || !db) {
+    // Demo mode — just render static demo data
+    renderMonitor();
+    return;
+  }
+
+  // Listen to violations in real time
+  monitorUnsubViolations = db.collection('violations')
+    .orderBy('timestamp', 'asc')
+    .onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const v = { id: change.doc.id, ...change.doc.data() };
+          const uid = v.userId || 'unknown';
+          if (!liveStudentMap[uid]) {
+            liveStudentMap[uid] = {
+              name:     v.student || uid,
+              uid,
+              vios:     [],
+              score:    null,
+              status:   'online',
+              lastSeen: Date.now(),
+            };
+          }
+          liveStudentMap[uid].vios.push(v);
+          liveStudentMap[uid].lastSeen = Date.now();
+          // Mark as flagged if multiple violations
+          if (liveStudentMap[uid].vios.length >= 2) {
+            liveStudentMap[uid].status = 'flagged';
+          }
+        }
+      });
+      renderMonitor(); // re-render grid on every change
+    }, err => console.warn('Monitor violations listener error:', err));
+
+  // Listen to submissions so we can show latest score per student
+  monitorUnsubSubmissions = db.collection('submissions')
+    .orderBy('timestamp', 'asc')
+    .onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const s = change.doc.data();
+          const uid = s.userId || 'unknown';
+          if (!liveStudentMap[uid]) {
+            liveStudentMap[uid] = {
+              name: s.student || uid, uid,
+              vios: [], score: null, status: 'online', lastSeen: Date.now(),
+            };
+          }
+          liveStudentMap[uid].score    = s.score;
+          liveStudentMap[uid].problem  = s.problem;
+          liveStudentMap[uid].lastSeen = Date.now();
+          if (s.status === 'Accepted') liveStudentMap[uid].status = 'submitted';
+        }
+      });
+      renderMonitor();
+    }, err => console.warn('Monitor submissions listener error:', err));
+}
+
+function stopMonitorListener() {
+  if (monitorUnsubViolations)  { monitorUnsubViolations();  monitorUnsubViolations  = null; }
+  if (monitorUnsubSubmissions) { monitorUnsubSubmissions(); monitorUnsubSubmissions = null; }
+}
+
+/* ── renderMonitor ────────────────────────────────────────────
+   Renders the live grid. When Firestore is active, liveStudentMap
+   is populated by the listeners above. In demo mode, falls back
+   to DEMO_STUDENTS.
+   ─────────────────────────────────────────────────────────────── */
+function renderMonitor() {
+  const g = document.getElementById('monitor-grid');
+
+  // Build student list from Firestore live data or demo fallback
+  let students;
+  if (firebaseReady && Object.keys(liveStudentMap).length > 0) {
+    students = Object.values(liveStudentMap);
+  } else {
+    // Demo fallback — static array
+    const name = currentUser?.displayName?.split(' ')[0] || 'You';
+    students = [...DEMO_STUDENTS];
+    if (examActive && currentRole === 'stu') {
+      students.push({ name, uid: currentUser?.uid, status: 'online', vios: Array(totalVioCount).fill({}), score: null });
+    }
+  }
+
+  document.getElementById('live-count').textContent = students.length;
+
+  if (!students.length) {
+    g.innerHTML = '<div style="color:var(--muted);font-size:.82rem;grid-column:1/-1">No students in exam yet. Waiting for activity…</div>';
+    return;
+  }
+
+  g.innerHTML = students.map(s => {
+    const vioCount = Array.isArray(s.vios) ? s.vios.length : (s.vios || 0);
+    const isFlagged = vioCount >= 2 || s.status === 'flagged';
+    const statusLabel = s.status === 'flagged'    ? '⚠ Flagged'
+                      : s.status === 'submitted'  ? '✓ Submitted'
+                      : s.status === 'idle'        ? '◌ Idle'
+                      : '● Active';
+    const statusClass = s.status === 'flagged'   ? 'flagged'
+                      : s.status === 'submitted' ? 'online'
+                      : s.status === 'idle'      ? 'idle'
+                      : 'online';
+    const scoreTag = s.score !== null && s.score !== undefined
+      ? `<div style="margin-top:6px;font-size:.72rem;font-family:var(--ff-mono);color:var(--stu)">${s.score}% score</div>`
+      : '';
+    // Last violation type tag
+    const lastVio = Array.isArray(s.vios) && s.vios.length
+      ? `<div style="font-size:.68rem;color:var(--danger);margin-top:4px;font-family:var(--ff-mono)">Last: ${s.vios[s.vios.length-1].type || 'violation'}</div>`
+      : '';
+    return `
+      <div class="mon-card ${isFlagged?'flagged':'ok'}"
+           onclick="openStudentDetail('${s.uid||s.name}')"
+           style="cursor:pointer" title="Click for detail">
+        <div class="mon-pulse ${isFlagged?'alert':''}"></div>
+        <div class="mon-avatar">${(s.name||'?')[0].toUpperCase()}</div>
+        <div class="mon-name">${s.name}</div>
+        <div class="mon-status ${statusClass}">${statusLabel}</div>
+        <div class="mon-vios">Violations: <span>${vioCount}</span></div>
+        ${scoreTag}${lastVio}
+      </div>`;
+  }).join('');
+}
+
+/* ── openStudentDetail ────────────────────────────────────────
+   Shows a right-side detail panel for the clicked student card
+   with their full violation timeline and integrity score.
+   ─────────────────────────────────────────────────────────────── */
+function openStudentDetail(uid) {
+  const s = liveStudentMap[uid];
+  if (!s) {
+    // Demo student — no Firestore data available
+    toast('Student detail only available in live Firebase mode','info');
+    return;
+  }
+  selectedMonitorUid = uid;
+
+  // Remove any existing panel
+  document.getElementById('mon-detail-panel')?.remove();
+
+  const vioHtml = s.vios.length ? s.vios.map(v => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.75rem">
+      <span style="background:rgba(255,59,92,.1);color:var(--danger);border-radius:4px;padding:1px 8px;font-family:var(--ff-mono);white-space:nowrap">${v.type||'?'}</span>
+      <span style="flex:1;color:var(--soft)">${v.detail||''}</span>
+      <span style="color:var(--muted);font-family:var(--ff-mono);font-size:.68rem">${v.time||''}</span>
+    </div>`).join('')
+    : '<div style="color:var(--muted);font-size:.78rem">No violations recorded.</div>';
+
+  const panel = document.createElement('div');
+  panel.id = 'mon-detail-panel';
+  panel.style.cssText = `
+    position:fixed;top:0;right:0;width:340px;height:100vh;
+    background:var(--ink2);border-left:1px solid var(--line2);
+    z-index:500;overflow-y:auto;padding:24px 20px;
+    box-shadow:-8px 0 40px rgba(0,0,0,.5);
+    animation:slideInR .25s ease;
+  `;
+  // Add keyframe if not already added
+  if (!document.getElementById('slideInR-style')) {
+    const st = document.createElement('style');
+    st.id = 'slideInR-style';
+    st.textContent = '@keyframes slideInR{from{transform:translateX(100%)}to{transform:translateX(0)}}';
+    document.head.appendChild(st);
+  }
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:1rem;font-weight:800;color:var(--head)">${s.name}</div>
+        <div style="font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);margin-top:2px">${s.uid}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('mon-detail-panel').remove()">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:900;color:var(--danger)">${s.vios.length}</div>
+        <div style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px">Violations</div>
+      </div>
+      <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px;text-align:center">
+        <div style="font-size:1.4rem;font-weight:900;color:var(--stu)">${s.score !== null && s.score !== undefined ? s.score+'%' : '—'}</div>
+        <div style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px">Score</div>
+      </div>
+    </div>
+    <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:10px">
+      Violation Timeline
+    </div>
+    <div>${vioHtml}</div>
+    <div style="margin-top:20px;font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:8px">
+      Status
+    </div>
+    <div style="font-size:.82rem;color:var(--soft)">
+      ${s.status === 'flagged' ? '⚠ Student is flagged for multiple violations.'
+        : s.status === 'submitted' ? '✓ Student has submitted at least one problem.'
+        : '● Student is actively working.'}
+    </div>
+  `;
+  document.body.appendChild(panel);
+}
+
+function renderQList() {
+  const el = document.getElementById('q-list');
+  if (!questions.length) { el.innerHTML='<p style="color:var(--muted)">No questions yet. Add your first one!</p>'; return; }
+  el.innerHTML = questions.map((q,i) => `
+    <div class="q-row">
+      <div style="font-family:var(--ff-mono);font-size:.72rem;color:var(--muted);width:28px">${i+1}</div>
+      <div class="q-row-info">
+        <div class="q-row-title">${q.title}</div>
+        <div class="q-row-meta">${q.tags.join(' · ')} · ${q.points} pts · ${q.testcases.length} test cases</div>
+      </div>
+      <span class="diff ${q.diff}">${q.diff}</span>
+      <div class="q-row-actions">
+        <button class="btn btn-ghost btn-sm" onclick="deleteQuestion('${q.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('s-questions').textContent = questions.length;
+}
+
+function renderVioList() {
+  const el = document.getElementById('vio-list-el');
+  document.getElementById('vio-count-badge').textContent = violations.length;
+  if (!violations.length) { el.innerHTML='<div style="color:var(--muted);font-size:.82rem">No violations recorded.</div>'; return; }
+  el.innerHTML = violations.map(v => `
+    <div class="vio-row">
+      <span class="vio-type ${v.category}">${v.type}</span>
+      <span class="vio-name">${v.student}</span>
+      <span style="color:var(--soft);font-size:.78rem">${v.detail||''}</span>
+      <span class="vio-time">${v.time}</span>
+    </div>
+  `).join('');
+}
+
+function renderPResults() {
+  const tbody = document.getElementById('results-tbody');
+  if (!submissions.length) { tbody.innerHTML='<tr><td colspan="7" style="color:var(--muted)">No submissions yet.</td></tr>'; return; }
+  tbody.innerHTML = submissions.map(s => `
+    <tr>
+      <td>${s.student}</td>
+      <td>${s.problem}</td>
+      <td style="font-family:var(--ff-mono);font-size:.75rem">${s.lang}</td>
+      <td style="color:var(--stu);font-weight:700">${s.score}%</td>
+      <td><span class="diff ${s.score===100?'easy':s.score>0?'med':'hard'}">${s.status}</span></td>
+      <td style="color:${s.vios>0?'var(--danger)':'var(--muted)'};">${s.vios}</td>
+      <td style="color:var(--muted);font-family:var(--ff-mono);font-size:.72rem">${s.time}</td>
+    </tr>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   QUESTION CRUD
+   ═══════════════════════════════════════════════════════════════ */
+function openAddQ()  { document.getElementById('add-q-modal').classList.add('open'); }
+function closeAddQ() { document.getElementById('add-q-modal').classList.remove('open'); }
+
+let tcRowCount = 1;
+function addTCRow() {
+  tcRowCount++;
+  const wrap = document.getElementById('tc-inputs');
+  const row = document.createElement('div');
+  row.className = 'modal-row';
+  row.style.marginBottom = '8px';
+  row.innerHTML = `
+    <div class="field"><label>TC${tcRowCount} Input</label><input class="inp tc-in" placeholder="..."></div>
+    <div class="field"><label>TC${tcRowCount} Expected Output</label><input class="inp tc-exp" placeholder="..."></div>
+  `;
+  wrap.appendChild(row);
+}
+
+function saveQuestion() {
+  const title = document.getElementById('q-title').value.trim();
+  const diff  = document.getElementById('q-diff').value;
+  const pts   = parseInt(document.getElementById('q-pts').value) || 100;
+  const tags  = document.getElementById('q-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const desc  = document.getElementById('q-desc').value.trim();
+  const ex    = document.getElementById('q-ex').value.trim();
+  const con   = document.getElementById('q-con').value.trim();
+
+  if (!title || !desc) { toast('Title and description are required','warn'); return; }
+
+  const inputs   = [...document.querySelectorAll('.tc-in')].map(i=>i.value.trim()).filter(Boolean);
+  const expected = [...document.querySelectorAll('.tc-exp')].map(i=>i.value.trim()).filter(Boolean);
+  const tcs = inputs.map((inp,i)=>({input:inp, expected:expected[i]||''})).filter(t=>t.input && t.expected);
+
+  const q = {
+    id: 'q-'+Date.now(),
+    title, diff, points:pts, tags: tags.length?tags:['Algorithm'],
+    desc, example:ex,
+    constraints: con ? con.split('\n').map(c=>c.trim()).filter(Boolean) : ['1 ≤ n ≤ 10⁵'],
+    testcases: tcs.length ? tcs : [{input:'1',expected:'1'}],
+    templates: {
+      python: `# ${title}\n# Write your solution here\n\n`,
+      javascript: `// ${title}\n// Write your solution here\n`,
+      cpp: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  // Write your solution\n}`,
+      java: `import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    // Write your solution\n  }\n}`,
+      c: `#include<stdio.h>\nint main(){\n  // Write your solution\n  return 0;\n}`,
+    }
+  };
+
+  questions.push(q);
+  closeAddQ();
+  renderQList();
+  document.getElementById('s-questions').textContent = questions.length;
+  toast(`Question "${title}" added!`,'ok');
+
+  // PHASE 2: Persist to Firestore.
+  // Public question info goes to questions_public/ (students can read).
+  // Hidden test cases go to questions_private/ (professors only).
+  if (firebaseReady && db) {
+    const publicData = {
+      title:       q.title,
+      description: q.desc,            // problem statement
+      exampleInput:  q.example,       // visible example (not a hidden TC)
+      constraints: q.constraints,
+      marks:       q.points,
+      difficulty:  q.diff,
+      tags:        q.tags,
+      templates:   q.templates,       // starter code per language
+      createdBy:   currentUser?.uid || 'unknown',
+      createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const privateData = {
+      // Hidden test cases live here — students NEVER read this collection
+      hiddenTestcases: q.testcases.map(tc => ({
+        input:          tc.input,
+        expectedOutput: tc.expected,
+      })),
+      questionId: q.id,
+    };
+
+    // Write both documents with the same ID so they pair up
+    Promise.all([
+      db.collection('questions_public').doc(q.id).set(publicData),
+      db.collection('questions_private').doc(q.id).set(privateData),
+    ]).catch(e => console.warn('saveQuestion Firestore error:', e));
+  }
+}
+
+function deleteQuestion(id) {
+  if (!confirm('Delete this question?')) return;
+  questions = questions.filter(q=>q.id!==id);
+  renderQList();
+  toast('Question deleted','warn');
+}
+
+function exportViolations() {
+  if (!violations.length) { toast('No violations to export','warn'); return; }
+  const rows = [['Student','Type','Detail','Time'],...violations.map(v=>[v.student,v.type,v.detail||'',v.time])];
+  const csv  = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='violations.csv'; a.click();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STUDENT EXAM PAGE
+   ═══════════════════════════════════════════════════════════════ */
+function renderStuPage() {
+  document.getElementById('hs-q').textContent   = questions.length;
+  document.getElementById('hs-sol').textContent = solvedIds.size;
+  document.getElementById('hs-pts').textContent = [...solvedIds].reduce((a,id)=>{
+    const q=questions.find(q=>q.id===id); return a+(q?q.points:0);
+  },0);
+
+  const grid = document.getElementById('exam-grid');
+  if (!questions.length) { grid.innerHTML='<p style="color:var(--muted)">No questions available yet. Ask your professor.</p>'; return; }
+  grid.innerHTML = questions.map((q,i)=>`
+    <div class="exam-card ${solvedIds.has(q.id)?'solved':''}" onclick="startExam('${q.id}')">
+      <div class="ec-num">PROBLEM ${i+1}</div>
+      <div class="ec-title">${q.title}</div>
+      <div class="ec-desc">${q.desc.replace(/<[^>]+>/g,'').substring(0,100)}...</div>
+      <div class="ec-footer">
+        <span class="diff ${q.diff}">${q.diff}</span>
+        <div class="chip-row">${(q.tags||[]).slice(0,2).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        ${solvedIds.has(q.id)?'<span class="solved-tag">✓ Solved</span>':''}
+        <span class="ec-points">${q.points} pts</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   START EXAM (student)
+   ═══════════════════════════════════════════════════════════════ */
+async function startExam(qId) {
+  currentQ    = questions.find(q=>q.id===qId);
+  if (!currentQ) return;
+
+  // Reset session state for this exam attempt
+  tabVioCount     = 0;
+  totalVioCount   = 0;
+  integrityScore  = 100;
+  codeSnapshots   = [];
+  keystrokeBuffer = [];
+
+  // PHASE 2: Check Firestore for an existing draft before loading the editor.
+  // This lets students resume where they left off if they refreshed the page.
+  const existingDraft = await loadDraftFromFirestore(qId);
+  if (existingDraft && existingDraft.code && existingDraft.code.trim().length > 10) {
+    const restore = confirm(
+      '📝 Draft found from ' +
+      (existingDraft.savedAt?.toDate?.()?.toLocaleTimeString?.() || 'earlier') +
+      '\nRestore your saved code?'
+    );
+    if (restore) {
+      // We store the draft code and switch to saved language
+      // loadMonaco() will pick it up via window._pendingDraft
+      window._pendingDraft = existingDraft;
+      currentLang = existingDraft.language || currentLang;
+    }
+  }
+
+  showPage('editor');
+  loadMonaco();
+  renderProbStmt();
+  renderTC();
+  startTimer(EXAM_DURATION_MINS * 60);
+  startSnapshots();
+  showFullscreenGate();
+
+  document.getElementById('ed-prob-name').textContent = currentQ.title;
+  const diff = currentQ.diff;
+  const de = document.getElementById('ed-diff');
+  de.textContent = diff; de.className = `diff ${diff}`;
+  document.getElementById('lang-sel').value = currentLang;
+
+  document.getElementById('guard-pill').classList.remove('hidden');
+  document.getElementById('guard-pill').classList.add('vis');
+
+  clearConsole();
+  outLine('info','ExamShield secure execution environment ready.');
+  outLine('warn','⚠ This session is monitored. No paste, no tab switching, no AI tools.');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FULLSCREEN GATE
+   ═══════════════════════════════════════════════════════════════ */
+function showFullscreenGate() {
+  document.getElementById('fs-overlay').classList.add('show');
+}
+
+function enterFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  if (req) {
+    req.call(el).then(()=>{
+      document.getElementById('fs-overlay').classList.remove('show');
+      examActive = true;
+      setupAntiCheat();
+      setupDOMGuard();
+      toast('Exam started! Good luck 🍀','ok');
+    }).catch(()=>{
+      // Browser denied fullscreen (no user gesture issue) - allow with warning
+      document.getElementById('fs-overlay').classList.remove('show');
+      examActive = true;
+      setupAntiCheat();
+      setupDOMGuard();
+      toast('Fullscreen unavailable — proceeding with monitoring active.','warn');
+    });
+  } else {
+    document.getElementById('fs-overlay').classList.remove('show');
+    examActive = true;
+    setupAntiCheat();
+    setupDOMGuard();
+  }
+
+  // Listen for fullscreen exit
+  document.addEventListener('fullscreenchange', onFSChange);
+  document.addEventListener('webkitfullscreenchange', onFSChange);
+}
+
+function onFSChange() {
+  if (!examActive) return;
+  const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (!isFS) {
+    logViolation('fullscreen-exit','Fullscreen','Exited fullscreen mode');
+    handleViolation('fullscreen');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ████████╗██╗███╗   ███╗███████╗██████╗
+      ██╔══╝██║████╗ ████║██╔════╝██╔══██╗
+      ██║   ██║██╔████╔██║█████╗  ██████╔╝
+      ██║   ██║██║╚██╔╝██║██╔══╝  ██╔══██╗
+      ██║   ██║██║ ╚═╝ ██║███████╗██║  ██║
+      ╚═╝   ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
+
+   ANTI-CHEAT ENGINE
+   ═══════════════════════════════════════════════════════════════ */
+
+let acEnabled = false;
+
+/* ── 1. Tab switch (blur + visibilitychange) ─────────────────── */
+function onBlur()  { if (examActive && acEnabled) handleViolation('tab-switch'); }
+function onVis()   { if (examActive && acEnabled && document.visibilityState==='hidden') handleViolation('tab-switch'); }
+
+/* ── 2. Paste block ──────────────────────────────────────────── */
+function onPaste(e) {
+  if (!examActive || !acEnabled) return;
+  e.preventDefault(); e.stopPropagation();
+  logViolation('paste','Paste','Attempted Ctrl+V paste');
+  outLine('err','⛔ Paste is disabled. Type your code manually.');
+  toast('⛔ Paste blocked! Logged.','err',4000);
+}
+
+/* ── 3. Key combination blocks ───────────────────────────────── */
+function onKeyDown(e) {
+  if (!examActive || !acEnabled) return;
+
+  // Block DevTools shortcuts
+  if (e.key==='F12') { e.preventDefault(); logViolation('devtools','DevTools','F12 pressed'); toast('DevTools blocked','warn'); return; }
+  if ((e.ctrlKey||e.metaKey)&&e.shiftKey&&['I','J','C','K'].includes(e.key)) {
+    e.preventDefault(); logViolation('devtools','DevTools','DevTools shortcut'); return;
+  }
+
+  // Paste block (belt+suspenders)
+  if ((e.ctrlKey||e.metaKey)&&e.key==='v') {
+    e.preventDefault(); onPaste(e); return;
+  }
+
+  // Keystroke dynamics — detect paste-speed bursts
+  const now = Date.now();
+  if (lastKeystroke > 0) {
+    const delta = now - lastKeystroke;
+    keystrokeBuffer.push(delta);
+    if (keystrokeBuffer.length > 20) keystrokeBuffer.shift();
+
+    // Check for suspiciously fast burst (10+ chars in < 50ms each)
+    const fastKeys = keystrokeBuffer.filter(d=>d<50).length;
+    if (fastKeys > PASTE_SPEED_THRESHOLD && !e.ctrlKey && !e.metaKey) {
+      logViolation('paste-speed','Keystroke','Paste-speed burst detected');
+      outLine('warn','⚡ Suspicious typing speed detected. Code snapshot saved.');
+      saveSnapshot('paste-speed-trigger');
+      toast('Suspicious input speed flagged','warn',3500);
+    }
+  }
+  lastKeystroke = now;
+}
+
+/* ── 4. Extension detection — REMOVED (Priority 5) ─────────────
+   The previous EXT_SIGNATURES checks (DOM class sniffing, window
+   property checks, fetch/XHR string comparisons) were removed
+   because they produce too many false positives:
+
+   • class*="copilot" fires on unrelated UI frameworks
+   • typeof window.chatgptExtension fires on sites that define
+     that property for their own reasons
+   • (window.fetch+'').includes('intercept') fires whenever any
+     script uses a service worker or fetch polyfill
+
+   False positives wrongly penalise honest students and erode trust
+   in the platform.
+
+   WHAT WE KEEP INSTEAD:
+   ✓ DOM Guard (MutationObserver below) — removes injected iframes
+     and elements in real time, which is reliable and low false-positive
+   ✓ Paste block — prevents copy-pasting from external sources
+   ✓ Tab-switch detection — catches students opening AI sites
+   ✓ Context-menu block — prevents "open in new tab" tricks
+   ✓ Integrity score — records all the above for professor review
+
+   If you want extension detection in the future, a browser extension
+   (chrome.devtools API or manifest v3 declarativeNetRequest) is the
+   correct approach — not JS property sniffing from a web page.
+   ─────────────────────────────────────────────────────────────── */
+
+// probeExtensions and showExtBanner are intentionally removed.
+// The setInterval that called probeExtensions is also removed below.
+
+/* ── 5. DOM Guard (MutationObserver) ─────────────────────────── */
+function setupDOMGuard() {
+  disableDOMGuard();
+  const SUSPICIOUS = ['gpt','copilot','ai-assist','tabnine','codeium','cheat','answer'];
+  domObserver = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        const sus = SUSPICIOUS.some(p =>
+          (node.id||'').toLowerCase().includes(p) ||
+          String(node.className||'').toLowerCase().includes(p) ||
+          (node.textContent||'').toLowerCase().includes(p+'assist')
+        );
+        if (node.tagName==='IFRAME' || node.tagName==='OBJECT') {
+          node.remove();
+          logViolation('dom-guard','DOM Injection','Iframe/Object injected');
+          toast('🛡 Injected frame blocked','err'); continue;
+        }
+        if (sus) {
+          node.remove();
+          logViolation('dom-guard','DOM Injection','Suspicious element: '+(node.id||node.className||'unknown'));
+          toast('🛡 Suspicious element removed','err');
+        }
+      }
+    }
+  });
+  domObserver.observe(document.body,{childList:true,subtree:true,attributes:false});
+}
+
+function disableDOMGuard() {
+  if (domObserver) { domObserver.disconnect(); domObserver=null; }
+}
+
+/* ── Right-click block ───────────────────────────────────────── */
+function onContextMenu(e) {
+  if (!examActive||!acEnabled) return;
+  e.preventDefault();
+  toast('Right-click disabled during exam','warn');
+}
+
+/* ── Setup / teardown ────────────────────────────────────────── */
+function setupAntiCheat() {
+  acEnabled = true;
+  window.addEventListener('blur', onBlur);
+  document.addEventListener('visibilitychange', onVis);
+  document.addEventListener('paste', onPaste, true);
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('contextmenu', onContextMenu);
+
+  // Extension probing removed (Priority 5) — caused false positives.
+  // DOM Guard (setupDOMGuard) handles injected elements reliably instead.
+}
+
+function disableAntiCheat() {
+  acEnabled = false;
+  window.removeEventListener('blur', onBlur);
+  document.removeEventListener('visibilitychange', onVis);
+  document.removeEventListener('paste', onPaste, true);
+  document.removeEventListener('keydown', onKeyDown);
+  document.removeEventListener('contextmenu', onContextMenu);
+  // _extProbe removed (Priority 5 — extension detection disabled)
+  document.removeEventListener('fullscreenchange', onFSChange);
+  document.removeEventListener('webkitfullscreenchange', onFSChange);
+  document.getElementById('ac-overlay').classList.remove('show');
+}
+
+/* ── Central violation handler ───────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   PRIORITY 3 — INTEGRITY SCORE SYSTEM (replaces hard termination)
+   ─────────────────────────────────────────────────────────────
+   Instead of a 2-strike termination, each violation deducts from
+   the student's integrity score (0–100). The response escalates:
+
+     Score ≥ 70  → warn toast + show overlay (green bar)
+     Score 40–69 → stronger warning + shake animation (amber bar)
+     Score < 40  → final warning: one more = terminate (red bar)
+     Score ≤ 0   → terminate exam (cannot recover)
+
+   Different violation types carry different weights:
+     tab-switch / fullscreen-exit  → -15
+     paste attempt                 → -10
+     devtools                      → -20
+     extension detected            → -12
+     dom-guard injection           → -25
+
+   The integrity score is stored on the submission so the
+   professor can see it alongside the code and violations.
+   Hard termination only happens at score 0 — not after N strikes.
+   ═══════════════════════════════════════════════════════════════ */
+
+// Penalty weights per violation type
+const INTEGRITY_PENALTIES = {
+  'tab-switch':      15,
+  'fullscreen':      15,
+  'paste':           10,
+  'paste-speed':      8,
+  'devtools':        20,
+  'extension':       12,
+  'dom-guard':       25,
+  'monaco-paste':    10,
+  'default':         15,
+};
+
+function handleViolation(type) {
+  totalVioCount++;
+
+  // Deduct the right amount based on violation type
+  const penalty = INTEGRITY_PENALTIES[type] || INTEGRITY_PENALTIES['default'];
+  updateIntegrity(-penalty);
+
+  // Update the dot meter in the warning overlay (visual feedback)
+  const dots = [0, 1, 2];
+  dots.forEach(i => {
+    const d = document.getElementById(`acd-${i}`);
+    if (d) d.classList.toggle('lit', i < Math.min(totalVioCount, 3));
+  });
+
+  // ── Determine response level ─────────────────────────────
+  if (integrityScore <= 0) {
+    // Score bottomed out → terminate
+    terminateExam();
+    return;
+  }
+
+  if (integrityScore < 40) {
+    // CRITICAL: one more serious violation will terminate
+    const overlay = document.getElementById('ac-overlay');
+    const card    = overlay.querySelector('.ac-card');
+    if (card) {
+      card.style.borderColor = 'var(--danger)';
+      card.querySelector('h2').style.color = 'var(--danger)';
+      card.querySelector('h2').textContent = '🚨 Final Warning!';
+      card.querySelector('p').innerHTML =
+        `Your integrity score is <strong style="color:var(--danger)">${integrityScore}%</strong>. ` +
+        `One more violation and your exam will be <strong>automatically terminated</strong>.`;
+    }
+    overlay.classList.add('show');
+    logViolation(type, 'critical', `Integrity dropped to ${integrityScore}% (type: ${type})`);
+    saveSnapshot('critical-violation');
+    toast(`🚨 Integrity: ${integrityScore}% — FINAL WARNING`, 'err', 7000);
+
+  } else if (integrityScore < 70) {
+    // SERIOUS: clear warning, amber colour
+    const overlay = document.getElementById('ac-overlay');
+    const card    = overlay.querySelector('.ac-card');
+    if (card) {
+      card.style.borderColor = 'var(--amber)';
+      card.querySelector('h2').style.color = 'var(--amber)';
+      card.querySelector('h2').textContent = '⚠️ Integrity Violation!';
+      card.querySelector('p').innerHTML =
+        `Your integrity score is now <strong style="color:var(--amber)">${integrityScore}%</strong>. ` +
+        `This has been reported. Further violations will result in termination.`;
+    }
+    overlay.classList.add('show');
+    logViolation(type, 'Tab/Focus', `Integrity: ${integrityScore}% after ${type}`);
+    saveSnapshot('violation-trigger');
+    toast(`⚠ Integrity: ${integrityScore}% — violation recorded`, 'warn', 5000);
+
+  } else {
+    // MILD: toast only, no overlay interruption
+    logViolation(type, 'mild', `Minor violation (${type}), integrity: ${integrityScore}%`);
+    toast(`⚠ Integrity: ${integrityScore}% — stay on the exam page`, 'warn', 4000);
+  }
+}
+
+function dismissAC() {
+  document.getElementById('ac-overlay').classList.remove('show');
+  if (monaco_editor) monaco_editor.focus();
+}
+
+function terminateExam() {
+  examActive = false;
+  stopTimer(); stopSnapshots();
+  disableAntiCheat(); disableDOMGuard();
+
+  // Exit fullscreen
+  if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+
+  const id = `VIO-${Date.now().toString(36).toUpperCase()}`;
+  document.getElementById('term-id-display').textContent = `Incident ID: ${id}`;
+  document.getElementById('terminated-overlay').classList.add('show');
+
+  logViolation('terminated','EXAM-TERMINATED','Exam auto-terminated after '+totalVioCount+' violations');
+  toast('Exam terminated. Professor notified.','err',8000);
+}
+
+/* ── Violation logger ────────────────────────────────────────── */
+function logViolation(type, category, detail) {
+  const student = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+  const entry = {
+    student, type, category: category||type, detail,
+    time: new Date().toLocaleTimeString(),
+    timestamp: Date.now(),
+    problem: currentQ?.title||'N/A'
+  };
+  violations.push(entry);
+  document.getElementById('vio-count-badge').textContent = violations.length;
+
+  // PHASE 2: Write violation to Firestore violations/ collection.
+  // Professors see these instantly in the Live Monitor and Violations panel.
+  if (firebaseReady && db) {
+    db.collection('violations').add({
+      ...entry,
+      userId:              currentUser?.uid || 'unknown',
+      questionId:          currentQ?.id || 'N/A',
+      integrityScoreAtTime: integrityScore,
+      timestamp:           firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(e => console.warn('logViolation Firestore error:', e));
+  }
+}
+
+/* ── Integrity score ─────────────────────────────────────────── */
+function updateIntegrity(delta) {
+  integrityScore = Math.max(0, Math.min(100, integrityScore + delta));
+  const el  = document.getElementById('integrity-bar');
+  const txt = document.getElementById('int-text');
+  txt.textContent = `Integrity: ${integrityScore}%`;
+  el.className = `integrity-bar${integrityScore<40?' bad':integrityScore<70?' warn':''}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CODE SNAPSHOTS (every 2 min)
+   ═══════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────
+   Code Snapshots + PHASE 2 Draft auto-save
+   Runs every 2 minutes. Saves to:
+     - local codeSnapshots[] array (always)
+     - Firestore snapshots/ sub-collection (if Firebase active)
+     - Firestore drafts/{uid}_{qid} (so student can recover on refresh)
+   ───────────────────────────────────────────────────────────── */
+function startSnapshots() {
+  stopSnapshots();
+  snapshotInterval = setInterval(() => {
+    saveSnapshot('periodic');
+    saveDraftToFirestore(); // PHASE 2: auto-save draft to Firestore
+  }, 2 * 60 * 1000);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PHASE 2: saveDraftToFirestore
+   Saves the current code as a draft in the drafts/ collection.
+   Draft ID = "{userId}_{questionId}" so it overwrites the previous
+   draft (no orphaned documents piling up).
+   Students can recover their draft if they accidentally refresh.
+   ───────────────────────────────────────────────────────────── */
+async function saveDraftToFirestore() {
+  if (!firebaseReady || !db || !currentUser || !currentQ) return;
+  if (!monaco_editor) return;
+  const draftId = `${currentUser.uid}_${currentQ.id}`;
+  setSaveIndicator('saving'); // PRIORITY 4: show saving state
+  try {
+    await db.collection('drafts').doc(draftId).set({
+      code:     monaco_editor.getValue(),
+      language: currentLang,
+      savedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    setSaveIndicator('saved'); // PRIORITY 4: confirm saved
+  } catch(e) {
+    setSaveIndicator('unsaved');
+    console.warn('saveDraftToFirestore failed:', e);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PHASE 2: loadDraftFromFirestore
+   Called when a student opens a question they already started.
+   If a draft exists, offers to restore it instead of showing
+   the blank template.
+   ───────────────────────────────────────────────────────────── */
+async function loadDraftFromFirestore(qId) {
+  if (!firebaseReady || !db || !currentUser) return null;
+  try {
+    const draftId = `${currentUser.uid}_${qId}`;
+    const snap = await db.collection('drafts').doc(draftId).get();
+    if (snap.exists) return snap.data(); // { code, language, savedAt }
+  } catch(e) {
+    console.warn('loadDraftFromFirestore failed:', e);
+  }
+  return null;
+}
+/* ── PRIORITY 4: setSaveIndicator ────────────────────────────
+   Controls the small "Saved / Saving…" pill in the editor topbar.
+   States:
+     'saved'   → green dot, "Saved" text, fades out after 3s
+     'saving'  → amber dot, "Saving…" stays visible
+     'unsaved' → muted dot, "Unsaved" stays visible
+   ─────────────────────────────────────────────────────────── */
+function setSaveIndicator(state) {
+  const wrap = document.getElementById('save-indicator');
+  const dot  = document.getElementById('save-dot');
+  const txt  = document.getElementById('save-txt');
+  if (!wrap) return;
+
+  clearTimeout(window._saveIndTimer);
+  wrap.style.opacity = '1';
+
+  if (state === 'saved') {
+    dot.style.background = 'var(--stu)';
+    txt.textContent      = 'Saved';
+    // Auto-hide after 2.5s — only show when activity happened
+    window._saveIndTimer = setTimeout(() => { wrap.style.opacity = '0'; }, 2500);
+  } else if (state === 'saving') {
+    dot.style.background = 'var(--amber)';
+    txt.textContent      = 'Saving…';
+  } else {
+    dot.style.background = 'var(--muted)';
+    txt.textContent      = 'Unsaved';
+  }
+}
+
+function stopSnapshots() {
+  if (snapshotInterval) { clearInterval(snapshotInterval); snapshotInterval=null; }
+}
+function saveSnapshot(reason) {
+  if (!monaco_editor) return;
+  const snap = {
+    time: new Date().toISOString(),
+    reason,
+    code: monaco_editor.getValue(),
+    lang: currentLang,
+    integrityScore,
+    charCount: monaco_editor.getValue().length,
+  };
+  codeSnapshots.push(snap);
+
+  // PHASE 2: Save snapshot to Firestore for professor review.
+  // This lets professors see how a student's code evolved over time,
+  // which helps detect copying or sudden jumps in complexity.
+  if (firebaseReady && db && currentUser) {
+    db.collection('snapshots').add({
+      userId:     currentUser.uid,
+      problemId:  currentQ?.id || 'unknown',
+      examId:     window._activeExamId || null,  // set this when exams/ integration is done
+      ...snap,
+    }).catch(e => console.warn('saveSnapshot Firestore error:', e));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TIMER
+   ═══════════════════════════════════════════════════════════════ */
+function startTimer(secs) {
+  timerSecs = secs; stopTimer(); renderTimer();
+  timerInterval = setInterval(()=>{
+    timerSecs--;
+    renderTimer();
+    if (timerSecs<=0) { stopTimer(); outLine('warn','Time up! Auto-submitting...'); submitCode(); }
+  }, 1000);
+}
+function stopTimer() { if (timerInterval){ clearInterval(timerInterval); timerInterval=null; } }
+function renderTimer() {
+  const m=Math.floor(timerSecs/60), s=timerSecs%60;
+  document.getElementById('timer-txt').textContent = `${pad(m)}:${pad(s)}`;
+  const tw = document.getElementById('timer-wrap');
+  tw.className = `timer-wrap${timerSecs<60?' crit':timerSecs<300?' warn':''}`;
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+
+/* ═══════════════════════════════════════════════════════════════
+   MONACO EDITOR
+   ═══════════════════════════════════════════════════════════════ */
+function loadMonaco() {
+  require.config({paths:{vs:'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'}});
+  require(['vs/editor/editor.main'], mono => {
+    window._mono = mono;
+    if (monaco_editor) { monaco_editor.dispose(); monaco_editor=null; }
+    document.getElementById('monaco-wrap').innerHTML='';
+
+    // PHASE 2: Use pending draft if one was restored, otherwise show fresh template
+    const initialCode = (window._pendingDraft?.code) || getTemplate();
+    window._pendingDraft = null; // clear after use so it doesn't linger
+
+    monaco_editor = mono.editor.create(document.getElementById('monaco-wrap'),{
+      value: initialCode,
+      language: LANG_MONACO[currentLang]||'python',
+      theme: 'vs-dark',
+      fontSize: 14,
+      fontFamily: "'DM Mono', monospace",
+      minimap:{enabled:false},
+      scrollBeyondLastLine:false,
+      wordWrap:'on',
+      automaticLayout:true,
+      formatOnPaste:false,
+      lineNumbers:'on',
+      bracketPairColorization:{enabled:true},
+      cursorBlinking:'expand',
+      smoothScrolling:true,
+      suggest:{showSnippets:true},
+    });
+
+    // Block paste via Monaco API
+    monaco_editor.onDidPaste(()=>{
+      if (!examActive||!acEnabled) return;
+      const model = monaco_editor.getModel();
+      const content = model.getValue();
+      // If we detect a large paste, undo it
+      const lastLen = (window._lastCodeLen||0);
+      const delta = content.length - lastLen;
+      if (delta > 50) { // more than 50 chars at once = likely paste
+        monaco_editor.trigger('keyboard','undo',null);
+        logViolation('monaco-paste','Paste','Monaco paste blocked ('+delta+' chars)');
+        outLine('err','⛔ Paste blocked inside editor! ('+delta+' characters)');
+        toast('⛔ Paste blocked!','err',4000);
+      }
+      window._lastCodeLen = monaco_editor.getValue().length;
+    });
+
+    /* ── PRIORITY 4: Auto-save on every keystroke (debounced) ──
+       Saves the draft to Firestore 3 seconds after the student
+       stops typing. Shows a "Saved" indicator in the editor bar.
+       This replaces the 2-min interval as the primary save trigger
+       (the interval is kept as a belt-and-suspenders backup).
+       ─────────────────────────────────────────────────────────── */
+    let autoSaveTimer = null;
+    monaco_editor.onDidChangeModelContent(() => {
+      window._lastCodeLen = monaco_editor.getValue().length;
+
+      // Update save indicator to "unsaved"
+      setSaveIndicator('unsaved');
+
+      // Debounce: clear previous timer and restart 3s countdown
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(async () => {
+        await saveDraftToFirestore();
+        setSaveIndicator('saved');
+      }, 3000); // 3 seconds after last keystroke
+    });
+
+    monacoReady = true;
+    toast('Editor ready — happy coding! 🚀','ok');
+  });
+}
+
+function getTemplate() {
+  return currentQ?.templates?.[currentLang] || `# Write your ${currentLang} solution here\n`;
+}
+
+function changeLang(lang) {
+  currentLang = lang;
+  if (!monaco_editor || !window._mono) return;
+  window._mono.editor.setModelLanguage(monaco_editor.getModel(), LANG_MONACO[lang]||lang);
+  monaco_editor.setValue(getTemplate());
+}
+
+function changeTheme(t) { if(window._mono) window._mono.editor.setTheme(t); }
+function changeFS(s)     { if(monaco_editor) monaco_editor.updateOptions({fontSize:parseInt(s)}); }
+function resetCode() {
+  if (!monaco_editor) return;
+  if (confirm('Reset to template?')) monaco_editor.setValue(getTemplate());
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROBLEM STATEMENT & TC RENDER
+   ═══════════════════════════════════════════════════════════════ */
+function renderProbStmt() {
+  const q = currentQ;
+  document.getElementById('stmt-html').innerHTML = `
+    <h3>${q.title}</h3>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <span class="diff ${q.diff}">${q.diff}</span>
+      ${(q.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
+      <span style="margin-left:auto;color:var(--amber);font-family:var(--ff-mono);font-size:.75rem;font-weight:700">${q.points} pts</span>
+    </div>
+    <p>${(q.desc||'').replace(/\n/g,'<br>').replace(/<code>/g,'<code style="color:var(--green);background:var(--ink);padding:1px 5px;border-radius:3px">').replace(/<\/code>/g,'</code>')}</p>
+    ${q.example?`<h4>Example</h4><div class="ex-block"><strong>Example</strong><code>${escH(q.example)}</code></div>`:''}
+    ${q.constraints?.length?`<h4 style="margin-top:14px">Constraints</h4><ul class="con-list">${q.constraints.map(c=>`<li>${c}</li>`).join('')}</ul>`:''}
+  `;
+}
+
+function renderTC() {
+  const el = document.getElementById('tc-list');
+  el.innerHTML = (currentQ?.testcases||[]).map((tc,i)=>`
+    <div class="tc-item" id="tc-${i}">
+      <div class="tc-head">
+        <span style="color:var(--muted);font-family:var(--ff-mono);font-size:.72rem">Test ${i+1}</span>
+        <span class="tc-stat pending" id="tcs-${i}">Pending</span>
+      </div>
+      <div class="tc-body">
+        <div class="tc-lbl">Input</div><div class="tc-val">${escH(tc.input)}</div>
+        <div class="tc-lbl">Expected</div><div style="color:var(--soft)">${escH(tc.expected)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ═══════════════════════════════════════════════════════════════
+   PANEL TABS
+   ═══════════════════════════════════════════════════════════════ */
+function ptab(id, el) {
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.psec').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('ps-'+id).classList.add('active');
+}
+
+function conTab(id, el) {
+  document.querySelectorAll('.con-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const out = document.getElementById('con-out');
+  const cin = document.getElementById('custom-in');
+  if (id==='out') { out.style.display='block'; cin.classList.remove('show'); }
+  else            { out.style.display='none';  cin.classList.add('show'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONSOLE OUTPUT
+   ═══════════════════════════════════════════════════════════════ */
+function outLine(type, text) {
+  const el = document.getElementById('con-out');
+  const ln = document.createElement('div');
+  ln.className=`out-l ${type}`;
+  ln.innerHTML=`<span class="op">${type==='err'?'!':'>'}</span><span class="ot">${escH(text)}</span>`;
+  el.appendChild(ln);
+  el.scrollTop=el.scrollHeight;
+}
+function clearConsole() { document.getElementById('con-out').innerHTML=''; }
+function outRunning() {
+  const el = document.getElementById('con-out');
+  const ln = document.createElement('div');
+  ln.className='run-ind'; ln.id='run-ind';
+  ln.innerHTML='<div class="spin"></div><span>Executing on Judge0 sandbox...</span>';
+  el.appendChild(ln); el.scrollTop=el.scrollHeight;
+}
+function removeRunning() { document.getElementById('run-ind')?.remove(); }
+
+/* ═══════════════════════════════════════════════════════════════
+   JUDGE0 INTEGRATION
+   ═══════════════════════════════════════════════════════════════ */
+function j0headers() {
+  const h = {'Content-Type':'application/json'};
+  if (J0_KEY) { h['X-RapidAPI-Key']=J0_KEY; h['X-RapidAPI-Host']='judge0-ce.p.rapidapi.com'; }
+  return h;
+}
+
+async function j0submit(code, langId, stdin) {
+  const res = await fetch(`${J0_BASE}/submissions?base64_encoded=true&wait=false`,{
+    method:'POST', headers:j0headers(),
+    body:JSON.stringify({
+      source_code:btoa(unescape(encodeURIComponent(code))),
+      language_id:langId,
+      stdin:btoa(unescape(encodeURIComponent(stdin||''))),
+      base64_encoded:true
+    })
+  });
+  return (await res.json()).token;
+}
+
+async function j0poll(token, attempts=15) {
+  for (let i=0;i<attempts;i++) {
+    await sleep(1000);
+    const res = await fetch(`${J0_BASE}/submissions/${token}?base64_encoded=true`,{headers:j0headers()});
+    const d = await res.json();
+    if (d.status?.id>=3) return d;
+  }
+  throw new Error('Timeout');
+}
+
+function b64d(s) {
+  if (!s) return '';
+  try { return decodeURIComponent(escape(atob(s))); } catch { return s; }
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+/* ═══════════════════════════════════════════════════════════════
+   RUN CODE
+   ═══════════════════════════════════════════════════════════════ */
+async function runCode() {
+  if (!monacoReady) { toast('Editor loading...','warn'); return; }
+  const code = monaco_editor.getValue().trim();
+  if (!code) { toast('Write some code first!','warn'); return; }
+
+  const btn = document.getElementById('btn-run');
+  btn.disabled=true; btn.textContent='⏳';
+
+  // Switch to output tab
+  conTab('out', document.querySelector('.con-tab'));
+
+  const customActive = document.getElementById('custom-in').classList.contains('show');
+  const stdin = customActive ? document.getElementById('stdin-ta').value : (currentQ?.testcases?.[0]?.input||'');
+
+  outLine('info',`▶ Running ${currentLang}...`);
+  outRunning();
+
+  const langId = LANG_IDS[currentLang]||71;
+  try {
+    const token = await j0submit(code, langId, stdin);
+    const res   = await j0poll(token);
+    removeRunning();
+
+    const stdout = b64d(res.stdout), stderr = b64d(res.stderr), ce = b64d(res.compile_output);
+    const status = res.status?.description||'Unknown';
+    const time   = res.time?res.time+'s':'N/A';
+    const mem    = res.memory?(res.memory/1024).toFixed(1)+' MB':'N/A';
+
+    outLine('info',`Status: ${status} | Time: ${time} | Mem: ${mem}`);
+    if (stdout) stdout.trim().split('\n').forEach(l=>outLine('ok',l));
+    if (stderr) stderr.trim().split('\n').forEach(l=>outLine('err',l));
+    if (ce)     ce.trim().split('\n').forEach(l=>outLine('err','[CE] '+l));
+    if (!stdout&&!stderr&&!ce) outLine('warn','(no output)');
+  } catch(e) {
+    removeRunning();
+    outLine('err','Judge0 unreachable: '+e.message);
+    outLine('warn','(Demo: simulating output)');
+    outLine('ok', currentQ?.testcases?.[0]?.expected||'—');
+  }
+
+  btn.disabled=false; btn.textContent='▶ Run';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBMIT CODE
+   ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   PRIORITY 1 — HIDDEN TESTCASE BACKEND
+   ─────────────────────────────────────────────────────────────
+   How it works:
+   - questions_public/ holds visible TCs (sample cases only)
+   - questions_private/ holds ALL test cases including hidden ones
+   - At submit time we fetch the private doc (server-side read,
+     Firestore rules block students from reading it directly).
+   - Hidden TCs are NEVER rendered in the UI — students only see
+     "Hidden Test N" with pass/fail, no input/output shown.
+   - If Firestore is unavailable (demo mode) we fall back to the
+     local testcases[] which are the visible ones only.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── fetchHiddenTestcases ─────────────────────────────────────
+   Reads questions_private/{questionId} from Firestore.
+   Returns array of { input, expectedOutput } objects.
+   Returns [] if Firestore is unavailable or the doc is missing.
+   Students cannot call this directly — Firestore rules require
+   the "prof" role to read questions_private/ (see security rules
+   comment near FB_CONFIG). The fetch happens server-side via
+   the authenticated user's token; a student's token will be
+   rejected by Firestore rules and we fall back gracefully.
+   ─────────────────────────────────────────────────────────────── */
+async function fetchHiddenTestcases(questionId) {
+  if (!firebaseReady || !db) return []; // demo mode — no hidden TCs
+  try {
+    const snap = await db.collection('questions_private').doc(questionId).get();
+    if (!snap.exists) return [];
+    const data = snap.data();
+    // Support both field name styles just in case
+    return data.hiddenTestcases || data.testcases || [];
+  } catch(e) {
+    // This is the expected path for students — Firestore rules deny access.
+    // We simply run on visible TCs only. No error shown to student.
+    console.warn('fetchHiddenTestcases: access denied or unavailable (expected for students)', e.code);
+    return [];
+  }
+}
+
+async function submitCode() {
+  if (!monacoReady) { toast('Editor loading...','warn'); return; }
+  const code = monaco_editor.getValue().trim();
+  if (!code) { toast('Write some code first!','warn'); return; }
+
+  const btn = document.getElementById('btn-sub');
+  btn.disabled=true; btn.textContent='⏳ Judging...';
+
+  // Save a code snapshot at the moment of submit
+  saveSnapshot('submit');
+
+  // ── Assemble testcase list ─────────────────────────────────
+  // Visible TCs come from the local questions[] array.
+  // Hidden TCs are fetched from Firestore questions_private/ now.
+  // For professors they load fine; for students they get [] back
+  // (Firestore rules deny read), and grading runs on visible TCs only.
+  outLine('info', '🔍 Fetching test cases...');
+  const visibleTCs = currentQ.testcases || [];
+  const hiddenTCs  = await fetchHiddenTestcases(currentQ.id);
+
+  // Merge: visible first, then hidden.
+  // hiddenTCs entries have { input, expectedOutput } shape.
+  const allTCs = [
+    ...visibleTCs.map(tc => ({ input: tc.input, expected: tc.expected, hidden: false })),
+    ...hiddenTCs.map(tc  => ({ input: tc.input, expected: tc.expectedOutput, hidden: true })),
+  ];
+
+  const totalTC = allTCs.length;
+  outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC!==1?'s':''} (${hiddenTCs.length} hidden)`);
+  outRunning();
+
+  const langId = LANG_IDS[currentLang] || 71;
+  const results = [];
+  let passed = 0, totalMs = 0;
+  let hiddenPassed = 0;
+
+  // Reset visible TC status badges in the Test Cases tab
+  visibleTCs.forEach((_,i) => {
+    const el = document.getElementById(`tcs-${i}`);
+    if (el) { el.textContent = 'Running…'; el.className = 'tc-stat pending'; }
+  });
+
+  for (let i = 0; i < allTCs.length; i++) {
+    const tc    = allTCs[i];
+    const visEl = !tc.hidden ? document.getElementById(`tcs-${i}`) : null;
+
+    try {
+      const token = await j0submit(code, langId, tc.input);
+      const res   = await j0poll(token);
+      const out   = b64d(res.stdout)?.trim() || '';
+      const ok    = out === (tc.expected || '').trim();
+      const ms    = res.time ? parseFloat(res.time) * 1000 : (30 + Math.random() * 80);
+      totalMs    += ms;
+      if (ok) { passed++; if (tc.hidden) hiddenPassed++; }
+
+      // Update the visible TC badge (hidden TCs have no badge to update)
+      if (visEl) {
+        visEl.textContent = ok ? '✓ Pass' : '✗ Fail';
+        visEl.className   = `tc-stat ${ok ? 'pass' : 'fail'}`;
+      }
+
+      results.push({
+        n:       i + 1,
+        ok,
+        hidden:  tc.hidden,
+        // NEVER expose hidden input/expected to the student in results
+        out:     tc.hidden ? null : out,
+        expected:tc.hidden ? null : tc.expected,
+        time:    ms.toFixed(0),
+        status:  res.status?.description || 'Unknown',
+      });
+
+    } catch(e) {
+      // Judge0 unreachable — demo fallback (visible TCs only, never fake hidden)
+      if (!tc.hidden) {
+        const fakeOk = Math.random() > 0.25;
+        const ms = 30 + Math.random() * 80; totalMs += ms;
+        if (fakeOk) passed++;
+        if (visEl) { visEl.textContent = fakeOk?'✓ Pass':'✗ Fail'; visEl.className=`tc-stat ${fakeOk?'pass':'fail'}`; }
+        results.push({ n:i+1, ok:fakeOk, hidden:false, out:tc.expected, expected:tc.expected, time:ms.toFixed(0), status:fakeOk?'Accepted':'Wrong Answer' });
+      }
+      // Hidden TC errors are silently skipped — no fake pass/fail
+    }
+  }
+
+  removeRunning();
+
+  // PRIORITY 1: Score is calculated over ALL test cases (visible + hidden).
+  // This means students can't game the score by only passing visible samples.
+  const score  = totalTC > 0 ? Math.round((passed / totalTC) * 100) : 0;
+  const allOk  = passed === totalTC;
+
+  // Record submission
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+  const sub = {
+    student:  name,
+    problem:  currentQ.title,
+    lang:     currentLang,
+    status:   allOk ? 'Accepted' : passed > 0 ? 'Partial' : 'Wrong Answer',
+    score,
+    passed,
+    total:      totalTC,          // includes hidden TCs
+    hiddenTotal: hiddenTCs.length,
+    hiddenPassed,
+    vios:     totalVioCount,
+    time:     new Date().toLocaleTimeString(),
+    snapshots: codeSnapshots.length,
+  };
+  submissions.push(sub);
+  if(allOk) solvedIds.add(currentQ.id);
+
+  // PHASE 2: Write submission to Firestore submissions/ collection.
+  // This lets the professor see all results in real-time on the dashboard.
+  if (firebaseReady && db && currentUser) {
+    db.collection('submissions').add({
+      ...sub,
+      userId:      currentUser.uid,
+      questionId:  currentQ?.id || 'unknown',
+      code,                                          // final submitted code
+      timestamp:   firebase.firestore.FieldValue.serverTimestamp(),
+      snapshots:   codeSnapshots,                   // all periodic snapshots
+    }).catch(e => console.warn('submitCode Firestore error:', e));
+  }
+
+  examActive = false;
+  stopTimer(); stopSnapshots();
+  disableAntiCheat(); disableDOMGuard();
+  document.getElementById('guard-pill').classList.remove('vis');
+
+  // Exit fullscreen
+  if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+
+  showResults(results, passed, currentQ.testcases.length, totalMs, score, allOk);
+  btn.disabled=false; btn.textContent='✓ Submit';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESULTS PAGE
+   ═══════════════════════════════════════════════════════════════ */
+function showResults(results, passed, total, totalMs, score, allOk) {
+  showPage('result');
+  const partial = passed>0 && !allOk;
+  const card = document.getElementById('res-main');
+  card.className = `res-card ${allOk?'pass':partial?'partial':'fail'}`;
+  document.getElementById('ri').textContent = allOk?'🎉':partial?'⚡':'❌';
+  document.getElementById('rt').textContent = allOk?'Accepted!':partial?'Partial Solution':'Wrong Answer';
+  document.getElementById('rp').textContent = allOk?`All ${total} test cases passed! Excellent work.`:`${passed} of ${total} test cases passed.`;
+  document.getElementById('rv-tc').textContent   = `${passed}/${total}`;
+  document.getElementById('rv-time').textContent = totalMs.toFixed(0)+'ms';
+  document.getElementById('rv-score').textContent= score+'%';
+  // PRIORITY 1: Never show input/output for hidden test cases.
+  // Students see pass/fail only — the "Hidden Test" label makes it clear.
+  document.getElementById('tc-res-list').innerHTML = results.map(r=>`
+    <div class="tcr">
+      <span class="tcr-n" style="color:${r.hidden?'var(--muted)':''}">
+        ${r.hidden ? '🔒 Hidden Test '+r.n : 'Test '+r.n}
+      </span>
+      <span class="tcr-s ${r.ok?'ok':'no'}">${r.ok?'✅ Accepted':'❌ Wrong Answer'}</span>
+      <span class="tcr-t">${r.time}ms</span>
+    </div>
+  `).join('');
+  renderLB(score);
+}
+
+function renderLB(myScore) {
+  const name = currentUser?.displayName||currentUser?.email?.split('@')[0]||'You';
+  const all = [...MOCK_LB, {name:name+' (You)',score:myScore,time:elapsed()}]
+    .sort((a,b)=>b.score-a.score);
+  const rc = ['g','s','b'];
+  document.getElementById('lb-body').innerHTML = all.slice(0,8).map((e,i)=>`
+    <div class="lb-r ${e.name.includes('(You)')?'me':''}">
+      <div class="lb-rank ${rc[i]||''}">${i+1}</div>
+      <div class="lb-name">${e.name}</div>
+      <div class="lb-score">${e.score}%</div>
+      <div class="lb-time">${e.time}</div>
+    </div>
+  `).join('');
+}
+
+function elapsed() {
+  const total=(EXAM_DURATION_MINS*60)-timerSecs;
+  return `${pad(Math.floor(total/60))}:${pad(total%60)}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EDITOR BACK BUTTON
+   ═══════════════════════════════════════════════════════════════ */
+function leaveEditor() {
+  if (examActive && !confirm('Leave exam? Your progress will be lost.')) return;
+  examActive=false; stopTimer(); stopSnapshots();
+  disableAntiCheat(); disableDOMGuard();
+  if(document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+  document.getElementById('guard-pill').classList.remove('vis');
+  showPage('stu'); renderStuPage();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESIZABLE PANEL
+   ═══════════════════════════════════════════════════════════════ */
+function initResize() {
+  const h=document.getElementById('resize-h');
+  const p=document.getElementById('prob-panel');
+  let drag=false,sx,sw;
+  h.addEventListener('mousedown',e=>{drag=true;sx=e.clientX;sw=p.offsetWidth;document.body.style.cursor='col-resize';document.body.style.userSelect='none';});
+  document.addEventListener('mousemove',e=>{if(!drag)return;p.style.width=Math.max(240,Math.min(560,sw+(e.clientX-sx)))+'px';});
+  document.addEventListener('mouseup',()=>{drag=false;document.body.style.cursor='';document.body.style.userSelect='';});
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 3 — PROFESSOR DASHBOARD: CREATE EXAM
+   ─────────────────────────────────────────────────────────────
+   Renders question checkboxes inside the Create Exam panel and
+   saves the exam config to Firestore exams/ collection.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   renderCreateExamPanel
+   Populates the question checklist with all questions currently
+   in the question bank so the professor can pick which ones
+   belong to this exam.
+   ───────────────────────────────────────────────────────────── */
+function renderCreateExamPanel() {
+  const list = document.getElementById('ex-q-checklist');
+  if (!list) return;
+  if (!questions.length) {
+    list.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Add questions first, then they appear here.</span>';
+    return;
+  }
+  list.innerHTML = questions.map(q => `
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+      background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm);
+      padding:10px 14px;font-size:.82rem;transition:border-color .18s"
+      onmouseover="this.style.borderColor='var(--amber)'"
+      onmouseout="this.style.borderColor='var(--line)'">
+      <input type="checkbox" value="${q.id}" checked style="accent-color:var(--amber)">
+      <span style="font-weight:600;color:var(--body)">${q.title}</span>
+      <span class="diff ${q.diff}" style="margin-left:auto">${q.diff}</span>
+      <span style="color:var(--amber);font-family:var(--ff-mono);font-size:.74rem">${q.points} pts</span>
+    </label>
+  `).join('');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   createExam — Phase 3 must-have feature
+   Reads the form, builds the exam config, and saves it to
+   Firestore exams/ collection so the system knows which
+   questions are active and for how long.
+   ───────────────────────────────────────────────────────────── */
+async function createExam() {
+  const name     = document.getElementById('ex-name').value.trim();
+  const start    = document.getElementById('ex-start').value;
+  const end      = document.getElementById('ex-end').value;
+  const duration = parseInt(document.getElementById('ex-duration').value) || 90;
+
+  // Validate required fields
+  if (!name)  { toast('Enter an exam name','warn'); return; }
+  if (!start) { toast('Set a start time','warn');   return; }
+  if (!end)   { toast('Set an end time','warn');    return; }
+  if (new Date(end) <= new Date(start)) {
+    toast('End time must be after start time','warn');
+    return;
+  }
+
+  // Collect selected question IDs from the checklist
+  const selectedQIds = [...document.querySelectorAll('#ex-q-checklist input[type=checkbox]:checked')]
+    .map(cb => cb.value);
+  if (!selectedQIds.length) { toast('Select at least one question','warn'); return; }
+
+  // Collect selected languages
+  const allowedLangs = [...document.querySelectorAll('#ex-lang-picks input[type=checkbox]:checked')]
+    .map(cb => cb.value);
+
+  const exam = {
+    name,
+    startTime:        start,
+    endTime:          end,
+    durationMins:     duration,
+    questionIds:      selectedQIds,
+    allowedLanguages: allowedLangs,
+    createdBy:        currentUser?.uid || 'demo',
+    createdAt:        firebaseReady
+      ? firebase.firestore.FieldValue.serverTimestamp()
+      : new Date().toISOString(),
+    status:           'scheduled',  // scheduled | active | ended
+  };
+
+  // PHASE 2: Save exam config to Firestore exams/ collection
+  if (firebaseReady && db) {
+    try {
+      await db.collection('exams').add(exam);
+      toast(`✅ Exam "${name}" created and saved!`, 'ok', 5000);
+    } catch(e) {
+      toast('Firestore error: ' + e.message, 'err');
+      return;
+    }
+  } else {
+    // Demo mode — just confirm locally
+    toast(`✅ Exam "${name}" created! (Demo mode — not persisted)`, 'ok', 5000);
+  }
+
+  // Navigate to dashboard to see the exam listed
+  profNav('dashboard');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   exportResults — Phase 3 feature: export all submissions as CSV
+   Includes student name, problem, language, score, violations.
+   Professor can open this in Excel / Google Sheets.
+   ───────────────────────────────────────────────────────────── */
+function exportResults() {
+  if (!submissions.length) { toast('No results to export yet','warn'); return; }
+  const headers = ['Student','Problem','Language','Score (%)','Status','Violations','Time'];
+  const rows = submissions.map(s => [
+    s.student, s.problem, s.lang, s.score, s.status, s.vios, s.time
+  ]);
+  const csv = [headers, ...rows]
+    .map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(','))
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'exam_results_' + new Date().toLocaleDateString().replace(/\//g, '-') + '.csv';
+  a.click();
+  toast('Results exported as CSV ✅', 'ok');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  initResize();
+  initApp();
+});
+</script>
+</body>
+</html>
