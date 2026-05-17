@@ -2350,8 +2350,73 @@ function onFSChange() {
 let acEnabled = false;
 
 /* ── 1. Tab switch (blur + visibilitychange) ─────────────────── */
-function onBlur()  { if (examActive && acEnabled) handleViolation('tab-switch'); }
-function onVis()   { if (examActive && acEnabled && document.visibilityState==='hidden') handleViolation('tab-switch'); }
+/*
+  "Always Active Window" extensions spoof focus by:
+    • intercepting blur and suppressing it entirely, OR
+    • firing blur + immediate focus to fake a rapid recovery.
+
+  We defend in three layers:
+    a) hasFocus polling — if the page CLAIMS to be visible but
+       hasFocus() returns false for >2 s, a spoofer is likely active.
+    b) Blur/vis cross-check — a blur with no matching visibilitychange
+       is suspicious when visibility stays "visible" (spoofer blocked blur
+       from propagating but forgot to fake visibilityState).
+    c) Hidden-count drift — if the tab goes hidden many times without
+       any matching blur, we log a "focus-spoof" violation.
+*/
+let _lastBlurTime    = 0;
+let _lastHiddenTime  = 0;
+let _hiddenNoBlurCnt = 0;
+let _focusPollTimer  = null;
+
+function _startFocusPoll() {
+  _stopFocusPoll();
+  _focusPollTimer = setInterval(() => {
+    if (!examActive || !acEnabled) return;
+    // If page is visible but genuinely lacks focus for > 2 s, that's wrong
+    if (document.visibilityState === 'visible' && !document.hasFocus()) {
+      const gap = Date.now() - _lastBlurTime;
+      if (gap > 2000) {   // blur happened > 2 s ago with no recovery
+        logViolation('tab-switch','FocusSpoof','hasFocus()=false while visible — possible Always-Active-Window extension');
+        handleViolation('tab-switch');
+        _lastBlurTime = Date.now(); // reset so we don't spam
+      }
+    }
+  }, 2500);
+}
+function _stopFocusPoll() {
+  if (_focusPollTimer) { clearInterval(_focusPollTimer); _focusPollTimer = null; }
+}
+
+function onBlur() {
+  if (!examActive || !acEnabled) return;
+  _lastBlurTime = Date.now();
+  // Only fire a violation if visibility is also hidden (real switch).
+  // If visibility stays "visible" while we got a blur, that alone is not
+  // enough to penalise (could be a legitimate OS dialog); the focus poll
+  // will catch prolonged focus loss.
+  if (document.visibilityState === 'hidden') {
+    handleViolation('tab-switch');
+  }
+}
+
+function onVis() {
+  if (!examActive || !acEnabled) return;
+  if (document.visibilityState === 'hidden') {
+    _lastHiddenTime = Date.now();
+    // If there was no recent blur (within 800 ms) before going hidden,
+    // an extension may have suppressed the blur event.
+    const blurGap = _lastHiddenTime - _lastBlurTime;
+    if (blurGap > 800) {
+      _hiddenNoBlurCnt++;
+      if (_hiddenNoBlurCnt >= 2) {
+        logViolation('tab-switch','FocusSpoof','visibilitychange hidden without preceding blur — extension may be suppressing blur events');
+        _hiddenNoBlurCnt = 0;
+      }
+    }
+    handleViolation('tab-switch');
+  }
+}
 
 /* ── 2. Paste block ──────────────────────────────────────────── */
 function onPaste(e) {
@@ -2427,32 +2492,69 @@ function onKeyDown(e) {
 // The setInterval that called probeExtensions is also removed below.
 
 /* ── 5. DOM Guard (MutationObserver) ─────────────────────────── */
+/*
+  Watches the entire document (not just body) so we catch scripts
+  injected into <head> as well as <body>.
+
+  Removal targets:
+    • <iframe> / <object>  — injected overlays / AI panels
+    • <script> with a src  — injected remote scripts
+    • elements whose id/class/text match AI-assistant signatures
+
+  Injected inline <script> tags (no src) are NOT removed because
+  they execute synchronously before the observer fires; we log them
+  instead so the professor can review.
+*/
 function setupDOMGuard() {
   disableDOMGuard();
   const SUSPICIOUS = ['gpt','copilot','ai-assist','tabnine','codeium','cheat','answer'];
   domObserver = new MutationObserver(mutations => {
     for (const m of mutations) {
       for (const node of m.addedNodes) {
-        if (node.nodeType !== 1) continue;
-        const sus = SUSPICIOUS.some(p =>
-          (node.id||'').toLowerCase().includes(p) ||
-          String(node.className||'').toLowerCase().includes(p) ||
-          (node.textContent||'').toLowerCase().includes(p+'assist')
-        );
-        if (node.tagName==='IFRAME' || node.tagName==='OBJECT') {
+        if (node.nodeType !== 1) continue;   // elements only
+
+        // ── Injected iframes / objects ───────────────────────────
+        if (node.tagName === 'IFRAME' || node.tagName === 'OBJECT') {
           node.remove();
           logViolation('dom-guard','DOM Injection','Iframe/Object injected');
+          handleViolation('dom-guard');
           toast('🛡 Injected frame blocked','err'); continue;
         }
+
+        // ── Injected remote scripts ──────────────────────────────
+        if (node.tagName === 'SCRIPT' && node.src) {
+          // Log before removal so we capture the src
+          const src = node.src;
+          node.remove();
+          logViolation('dom-guard','Script Injection',`Remote script injected: ${src}`);
+          handleViolation('dom-guard');
+          toast('🛡 Injected script blocked','err'); continue;
+        }
+
+        // ── Inline scripts (already executed — log only) ─────────
+        if (node.tagName === 'SCRIPT' && !node.src) {
+          logViolation('dom-guard','Script Injection','Inline script injected (already executed)');
+          // No penalty — could be a legitimate browser extension init
+          continue;
+        }
+
+        // ── AI-assistant UI elements ─────────────────────────────
+        const sus = SUSPICIOUS.some(p =>
+          (node.id   || '').toLowerCase().includes(p) ||
+          String(node.className || '').toLowerCase().includes(p) ||
+          (node.textContent || '').toLowerCase().includes(p + 'assist')
+        );
         if (sus) {
           node.remove();
-          logViolation('dom-guard','DOM Injection','Suspicious element: '+(node.id||node.className||'unknown'));
+          logViolation('dom-guard','DOM Injection','Suspicious element: ' + (node.id || node.className || 'unknown'));
+          handleViolation('dom-guard');
           toast('🛡 Suspicious element removed','err');
         }
       }
     }
   });
-  domObserver.observe(document.body,{childList:true,subtree:true,attributes:false});
+  // Observe the full document (head + body) so injected <head> scripts are caught
+  domObserver.observe(document.documentElement, {childList:true, subtree:true, attributes:false});
 }
 
 function disableDOMGuard() {
@@ -2469,24 +2571,24 @@ function onContextMenu(e) {
 /* ── Setup / teardown ────────────────────────────────────────── */
 function setupAntiCheat() {
   acEnabled = true;
+  _lastBlurTime = _lastHiddenTime = Date.now();
+  _hiddenNoBlurCnt = 0;
   window.addEventListener('blur', onBlur);
   document.addEventListener('visibilitychange', onVis);
   document.addEventListener('paste', onPaste, true);
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('contextmenu', onContextMenu);
-
-  // Extension probing removed (Priority 5) — caused false positives.
-  // DOM Guard (setupDOMGuard) handles injected elements reliably instead.
+  _startFocusPoll();   // ← layer (a): poll for focus spoofing every 2.5 s
 }
 
 function disableAntiCheat() {
   acEnabled = false;
+  _stopFocusPoll();
   window.removeEventListener('blur', onBlur);
   document.removeEventListener('visibilitychange', onVis);
   document.removeEventListener('paste', onPaste, true);
   document.removeEventListener('keydown', onKeyDown);
   document.removeEventListener('contextmenu', onContextMenu);
-  // _extProbe removed (Priority 5 — extension detection disabled)
   document.removeEventListener('fullscreenchange', onFSChange);
   document.removeEventListener('webkitfullscreenchange', onFSChange);
   document.getElementById('ac-overlay').classList.remove('show');
@@ -2524,7 +2626,7 @@ const INTEGRITY_PENALTIES = {
   'paste-speed':      8,
   'devtools':        20,
   'extension':       12,
-  'dom-guard':       25,
+  'dom-guard':       25,   // injected frame/script removal
   'monaco-paste':    10,
   'default':         15,
 };
