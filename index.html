@@ -1607,7 +1607,15 @@ async function loadQuestionsFromFirestore() {
       .get();
     if (!snap.empty) {
       // Replace local demo questions with live Firestore data
-      questions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      questions = snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          ...d,
+          tags:      Array.isArray(d.tags)      ? d.tags      : [],
+          testcases: Array.isArray(d.testcases)  ? d.testcases : [],  // testcases live in questions_private; public docs may omit them
+        };
+      });
     }
     // If questions_public is empty, demo questions stay as fallback
   } catch(e) {
@@ -2061,7 +2069,7 @@ function renderQList() {
       <div style="font-family:var(--ff-mono);font-size:.72rem;color:var(--muted);width:28px">${i+1}</div>
       <div class="q-row-info">
         <div class="q-row-title">${q.title}</div>
-        <div class="q-row-meta">${q.tags.join(' · ')} · ${q.points} pts · ${q.testcases.length} test cases</div>
+        <div class="q-row-meta">${(q.tags||[]).join(' · ')} · ${q.points} pts · ${(q.testcases||[]).length} test cases</div>
       </div>
       <span class="diff ${q.diff}">${q.diff}</span>
       <div class="q-row-actions">
