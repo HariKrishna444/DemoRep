@@ -1610,7 +1610,21 @@ async function loadQuestionsFromFirestore() {
       .get();
     if (!snap.empty) {
       // Replace local demo questions with live Firestore data
-      questions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      questions = snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id:          doc.id,
+          title:       d.title        || '',
+          desc:        d.description  || d.desc    || '',   // saved as 'description'
+          example:     d.exampleInput || d.example || '',   // saved as 'exampleInput'
+          constraints: Array.isArray(d.constraints) ? d.constraints : [],
+          points:      d.marks        ?? d.points  ?? 0,    // saved as 'marks'
+          diff:        d.difficulty   || d.diff    || 'easy', // saved as 'difficulty'
+          tags:        Array.isArray(d.tags)      ? d.tags      : [],
+          testcases:   Array.isArray(d.testcases) ? d.testcases : [],
+          templates:   d.templates    || {},
+        };
+      });
     }
     // If questions_public is empty, demo questions stay as fallback
   } catch(e) {
@@ -2072,7 +2086,7 @@ function renderQList() {
       <div style="font-family:var(--ff-mono);font-size:.72rem;color:var(--muted);width:28px">${i+1}</div>
       <div class="q-row-info">
         <div class="q-row-title">${q.title}</div>
-        <div class="q-row-meta">${q.tags.join(' · ')} · ${q.points} pts · ${q.testcases.length} test cases</div>
+        <div class="q-row-meta">${(q.tags||[]).join(' · ')} · ${q.points} pts · ${(q.testcases||[]).length} test cases</div>
       </div>
       <span class="diff ${q.diff}">${q.diff}</span>
       <div class="q-row-actions">
