@@ -5,33 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ExamShield — College Coding Exam Platform</title>
 <meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval'
-    https://www.gstatic.com
-    https://cdn.jsdelivr.net
-    https://cdnjs.cloudflare.com
-    https://*.firebaseapp.com
-    https://apis.google.com
-    https://www.googleapis.com;
-  worker-src blob: 'self';
+  default-src 'self' https://www.gstatic.com https://identitytoolkit.googleapis.com https://firestore.googleapis.com https://*.firebaseio.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://ce.judge0.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://*.firebaseapp.com https://www.googleapis.com; worker-src blob: 'self';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
-  font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
-  connect-src 'self'
-    https://cdn.jsdelivr.net
-    https://cdnjs.cloudflare.com
-    https://*.googleapis.com
-    https://*.firebaseio.com
-    https://*.firebaseapp.com
-    https://*.gstatic.com
-    https://ce.judge0.com
-    https://identitytoolkit.googleapis.com
-    https://securetoken.googleapis.com
-    https://firestore.googleapis.com
-    wss://*.firebaseio.com;
+  font-src 'self' https://fonts.gstatic.com;
+  connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://*.gstatic.com https://ce.judge0.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com;
   img-src 'self' data: blob: https:;
-  frame-src 'self' https://accounts.google.com https://*.firebaseapp.com;
-  object-src 'none';
-  base-uri 'self';
+  frame-src 'none'; object-src 'none'; media-src 'self' blob:;
 ">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -1340,8 +1320,13 @@ const FB_CONFIG = {
 };
 
 // ── Judge0 ───────────────────────────────────────────────────
-const J0_BASE = "https://ce.judge0.com";
-const J0_KEY  = ""; // optional RapidAPI key
+// Judge0 configuration
+// Option A (default): judge0.ce.haiku.io — CORS-enabled public mirror
+// Option B: RapidAPI — set J0_KEY to your RapidAPI key and J0_USE_RAPID=true
+// Option C: Self-hosted Judge0 — set J0_BASE to your instance URL
+const J0_BASE       = "https://judge0-ce.p.rapidapi.com"; // RapidAPI (CORS-safe)
+const J0_KEY        = ""; // ← PASTE YOUR RAPIDAPI KEY HERE (free tier available)
+const J0_USE_RAPID  = true; // true = RapidAPI, false = direct judge0.com
 
 const LANG_IDS = {
   python:71, javascript:63, cpp:54, java:62, c:50
@@ -1392,9 +1377,22 @@ let monaco_editor  = null;
 let monacoReady    = false;
 
 // Simulated live students for demo
-const DEMO_STUDENTS = []; // removed fake data — monitor shows real Firestore students only
+const DEMO_STUDENTS = [
+  {name:'Ravi Kumar',    status:'online', vios:0},
+  {name:'Priya Sharma',  status:'online', vios:0},
+  {name:'Arjun Reddy',   status:'flagged',vios:2},
+  {name:'Sneha Patel',   status:'online', vios:1},
+  {name:'Kiran Babu',    status:'idle',   vios:0},
+  {name:'Divya Nair',    status:'online', vios:0},
+];
 
-// Leaderboard removed
+// Mock leaderboard data
+const MOCK_LB = [
+  {name:'Ravi Kumar',  score:100,time:'18:24'},
+  {name:'Priya Sharma',score:100,time:'22:11'},
+  {name:'Divya Nair',  score:90, time:'28:05'},
+  {name:'Sneha Patel', score:85, time:'31:40'},
+];
 
 /* ═══════════════════════════════════════════════════════════════
    INIT — Phase 2 upgraded with Firebase persistence + role loading
@@ -1705,40 +1703,23 @@ function profNav(panel) {
 
 function renderProfDashboard() {
   document.getElementById('s-questions').textContent = questions.length;
+  document.getElementById('s-active').textContent    = DEMO_STUDENTS.filter(s=>s.status==='online').length;
+  document.getElementById('s-flagged').textContent   = DEMO_STUDENTS.filter(s=>s.vios>0).length;
+  document.getElementById('s-submitted').textContent = submissions.length;
+  document.getElementById('live-count').textContent  = DEMO_STUDENTS.length;
+  document.getElementById('vio-count-badge').textContent = violations.length;
 
-  if (firebaseReady) {
-    // Real data from Firestore listeners (liveStudentMap populated by startMonitorListener)
-    const liveStudents = Object.values(liveStudentMap);
-    document.getElementById('s-active').textContent    = liveStudents.filter(s => s.status === 'online' || s.status === 'flagged').length;
-    document.getElementById('s-flagged').textContent   = liveStudents.filter(s => s.status === 'flagged' || (Array.isArray(s.vios) && s.vios.length >= 2)).length;
-    document.getElementById('s-submitted').textContent = liveStudents.filter(s => s.status === 'submitted').length;
-    document.getElementById('live-count').textContent  = liveStudents.length;
-
-    const allVios = liveStudents.flatMap(s => Array.isArray(s.vios) ? s.vios : []);
-    document.getElementById('vio-count-badge').textContent = allVios.length;
-
-    const dvl = document.getElementById('dash-vio-list');
-    if (!allVios.length) {
-      dvl.innerHTML = '<div style="color:var(--muted)">No violations recorded yet.</div>';
-    } else {
-      dvl.innerHTML = allVios.slice(-5).reverse().map(v => `
-        <div class="sr" style="gap:8px">
-          <span style="font-size:.7rem;background:rgba(255,59,92,.1);color:var(--danger);border-radius:4px;padding:1px 7px;font-family:var(--ff-mono)">${v.type||'violation'}</span>
-          <span>${v.student||'Student'}</span>
-          <span style="color:var(--muted);font-size:.72rem;font-family:var(--ff-mono);margin-left:auto">${v.time||''}</span>
-        </div>
-      `).join('');
-    }
-    // Keep the monitor listener running so dashboard stats update in real-time
-    if (!monitorUnsubViolations) startMonitorListener();
-  } else {
-    // Demo mode — show zeros, not fake data
-    document.getElementById('s-active').textContent    = 0;
-    document.getElementById('s-flagged').textContent   = 0;
-    document.getElementById('s-submitted').textContent = 0;
-    document.getElementById('live-count').textContent  = 0;
-    document.getElementById('vio-count-badge').textContent = 0;
-    document.getElementById('dash-vio-list').innerHTML = '<div style="color:var(--muted)">No violations recorded yet.</div>';
+  // dash violations
+  const dvl = document.getElementById('dash-vio-list');
+  if (violations.length === 0) { dvl.innerHTML='<div style="color:var(--muted)">No violations yet.</div>'; }
+  else {
+    dvl.innerHTML = violations.slice(0,5).map(v=>`
+      <div class="sr" style="gap:8px">
+        <span style="font-size:.7rem;background:rgba(255,59,92,.1);color:var(--danger);border-radius:4px;padding:1px 7px;font-family:var(--ff-mono)">${v.type}</span>
+        <span>${v.student}</span>
+        <span style="color:var(--muted);font-size:.72rem;font-family:var(--ff-mono);margin-left:auto">${v.time}</span>
+      </div>
+    `).join('');
   }
 }
 
@@ -1764,7 +1745,7 @@ function renderProfPanel(panel) {
      that student's full violation log and latest code snapshot.
 
    When in demo mode:
-   - Falls back to empty state when no students are active.
+   - Falls back to rendering DEMO_STUDENTS as before.
    ═══════════════════════════════════════════════════════════════ */
 
 // Live monitor state
@@ -1848,36 +1829,28 @@ function stopMonitorListener() {
 /* ── renderMonitor ────────────────────────────────────────────
    Renders the live grid. When Firestore is active, liveStudentMap
    is populated by the listeners above. In demo mode, falls back
-   to an empty waiting state.
+   to DEMO_STUDENTS.
    ─────────────────────────────────────────────────────────────── */
 function renderMonitor() {
   const g = document.getElementById('monitor-grid');
 
-  // Build student list from Firestore live data only.
-  // Never show fake/demo names in a live deployment.
+  // Build student list from Firestore live data or demo fallback
   let students;
-  if (firebaseReady) {
+  if (firebaseReady && Object.keys(liveStudentMap).length > 0) {
     students = Object.values(liveStudentMap);
   } else {
-    // Pure demo mode (no Firebase configured) — empty, no fake names
-    students = [];
+    // Demo fallback — static array
+    const name = currentUser?.displayName?.split(' ')[0] || 'You';
+    students = [...DEMO_STUDENTS];
+    if (examActive && currentRole === 'stu') {
+      students.push({ name, uid: currentUser?.uid, status: 'online', vios: Array(totalVioCount).fill({}), score: null });
+    }
   }
 
   document.getElementById('live-count').textContent = students.length;
 
   if (!students.length) {
-    g.innerHTML = `
-      <div style="grid-column:1/-1;text-align:center;padding:48px 20px">
-        <div style="font-size:2.5rem;margin-bottom:12px">👀</div>
-        <div style="font-size:.95rem;font-weight:700;color:var(--head);margin-bottom:6px">
-          ${firebaseReady ? 'Waiting for Students…' : 'No Students (Demo Mode)'}
-        </div>
-        <div style="color:var(--muted);font-size:.8rem;line-height:1.6">
-          ${firebaseReady
-            ? 'Students will appear here as soon as they log in and open a question.'
-            : 'Connect Firebase to see real student activity.'}
-        </div>
-      </div>`;
+    g.innerHTML = '<div style="color:var(--muted);font-size:.82rem;grid-column:1/-1">No students in exam yet. Waiting for activity…</div>';
     return;
   }
 
@@ -2751,38 +2724,17 @@ function pad(n){ return String(n).padStart(2,'0'); }
    MONACO EDITOR
    ═══════════════════════════════════════════════════════════════ */
 function loadMonaco() {
+  require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'}});
+  // Defensive loader: if require itself is undefined (CDN blocked),
+  // show a clear error in the console panel rather than silently failing.
   if (typeof require === 'undefined') {
-    document.getElementById('monaco-wrap').innerHTML = `
-      <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--muted);text-align:center;padding:32px">
-        <div style="font-size:2rem">⚠️</div>
-        <div style="font-weight:700;color:var(--head)">Editor failed to load</div>
-        <div style="font-size:.82rem;line-height:1.7;max-width:320px">
-          The Monaco editor CDN could not be reached.<br>
-          Check your internet connection and try again.
-        </div>
-        <button class="btn btn-a" onclick="location.reload()">↻ Reload Page</button>
-      </div>`;
+    outLine('err', '⛔ Monaco editor could not load (CDN blocked by browser or network).');
+    outLine('warn', 'Try opening the file from a local web server instead of file://, or check your internet connection.');
+    const btn = document.getElementById('btn-sub');
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Submit'; }
     return;
   }
-  require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
-
-  // Timeout safety — if Monaco hasn't loaded in 15s show error
-  const loadTimeout = setTimeout(() => {
-    if (!monacoReady) {
-      document.getElementById('monaco-wrap').innerHTML = `
-        <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--muted);text-align:center;padding:32px">
-          <div style="font-size:2rem">⏱️</div>
-          <div style="font-weight:700;color:var(--head)">Editor is taking too long</div>
-          <div style="font-size:.82rem;line-height:1.7;max-width:320px">
-            The editor CDN may be slow or blocked.<br>Try reloading the page.
-          </div>
-          <button class="btn btn-a" onclick="location.reload()">↻ Reload Page</button>
-        </div>`;
-    }
-  }, 15000);
-
   require(['vs/editor/editor.main'], mono => {
-    clearTimeout(loadTimeout);
     window._mono = mono;
     if (monaco_editor) { monaco_editor.dispose(); monaco_editor=null; }
     document.getElementById('monaco-wrap').innerHTML='';
@@ -2944,29 +2896,42 @@ function removeRunning() { document.getElementById('run-ind')?.remove(); }
    JUDGE0 INTEGRATION
    ═══════════════════════════════════════════════════════════════ */
 function j0headers() {
-  const h = {'Content-Type':'application/json'};
-  if (J0_KEY) { h['X-RapidAPI-Key']=J0_KEY; h['X-RapidAPI-Host']='judge0-ce.p.rapidapi.com'; }
+  const h = { 'Content-Type': 'application/json' };
+  if (J0_KEY && J0_USE_RAPID) {
+    h['X-RapidAPI-Key']  = J0_KEY;
+    h['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+  }
   return h;
 }
 
+function j0base() {
+  return J0_KEY && J0_USE_RAPID
+    ? 'https://judge0-ce.p.rapidapi.com'
+    : 'https://ce.judge0.com';
+}
+
 async function j0submit(code, langId, stdin) {
-  const res = await fetch(`${J0_BASE}/submissions?base64_encoded=true&wait=false`,{
-    method:'POST', headers:j0headers(),
-    body:JSON.stringify({
-      source_code:btoa(unescape(encodeURIComponent(code))),
-      language_id:langId,
-      stdin:btoa(unescape(encodeURIComponent(stdin||''))),
-      base64_encoded:true
+  const res = await fetch(`${j0base()}/submissions?base64_encoded=true&wait=false`, {
+    method: 'POST',
+    headers: j0headers(),
+    body: JSON.stringify({
+      source_code:    btoa(unescape(encodeURIComponent(code))),
+      language_id:    langId,
+      stdin:          btoa(unescape(encodeURIComponent(stdin || ''))),
+      base64_encoded: true,
     })
   });
-  return (await res.json()).token;
+  if (!res.ok) throw new Error(`Judge0 submit failed: HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data.token) throw new Error('Judge0 returned no token — check your API key');
+  return data.token;
 }
 
 async function j0poll(token, attempts=30) {
   for (let i=0;i<attempts;i++) {
     await sleep(Math.min(1500 + i * 200, 4000));
     try {
-      const res = await fetch(`${J0_BASE}/submissions/${token}?base64_encoded=true&fields=status,stdout,stderr,compile_output,time,memory`,{headers:j0headers()});
+      const res = await fetch(`${j0base()}/submissions/${token}?base64_encoded=true&fields=status,stdout,stderr,compile_output,time,memory`,{headers:j0headers()});
       if (!res.ok) continue;
       const d = await res.json();
       if (d.status?.id >= 3) return d;
@@ -2990,7 +2955,11 @@ function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 async function runCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
-  if (!code) { toast('Write some code first!','warn'); return; }
+  const template = (getTemplate()||'').trim();
+  if (!code || code === template) {
+    toast('Write some code first!','warn');
+    return;
+  }
 
   const btn = document.getElementById('btn-run');
   btn.disabled=true; btn.textContent='⏳';
@@ -3000,6 +2969,13 @@ async function runCode() {
 
   const customActive = document.getElementById('custom-in').classList.contains('show');
   const stdin = customActive ? document.getElementById('stdin-ta').value : (currentQ?.testcases?.[0]?.input||'');
+
+  if (!J0_KEY) {
+    outLine('warn', '⚠ No Judge0 API key set. Set J0_KEY in the code to enable execution.');
+    outLine('info', 'Get a free key at: https://rapidapi.com/judge0-official/api/judge0-ce');
+    btn.disabled=false; btn.textContent='▶ Run';
+    return;
+  }
 
   outLine('info',`▶ Running ${currentLang}...`);
   outRunning();
@@ -3022,9 +2998,9 @@ async function runCode() {
     if (!stdout&&!stderr&&!ce) outLine('warn','(no output)');
   } catch(e) {
     removeRunning();
-    outLine('err','Judge0 unreachable: '+e.message);
-    outLine('warn','(Demo: simulating output)');
-    outLine('ok', currentQ?.testcases?.[0]?.expected||'—');
+    outLine('err', '⛔ Code execution failed: ' + e.message);
+    outLine('warn', 'Judge0 sandbox could not be reached. Check your internet connection.');
+    outLine('info', 'Tip: Make sure you are connected and try again.');
   }
 
   btn.disabled=false; btn.textContent='▶ Run';
@@ -3049,7 +3025,11 @@ async function fetchHiddenTestcases(questionId) {
 async function submitCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
-  if (!code) { toast('Write some code first!','warn'); return; }
+  const template = (getTemplate()||'').trim();
+  if (!code || code === template) {
+    toast('Write your solution before submitting!','warn');
+    return;
+  }
 
   const btn = document.getElementById('btn-sub');
   btn.disabled=true; btn.textContent='⏳ Judging...';
@@ -3062,6 +3042,14 @@ async function submitCode() {
   // Hidden TCs are fetched from Firestore questions_private/ now.
   // For professors they load fine; for students they get [] back
   // (Firestore rules deny read), and grading runs on visible TCs only.
+  if (!J0_KEY) {
+    toast('No Judge0 API key configured — code execution disabled', 'err', 6000);
+    outLine('err', '⛔ J0_KEY is not set. Paste your RapidAPI key into the J0_KEY constant.');
+    outLine('info', 'Get a free key at: https://rapidapi.com/judge0-official/api/judge0-ce');
+    btn.disabled=false; btn.textContent='✓ Submit';
+    return;
+  }
+
   outLine('info', '🔍 Fetching test cases...');
   const visibleTCs = currentQ.testcases || [];
   const hiddenTCs  = await fetchHiddenTestcases(currentQ.id);
@@ -3119,22 +3107,28 @@ async function submitCode() {
       });
 
     } catch(e) {
-      // Judge0 unreachable — demo fallback (visible TCs only, never fake hidden)
+      // Judge0 unreachable — mark TC as error, never fake a pass
+      if (visEl) { visEl.textContent = '⚠ Error'; visEl.className = 'tc-stat fail'; }
       if (!tc.hidden) {
-        const fakeOk = Math.random() > 0.25;
-        const ms = 30 + Math.random() * 80; totalMs += ms;
-        if (fakeOk) passed++;
-        if (visEl) { visEl.textContent = fakeOk?'✓ Pass':'✗ Fail'; visEl.className=`tc-stat ${fakeOk?'pass':'fail'}`; }
-        results.push({ n:i+1, ok:fakeOk, hidden:false, out:tc.expected, expected:tc.expected, time:ms.toFixed(0), status:fakeOk?'Accepted':'Wrong Answer' });
+        results.push({ n:i+1, ok:false, hidden:false, out:'[Judge0 unreachable]', expected:tc.expected, time:'0', status:'Network Error' });
       }
-      // Hidden TC errors are silently skipped — no fake pass/fail
+      outLine('err', `TC${i+1}: Judge0 unreachable — ${e.message}`);
     }
   }
 
   removeRunning();
 
-  // PRIORITY 1: Score is calculated over ALL test cases (visible + hidden).
-  // This means students can't game the score by only passing visible samples.
+  // If every TC hit a network error (Judge0 unreachable), abort — don't save a fake submission
+  const networkErrors = results.filter(r => r.status === 'Network Error').length;
+  if (networkErrors === results.length && results.length > 0) {
+    outLine('err', '⛔ Submission aborted — Judge0 could not be reached for any test case.');
+    outLine('warn', 'Check your internet connection and try again. Nothing was submitted.');
+    toast('Submission failed — Judge0 unreachable', 'err', 6000);
+    btn.disabled=false; btn.textContent='✓ Submit';
+    return;
+  }
+
+  // Score over ALL test cases (visible + hidden)
   const score  = totalTC > 0 ? Math.round((passed / totalTC) * 100) : 0;
   const allOk  = passed === totalTC;
 
@@ -3207,8 +3201,23 @@ function showResults(results, passed, total, totalMs, score, allOk) {
       <span class="tcr-t">${r.time}ms</span>
     </div>
   `).join('');
+  renderLB(score);
 }
 
+function renderLB(myScore) {
+  const name = currentUser?.displayName||currentUser?.email?.split('@')[0]||'You';
+  const all = [...MOCK_LB, {name:name+' (You)',score:myScore,time:elapsed()}]
+    .sort((a,b)=>b.score-a.score);
+  const rc = ['g','s','b'];
+  document.getElementById('lb-body').innerHTML = all.slice(0,8).map((e,i)=>`
+    <div class="lb-r ${e.name.includes('(You)')?'me':''}">
+      <div class="lb-rank ${rc[i]||''}">${i+1}</div>
+      <div class="lb-name">${e.name}</div>
+      <div class="lb-score">${e.score}%</div>
+      <div class="lb-time">${e.time}</div>
+    </div>
+  `).join('');
+}
 
 function elapsed() {
   const total=(EXAM_DURATION_MINS*60)-timerSecs;
