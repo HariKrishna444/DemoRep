@@ -1460,6 +1460,7 @@ const MAX_VIOLATIONS     = 2; // strict: 2 violations = terminate
    STATE
    ═══════════════════════════════════════════════════════════════ */
 let firebaseReady = false;
+let _authHandled  = false;  // prevents onAuthStateChanged double-firing after manual login
 let auth, db;
 let currentUser = null;
 let currentRole = 'prof';        // 'prof' | 'stu'
@@ -1545,6 +1546,7 @@ async function initApp() {
       // Fires on every load (session restore) + login/logout
       auth.onAuthStateChanged(async u => {
         if (u) {
+          if (_authHandled) { _authHandled = false; return; } // manual login already called onAuthSuccess
           currentUser = u;
           // PHASE 2: Load role from Firestore users/{uid}
           await loadUserRole(u.uid);
@@ -1552,6 +1554,7 @@ async function initApp() {
           await loadQuestionsFromFirestore();
           onAuthSuccess();
         } else {
+          _authHandled = false;
           showPage('login');
         }
       });
@@ -1607,15 +1610,7 @@ async function loadQuestionsFromFirestore() {
       .get();
     if (!snap.empty) {
       // Replace local demo questions with live Firestore data
-      questions = snap.docs.map(doc => {
-        const d = doc.data();
-        return {
-          id: doc.id,
-          ...d,
-          tags:      Array.isArray(d.tags)      ? d.tags      : [],
-          testcases: Array.isArray(d.testcases)  ? d.testcases : [],  // testcases live in questions_private; public docs may omit them
-        };
-      });
+      questions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
     // If questions_public is empty, demo questions stay as fallback
   } catch(e) {
@@ -1737,7 +1732,11 @@ async function handleLogin() {
   }
   try {
     const c = await auth.signInWithEmailAndPassword(email, pass);
-    currentUser = c.user; onAuthSuccess();
+    currentUser = c.user;
+    await loadUserRole(currentUser.uid);
+    await loadQuestionsFromFirestore();
+    _authHandled = true;  // tell onAuthStateChanged not to double-fire
+    onAuthSuccess();
   } catch(e) { toast('Login failed: '+e.message,'err'); }
   btn.disabled = false;
   document.getElementById('btn-login-txt').textContent = 'Sign In';
@@ -1754,7 +1753,11 @@ async function handleRegister() {
   }
   try {
     const c = await auth.createUserWithEmailAndPassword(email, pass);
-    currentUser = c.user; onAuthSuccess();
+    currentUser = c.user;
+    await loadUserRole(currentUser.uid);
+    await loadQuestionsFromFirestore();
+    _authHandled = true;  // tell onAuthStateChanged not to double-fire
+    onAuthSuccess();
   } catch(e) { toast('Register failed: '+e.message,'err'); }
 }
 
@@ -2069,7 +2072,7 @@ function renderQList() {
       <div style="font-family:var(--ff-mono);font-size:.72rem;color:var(--muted);width:28px">${i+1}</div>
       <div class="q-row-info">
         <div class="q-row-title">${q.title}</div>
-        <div class="q-row-meta">${(q.tags||[]).join(' · ')} · ${q.points} pts · ${(q.testcases||[]).length} test cases</div>
+        <div class="q-row-meta">${q.tags.join(' · ')} · ${q.points} pts · ${q.testcases.length} test cases</div>
       </div>
       <span class="diff ${q.diff}">${q.diff}</span>
       <div class="q-row-actions">
