@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ExamShield — College Coding Exam Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
-<!-- CSP note: served via GitHub Pages — CSP must be set via server response
-     headers, not <meta> tags. A meta CSP cannot override server headers and
-     was blocking Monaco (cdn.jsdelivr.net style-src). If self-hosting, add
-     CSP as an HTTP header instead. -->
+<!-- CSP omitted: GitHub Pages sets server headers; a <meta> CSP cannot override them and was blocking Monaco cdn.jsdelivr.net. Use HTTP response headers on a self-hosted server instead. -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════
@@ -1401,21 +1398,16 @@ async function initApp() {
       auth = firebase.auth();
       db   = firebase.firestore();
 
-      // Attempt offline persistence. On browsers with Tracking Prevention
-      // (Edge, Safari ITP) IndexedDB is blocked for third-party origins and
-      // enablePersistence will throw 'unimplemented' or be denied — that is
-      // fine, the app works without it.  merge:true prevents the SDK warning
-      // about "overriding the original host".
+      // Use the v9 compat cache settings API (no deprecation warning).
+      // Must be called before any Firestore read/write.
+      // On browsers with Tracking Prevention (Edge/Safari ITP), IndexedDB is
+      // blocked for third-party origins so the settings call throws — we catch
+      // it silently and fall back to memory-only (online) mode which works fine.
+      // We never call the deprecated enablePersistence() API.
       try {
-        db.settings({ merge: true });
-        await db.enablePersistence({ synchronizeTabs: true });
-      } catch(err) {
-        // 'failed-precondition' = multiple tabs open (only one can hold the lock)
-        // 'unimplemented'       = browser blocks IndexedDB (Tracking Prevention)
-        // Both are harmless — online-only mode still works perfectly.
-        if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
-          console.warn('Firestore persistence skipped:', err.code);
-        }
+        db.settings({ merge: true, cache: { kind: 'persistentMultipleTab' } });
+      } catch(_) {
+        // ITP / private-browsing blocks IndexedDB — silently use online-only mode.
       }
 
       firebaseReady = true;
@@ -3007,18 +2999,16 @@ async function runCode() {
 }
 
 async function fetchHiddenTestcases(questionId) {
-  // Demo / offline mode — no hidden TCs available
+  // Demo / offline — no hidden TCs available
   if (!firebaseReady || !db) return { tcs: [], denied: false };
   try {
     const snap = await db.collection('questions_private').doc(questionId).get();
     if (!snap.exists) return { tcs: [], denied: false };
     const data = snap.data();
-    const tcs  = data.hiddenTestcases || data.testcases || [];
-    return { tcs, denied: false };
+    return { tcs: data.hiddenTestcases || data.testcases || [], denied: false };
   } catch(e) {
-    // permission-denied is the normal student path — Firestore rules block them.
-    // Any other error (network, unavailable) is also handled gracefully.
-    // We do NOT log to console for permission-denied — it's expected and noisy.
+    // permission-denied is the normal student path (Firestore rules block them).
+    // Do NOT log it — it is expected and would spam the console every submission.
     if (e.code !== 'permission-denied') {
       console.warn('fetchHiddenTestcases unexpected error:', e.code);
     }
@@ -3062,7 +3052,7 @@ async function submitCode() {
     outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length !== 1 ? 's' : ''} locally.`);
   }
 
-  // Merge: visible first, then hidden (empty for students — that's correct).
+  // Merge: visible first, then hidden (empty for students by design).
   const allTCs = [
     ...visibleTCs.map(tc => ({ input: tc.input, expected: tc.expected,       hidden: false })),
     ...hiddenTCs.map(tc  => ({ input: tc.input, expected: tc.expectedOutput, hidden: true  })),
