@@ -4,16 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ExamShield — College Coding Exam Platform</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self' https://www.gstatic.com https://identitytoolkit.googleapis.com https://firestore.googleapis.com https://*.firebaseio.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://ce.judge0.com;
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://*.firebaseapp.com https://www.googleapis.com; worker-src blob: 'self';
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
-  font-src 'self' https://fonts.gstatic.com;
-  connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://*.gstatic.com https://ce.judge0.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com;
-  img-src 'self' data: blob: https:;
-  frame-src 'none'; object-src 'none'; media-src 'self' blob:;
-">
+<!-- CSP is intentionally omitted: this page is served via GitHub Pages,
+     which sends its own server-level headers. A <meta> CSP tag cannot
+     override server headers and was blocking Monaco (cdn.jsdelivr.net).
+     If you move to a self-hosted server, add CSP via response headers instead. -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════
@@ -1407,10 +1401,10 @@ async function initApp() {
       db   = firebase.firestore();
 
       // Enable offline persistence — students keep their code if internet drops.
-      // merge:true prevents the "overriding original host" warning by merging
-      // into existing settings rather than replacing them wholesale.
+      // Silence the deprecation warning by trying the new settings API first;
+      // fall back to the legacy call if the compat SDK doesn't support it.
       try {
-        db.settings({ merge: true, cache: { kind: 'persistentMultipleTab' } });
+        db.settings({ cache: { kind: 'persistentMultipleTab' } });
       } catch(_) {
         db.enablePersistence({ synchronizeTabs: true }).catch(err => {
           if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
@@ -3008,18 +3002,18 @@ async function runCode() {
 }
 
 async function fetchHiddenTestcases(questionId) {
-  if (!firebaseReady || !db) return { tcs: [], denied: false }; // demo mode
+  if (!firebaseReady || !db) return []; // demo mode — no hidden TCs
   try {
     const snap = await db.collection('questions_private').doc(questionId).get();
-    if (!snap.exists) return { tcs: [], denied: false };
+    if (!snap.exists) return [];
     const data = snap.data();
-    return { tcs: data.hiddenTestcases || data.testcases || [], denied: false };
+    // Support both field name styles just in case
+    return data.hiddenTestcases || data.testcases || [];
   } catch(e) {
-    // permission-denied = student path (rules block them). Any other error
-    // (network, unavailable) we also treat gracefully — grade on visible TCs.
-    const denied = e.code === 'permission-denied';
-    if (!denied) console.warn('fetchHiddenTestcases unexpected error:', e.code);
-    return { tcs: [], denied };
+    // This is the expected path for students — Firestore rules deny access.
+    // We simply run on visible TCs only. No error shown to student.
+    console.warn('fetchHiddenTestcases: access denied or unavailable (expected for students)', e.code);
+    return [];
   }
 }
 
@@ -3053,7 +3047,7 @@ async function submitCode() {
 
   outLine('info', '🔍 Fetching test cases...');
   const visibleTCs = currentQ.testcases || [];
-  const { tcs: hiddenTCs, denied: hiddenDenied } = await fetchHiddenTestcases(currentQ.id);
+  const hiddenTCs  = await fetchHiddenTestcases(currentQ.id);
 
   // Merge: visible first, then hidden.
   // hiddenTCs entries have { input, expectedOutput } shape.
@@ -3063,11 +3057,7 @@ async function submitCode() {
   ];
 
   const totalTC = allTCs.length;
-  if (hiddenDenied) {
-    outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length!==1?'s':''} locally.`);
-  } else {
-    outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC!==1?'s':''} (${hiddenTCs.length} hidden)`);
-  }
+  outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC!==1?'s':''} (${hiddenTCs.length} hidden)`);
   outRunning();
 
   const langId = LANG_IDS[currentLang] || 71;
