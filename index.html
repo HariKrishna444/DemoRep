@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ExamShield — College Coding Exam Platform</title>
-<!-- CSP is intentionally omitted: this page is served via GitHub Pages,
-     which sends its own server-level headers. A <meta> CSP tag cannot
-     override server headers and was blocking Monaco (cdn.jsdelivr.net).
-     If you move to a self-hosted server, add CSP via response headers instead. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
+<!-- CSP note: served via GitHub Pages — CSP must be set via server response
+     headers, not <meta> tags. A meta CSP cannot override server headers and
+     was blocking Monaco (cdn.jsdelivr.net style-src). If self-hosting, add
+     CSP as an HTTP header instead. -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════
@@ -1400,17 +1401,21 @@ async function initApp() {
       auth = firebase.auth();
       db   = firebase.firestore();
 
-      // Enable offline persistence — students keep their code if internet drops.
-      // Silence the deprecation warning by trying the new settings API first;
-      // fall back to the legacy call if the compat SDK doesn't support it.
+      // Attempt offline persistence. On browsers with Tracking Prevention
+      // (Edge, Safari ITP) IndexedDB is blocked for third-party origins and
+      // enablePersistence will throw 'unimplemented' or be denied — that is
+      // fine, the app works without it.  merge:true prevents the SDK warning
+      // about "overriding the original host".
       try {
-        db.settings({ cache: { kind: 'persistentMultipleTab' } });
-      } catch(_) {
-        db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-          if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
-            console.warn('Firestore persistence skipped:', err.code);
-          }
-        });
+        db.settings({ merge: true });
+        await db.enablePersistence({ synchronizeTabs: true });
+      } catch(err) {
+        // 'failed-precondition' = multiple tabs open (only one can hold the lock)
+        // 'unimplemented'       = browser blocks IndexedDB (Tracking Prevention)
+        // Both are harmless — online-only mode still works perfectly.
+        if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
+          console.warn('Firestore persistence skipped:', err.code);
+        }
       }
 
       firebaseReady = true;
@@ -3002,18 +3007,22 @@ async function runCode() {
 }
 
 async function fetchHiddenTestcases(questionId) {
-  if (!firebaseReady || !db) return []; // demo mode — no hidden TCs
+  // Demo / offline mode — no hidden TCs available
+  if (!firebaseReady || !db) return { tcs: [], denied: false };
   try {
     const snap = await db.collection('questions_private').doc(questionId).get();
-    if (!snap.exists) return [];
+    if (!snap.exists) return { tcs: [], denied: false };
     const data = snap.data();
-    // Support both field name styles just in case
-    return data.hiddenTestcases || data.testcases || [];
+    const tcs  = data.hiddenTestcases || data.testcases || [];
+    return { tcs, denied: false };
   } catch(e) {
-    // This is the expected path for students — Firestore rules deny access.
-    // We simply run on visible TCs only. No error shown to student.
-    console.warn('fetchHiddenTestcases: access denied or unavailable (expected for students)', e.code);
-    return [];
+    // permission-denied is the normal student path — Firestore rules block them.
+    // Any other error (network, unavailable) is also handled gracefully.
+    // We do NOT log to console for permission-denied — it's expected and noisy.
+    if (e.code !== 'permission-denied') {
+      console.warn('fetchHiddenTestcases unexpected error:', e.code);
+    }
+    return { tcs: [], denied: e.code === 'permission-denied' };
   }
 }
 
@@ -3047,17 +3056,22 @@ async function submitCode() {
 
   outLine('info', '🔍 Fetching test cases...');
   const visibleTCs = currentQ.testcases || [];
-  const hiddenTCs  = await fetchHiddenTestcases(currentQ.id);
+  const { tcs: hiddenTCs, denied: hiddenDenied } = await fetchHiddenTestcases(currentQ.id);
 
-  // Merge: visible first, then hidden.
-  // hiddenTCs entries have { input, expectedOutput } shape.
+  if (hiddenDenied) {
+    outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length !== 1 ? 's' : ''} locally.`);
+  }
+
+  // Merge: visible first, then hidden (empty for students — that's correct).
   const allTCs = [
-    ...visibleTCs.map(tc => ({ input: tc.input, expected: tc.expected, hidden: false })),
-    ...hiddenTCs.map(tc  => ({ input: tc.input, expected: tc.expectedOutput, hidden: true })),
+    ...visibleTCs.map(tc => ({ input: tc.input, expected: tc.expected,       hidden: false })),
+    ...hiddenTCs.map(tc  => ({ input: tc.input, expected: tc.expectedOutput, hidden: true  })),
   ];
 
   const totalTC = allTCs.length;
-  outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC!==1?'s':''} (${hiddenTCs.length} hidden)`);
+  if (!hiddenDenied) {
+    outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC !== 1 ? 's' : ''} (${hiddenTCs.length} hidden)`);
+  }
   outRunning();
 
   const langId = LANG_IDS[currentLang] || 71;
