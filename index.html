@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ExamShield — College Coding Exam Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
-<!-- CSP omitted: GitHub Pages sets server headers; a <meta> CSP cannot override them and was blocking Monaco cdn.jsdelivr.net. Use HTTP response headers on a self-hosted server instead. -->
+<!-- CSP note: served via GitHub Pages — CSP must be set via server response
+     headers, not <meta> tags. Monaco is loaded from unpkg.com (instead of
+     jsDelivr) to avoid "Tracking Prevention blocked access to storage" errors
+     that Edge/Safari ITP fire when jsDelivr tries cross-origin IndexedDB writes.
+     If self-hosting, add CSP as an HTTP response header instead of a meta tag. -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════
@@ -1299,7 +1303,7 @@ select.inp option{background:var(--ink3)}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
+<script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.js"></script>
 
 <script>
 
@@ -1398,16 +1402,21 @@ async function initApp() {
       auth = firebase.auth();
       db   = firebase.firestore();
 
-      // Use the v9 compat cache settings API (no deprecation warning).
-      // Must be called before any Firestore read/write.
-      // On browsers with Tracking Prevention (Edge/Safari ITP), IndexedDB is
-      // blocked for third-party origins so the settings call throws — we catch
-      // it silently and fall back to memory-only (online) mode which works fine.
-      // We never call the deprecated enablePersistence() API.
+      // Attempt offline persistence. On browsers with Tracking Prevention
+      // (Edge, Safari ITP) IndexedDB is blocked for third-party origins and
+      // enablePersistence will throw 'unimplemented' or be denied — that is
+      // fine, the app works without it.  merge:true prevents the SDK warning
+      // about "overriding the original host".
       try {
-        db.settings({ merge: true, cache: { kind: 'persistentMultipleTab' } });
-      } catch(_) {
-        // ITP / private-browsing blocks IndexedDB — silently use online-only mode.
+        db.settings({ merge: true });
+        await db.enablePersistence({ synchronizeTabs: true });
+      } catch(err) {
+        // 'failed-precondition' = multiple tabs open (only one can hold the lock)
+        // 'unimplemented'       = browser blocks IndexedDB (Tracking Prevention)
+        // Both are harmless — online-only mode still works perfectly.
+        if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
+          console.warn('Firestore persistence skipped:', err.code);
+        }
       }
 
       firebaseReady = true;
@@ -2716,16 +2725,25 @@ function pad(n){ return String(n).padStart(2,'0'); }
    MONACO EDITOR
    ═══════════════════════════════════════════════════════════════ */
 function loadMonaco() {
-  require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'}});
   // Defensive loader: if require itself is undefined (CDN blocked),
   // show a clear error in the console panel rather than silently failing.
   if (typeof require === 'undefined') {
-    outLine('err', '⛔ Monaco editor could not load (CDN blocked by browser or network).');
+    outLine('err', '\u26d4 Monaco editor could not load (CDN blocked by browser or network).');
     outLine('warn', 'Try opening the file from a local web server instead of file://, or check your internet connection.');
     const btn = document.getElementById('btn-sub');
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Submit'; }
+    if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
+  // Use unpkg instead of jsDelivr — avoids the "Tracking Prevention blocked
+  // access to storage" errors that Edge/Safari ITP fire when jsDelivr tries
+  // to write to IndexedDB/localStorage from a cross-origin context.
+  // 'vs/nls' with empty availableLanguages stops the locale fetch that also
+  // triggers storage writes. ignoreDuplicateModules silences AMD re-reg warnings.
+  require.config({
+    paths: { vs: 'https://unpkg.com/monaco-editor@0.44.0/min/vs' },
+    'vs/nls': { availableLanguages: {} },
+    ignoreDuplicateModules: ['vs/editor/editor.main'],
+  });
   require(['vs/editor/editor.main'], mono => {
     window._mono = mono;
     if (monaco_editor) { monaco_editor.dispose(); monaco_editor=null; }
@@ -2999,16 +3017,18 @@ async function runCode() {
 }
 
 async function fetchHiddenTestcases(questionId) {
-  // Demo / offline — no hidden TCs available
+  // Demo / offline mode — no hidden TCs available
   if (!firebaseReady || !db) return { tcs: [], denied: false };
   try {
     const snap = await db.collection('questions_private').doc(questionId).get();
     if (!snap.exists) return { tcs: [], denied: false };
     const data = snap.data();
-    return { tcs: data.hiddenTestcases || data.testcases || [], denied: false };
+    const tcs  = data.hiddenTestcases || data.testcases || [];
+    return { tcs, denied: false };
   } catch(e) {
-    // permission-denied is the normal student path (Firestore rules block them).
-    // Do NOT log it — it is expected and would spam the console every submission.
+    // permission-denied is the normal student path — Firestore rules block them.
+    // Any other error (network, unavailable) is also handled gracefully.
+    // We do NOT log to console for permission-denied — it's expected and noisy.
     if (e.code !== 'permission-denied') {
       console.warn('fetchHiddenTestcases unexpected error:', e.code);
     }
@@ -3052,7 +3072,7 @@ async function submitCode() {
     outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length !== 1 ? 's' : ''} locally.`);
   }
 
-  // Merge: visible first, then hidden (empty for students by design).
+  // Merge: visible first, then hidden (empty for students — that's correct).
   const allTCs = [
     ...visibleTCs.map(tc => ({ input: tc.input, expected: tc.expected,       hidden: false })),
     ...hiddenTCs.map(tc  => ({ input: tc.input, expected: tc.expectedOutput, hidden: true  })),
