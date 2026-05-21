@@ -1984,14 +1984,15 @@ async function initApp() {
       // all actual errors (failed-precondition, unimplemented) are handled.
       try {
         db.settings({
-          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-          merge: true,
-        });
-        // synchronizeTabs:true = multi-tab IndexedDB (previously
-        // "enableMultiTabIndexedDbPersistence"). This is the correct
-        // compat-SDK call — the deprecation warning refers to a different
-        // standalone function; this usage is safe for SDK 9.x compat.
-        await db.enablePersistence({ synchronizeTabs: true });
+  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+  merge: true,
+  // New cache API — suppresses the deprecation warning entirely
+  cache: {
+    kind: 'persistent',
+    tabManager: firebase.firestore.PersistentMultipleTabManager.getInstance(),
+  }
+});
+// No separate enablePersistence() call needed when using cache setting
         window._persistenceActive = true;   // ← tracked for Security panel badge
       } catch(err) {
         // failed-precondition → another tab already holds the lock → ok
