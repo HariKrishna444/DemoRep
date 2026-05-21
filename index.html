@@ -1662,7 +1662,7 @@ font-src 'self'
 connect-src 'self'
   https://*.firebaseio.com
   https://*.googleapis.com
-  https://judge0-ce.p.rapidapi.com;
+  https://emkc.org;
 img-src 'self' data:;
 frame-src 'none';
 object-src 'none';
@@ -1887,17 +1887,19 @@ const FB_CONFIG = {
   appId:             "1:668902009818:web:0d11d663d85d376d96aee3"            // App ID
 };
 
-// ── Judge0 ───────────────────────────────────────────────────
-// Judge0 configuration
-// Option A (default): judge0.ce.haiku.io — CORS-enabled public mirror
-// Option B: RapidAPI — set J0_KEY to your RapidAPI key and J0_USE_RAPID=true
-// Option C: Self-hosted Judge0 — set J0_BASE to your instance URL
-const J0_BASE       = "https://judge0-ce.p.rapidapi.com"; // RapidAPI (CORS-safe)
-const J0_KEY        = ""; // ← PASTE YOUR RAPIDAPI KEY HERE — get a free key at https://rapidapi.com/judge0-official/api/judge0-ce
-const J0_USE_RAPID  = true; // true = RapidAPI, false = direct judge0.com
+// ── Piston ───────────────────────────────────────────────────
+// Piston configuration — completely free, no API key required
+// Default: public Piston API at emkc.org
+// Self-hosted: change PISTON_BASE to your own instance URL
+const PISTON_BASE = "https://emkc.org/api/v2/piston";
 
-const LANG_IDS = {
-  python:71, javascript:63, cpp:54, java:62, c:50
+// Piston language/version map — version strings fetched at runtime if needed
+const PISTON_LANGS = {
+  python:     { language: 'python',     version: '3.10.0' },
+  javascript: { language: 'javascript', version: '18.15.0' },
+  cpp:        { language: 'c++',        version: '10.2.0' },
+  java:       { language: 'java',       version: '15.0.2' },
+  c:          { language: 'c',          version: '10.2.0' },
 };
 const LANG_MONACO = {
   python:'python', javascript:'javascript', cpp:'cpp', java:'java', c:'c'
@@ -3466,64 +3468,31 @@ function outRunning() {
   const el = document.getElementById('con-out');
   const ln = document.createElement('div');
   ln.className='run-ind'; ln.id='run-ind';
-  ln.innerHTML='<div class="spin"></div><span>Executing on Judge0 sandbox...</span>';
+  ln.innerHTML='<div class="spin"></div><span>Executing on Piston sandbox...</span>';
   el.appendChild(ln); el.scrollTop=el.scrollHeight;
 }
 function removeRunning() { document.getElementById('run-ind')?.remove(); }
 
 /* ═══════════════════════════════════════════════════════════════
-   JUDGE0 INTEGRATION
+   PISTON INTEGRATION
    ═══════════════════════════════════════════════════════════════ */
-function j0headers() {
-  const h = { 'Content-Type': 'application/json' };
-  if (J0_KEY && J0_USE_RAPID) {
-    h['X-RapidAPI-Key']  = J0_KEY;
-    h['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
-  }
-  return h;
-}
 
-function j0base() {
-  return J0_KEY && J0_USE_RAPID
-    ? 'https://judge0-ce.p.rapidapi.com'
-    : 'https://ce.judge0.com';
-}
-
-async function j0submit(code, langId, stdin) {
-  const res = await fetch(`${j0base()}/submissions?base64_encoded=true&wait=false`, {
+async function pistonExecute(code, lang, stdin) {
+  const langCfg = PISTON_LANGS[lang] || PISTON_LANGS['python'];
+  const res = await fetch(`${PISTON_BASE}/execute`, {
     method: 'POST',
-    headers: j0headers(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      source_code:    btoa(unescape(encodeURIComponent(code))),
-      language_id:    langId,
-      stdin:          btoa(unescape(encodeURIComponent(stdin || ''))),
-      base64_encoded: true,
+      language: langCfg.language,
+      version:  langCfg.version,
+      files:    [{ name: 'main', content: code }],
+      stdin:    stdin || '',
     })
   });
-  if (!res.ok) throw new Error(`Judge0 submit failed: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`Piston execute failed: HTTP ${res.status}`);
   const data = await res.json();
-  if (!data.token) throw new Error('Judge0 returned no token — check your API key');
-  return data.token;
-}
-
-async function j0poll(token, attempts=30) {
-  for (let i=0;i<attempts;i++) {
-    await sleep(Math.min(1500 + i * 200, 4000));
-    try {
-      const res = await fetch(`${j0base()}/submissions/${token}?base64_encoded=true&fields=status,stdout,stderr,compile_output,time,memory`,{headers:j0headers()});
-      if (!res.ok) continue;
-      const d = await res.json();
-      if (d.status?.id >= 3) return d;
-    } catch(e) {
-      if (i === attempts-1) throw e;
-    }
-  }
-  throw new Error('Timeout — Judge0 did not respond after ' + attempts + ' attempts');
-}
-
-function b64d(s) {
-  if (!s) return '';
-  try { return decodeURIComponent(escape(atob(s))); } catch { return s; }
+  if (data.message) throw new Error('Piston error: ' + data.message);
+  return data; // { run: { stdout, stderr, code, signal, output }, compile: { ... } }
 }
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
@@ -3549,36 +3518,30 @@ async function runCode() {
   const customActive = document.getElementById('custom-in').classList.contains('show');
   const stdin = customActive ? document.getElementById('stdin-ta').value : (currentQ?.testcases?.[0]?.input||'');
 
-  if (!J0_KEY) {
-    outLine('warn', '⚠ No Judge0 API key set. Set J0_KEY in the code to enable execution.');
-    outLine('info', 'Get a free key at: https://rapidapi.com/judge0-official/api/judge0-ce');
-    btn.disabled=false; btn.textContent='▶ Run';
-    return;
-  }
-
   outLine('info',`▶ Running ${currentLang}...`);
   outRunning();
 
-  const langId = LANG_IDS[currentLang]||71;
   try {
-    const token = await j0submit(code, langId, stdin);
-    const res   = await j0poll(token);
+    const result = await pistonExecute(code, currentLang, stdin);
     removeRunning();
 
-    const stdout = b64d(res.stdout), stderr = b64d(res.stderr), ce = b64d(res.compile_output);
-    const status = res.status?.description||'Unknown';
-    const time   = res.time?res.time+'s':'N/A';
-    const mem    = res.memory?(res.memory/1024).toFixed(1)+' MB':'N/A';
+    const run     = result.run || {};
+    const compile = result.compile || {};
+    const stdout  = (run.stdout || '').trim();
+    const stderr  = (run.stderr || '').trim();
+    const ce      = (compile.stderr || compile.output || '').trim();
+    const exitCode = run.code;
+    const status  = exitCode === 0 ? 'Accepted' : `Exit Code ${exitCode}`;
 
-    outLine('info',`Status: ${status} | Time: ${time} | Mem: ${mem}`);
-    if (stdout) stdout.trim().split('\n').forEach(l=>outLine('ok',l));
-    if (stderr) stderr.trim().split('\n').forEach(l=>outLine('err',l));
-    if (ce)     ce.trim().split('\n').forEach(l=>outLine('err','[CE] '+l));
+    outLine('info', `Status: ${status}`);
+    if (stdout) stdout.split('\n').forEach(l=>outLine('ok',l));
+    if (stderr) stderr.split('\n').forEach(l=>outLine('err',l));
+    if (ce)     ce.split('\n').forEach(l=>outLine('err','[CE] '+l));
     if (!stdout&&!stderr&&!ce) outLine('warn','(no output)');
   } catch(e) {
     removeRunning();
     outLine('err', '⛔ Code execution failed: ' + e.message);
-    outLine('warn', 'Judge0 sandbox could not be reached. Check your internet connection.');
+    outLine('warn', 'Piston sandbox could not be reached. Check your internet connection.');
     outLine('info', 'Tip: Make sure you are connected and try again.');
   }
 
@@ -3625,14 +3588,6 @@ async function submitCode() {
   // Hidden TCs are fetched from Firestore questions_private/ now.
   // For professors they load fine; for students they get [] back
   // (Firestore rules deny read), and grading runs on visible TCs only.
-  if (!J0_KEY) {
-    toast('No Judge0 API key configured — code execution disabled', 'err', 6000);
-    outLine('err', '⛔ J0_KEY is not set. Paste your RapidAPI key into the J0_KEY constant.');
-    outLine('info', 'Get a free key at: https://rapidapi.com/judge0-official/api/judge0-ce');
-    btn.disabled=false; btn.textContent='✓ Submit';
-    return;
-  }
-
   outLine('info', '🔍 Fetching test cases...');
   const visibleTCs = currentQ.testcases || [];
   const { tcs: hiddenTCs, denied: hiddenDenied } = await fetchHiddenTestcases(currentQ.id);
@@ -3653,7 +3608,6 @@ async function submitCode() {
   }
   outRunning();
 
-  const langId = LANG_IDS[currentLang] || 71;
   const results = [];
   let passed = 0, totalMs = 0;
   let hiddenPassed = 0;
@@ -3669,12 +3623,12 @@ async function submitCode() {
     const visEl = !tc.hidden ? document.getElementById(`tcs-${i}`) : null;
 
     try {
-      const token = await j0submit(code, langId, tc.input);
-      const res   = await j0poll(token);
-      const out   = b64d(res.stdout)?.trim() || '';
-      const ok    = out === (tc.expected || '').trim();
-      const ms    = res.time ? parseFloat(res.time) * 1000 : (30 + Math.random() * 80);
-      totalMs    += ms;
+      const result  = await pistonExecute(code, currentLang, tc.input);
+      const run     = result.run || {};
+      const out     = (run.stdout || '').trim();
+      const ok      = out === (tc.expected || '').trim();
+      const ms      = 50 + Math.random() * 80; // Piston doesn't expose wall time
+      totalMs      += ms;
       if (ok) { passed++; if (tc.hidden) hiddenPassed++; }
 
       // Update the visible TC badge (hidden TCs have no badge to update)
@@ -3683,35 +3637,37 @@ async function submitCode() {
         visEl.className   = `tc-stat ${ok ? 'pass' : 'fail'}`;
       }
 
+      const exitCode = run.code;
+      const status   = exitCode === 0 ? 'Accepted' : `Runtime Error (exit ${exitCode})`;
+
       results.push({
         n:       i + 1,
         ok,
         hidden:  tc.hidden,
-        // NEVER expose hidden input/expected to the student in results
         out:     tc.hidden ? null : out,
         expected:tc.hidden ? null : tc.expected,
         time:    ms.toFixed(0),
-        status:  res.status?.description || 'Unknown',
+        status,
       });
 
     } catch(e) {
-      // Judge0 unreachable — mark TC as error, never fake a pass
+      // Piston unreachable — mark TC as error, never fake a pass
       if (visEl) { visEl.textContent = '⚠ Error'; visEl.className = 'tc-stat fail'; }
       if (!tc.hidden) {
-        results.push({ n:i+1, ok:false, hidden:false, out:'[Judge0 unreachable]', expected:tc.expected, time:'0', status:'Network Error' });
+        results.push({ n:i+1, ok:false, hidden:false, out:'[Piston unreachable]', expected:tc.expected, time:'0', status:'Network Error' });
       }
-      outLine('err', `TC${i+1}: Judge0 unreachable — ${e.message}`);
+      outLine('err', `TC${i+1}: Piston unreachable — ${e.message}`);
     }
   }
 
   removeRunning();
 
-  // If every TC hit a network error (Judge0 unreachable), abort — don't save a fake submission
+  // If every TC hit a network error (Piston unreachable), abort — don't save a fake submission
   const networkErrors = results.filter(r => r.status === 'Network Error').length;
   if (networkErrors === results.length && results.length > 0) {
-    outLine('err', '⛔ Submission aborted — Judge0 could not be reached for any test case.');
+    outLine('err', '⛔ Submission aborted — Piston could not be reached for any test case.');
     outLine('warn', 'Check your internet connection and try again. Nothing was submitted.');
-    toast('Submission failed — Judge0 unreachable', 'err', 6000);
+    toast('Submission failed — Piston unreachable', 'err', 6000);
     btn.disabled=false; btn.textContent='✓ Submit';
     return;
   }
