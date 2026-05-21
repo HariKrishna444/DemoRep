@@ -3813,32 +3813,23 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 
 /* ╔══════════════════════════════════════════════════════════════╗
-   ║     UNIVERSITY FEATURES — JavaScript                        ║
-   ║     + Production Security Layer                             ║
+   ║  UNIVERSITY FEATURES — Full Firestore Integration           ║
+   ║  All 9 sections read/write live from Firestore              ║
+   ║  Collections: semesters · departments · halls ·             ║
+   ║    students · attendance · exams · grades · analytics       ║
    ╚══════════════════════════════════════════════════════════════╝ */
 
-/* ─────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════
    SECURITY LAYER
-   ─────────────────────────────────────────────────────────────
-   • sanitize()    — escapes HTML entities (XSS prevention)
-   • rateLimiter   — client-side rate limit tracking
-   • secureHeaders — logs what server-side headers should be set
-   • validateInput — validates and sanitizes all user inputs
-   ───────────────────────────────────────────────────────────── */
+   ═══════════════════════════════════════════════════════════════ */
 
-// XSS sanitization — escape all HTML entities before injecting into DOM
 function sanitize(str) {
   if (typeof str !== 'string') str = String(str ?? '');
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;');
 }
 
-// Input validation with type checking
 function validateInput(value, type, opts = {}) {
   const { maxLen = 500, minLen = 0, pattern } = opts;
   if (value === null || value === undefined) return { ok: false, msg: 'Required field is empty' };
@@ -3847,858 +3838,1061 @@ function validateInput(value, type, opts = {}) {
   if (str.length > maxLen) return { ok: false, msg: `Maximum ${maxLen} characters allowed` };
   if (pattern && !pattern.test(str)) return { ok: false, msg: 'Invalid format' };
   switch (type) {
-    case 'email':
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return { ok: false, msg: 'Invalid email address' };
-      break;
-    case 'rollno':
-      if (!/^[A-Za-z0-9\-_\/]+$/.test(str)) return { ok: false, msg: 'Roll number: letters, numbers, hyphens only' };
-      break;
-    case 'name':
-      if (/<[^>]+>|script|javascript/i.test(str)) return { ok: false, msg: 'Invalid characters in name' };
-      break;
-    case 'number':
-      if (isNaN(Number(str))) return { ok: false, msg: 'Must be a valid number' };
-      break;
+    case 'email':  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return { ok:false, msg:'Invalid email address' }; break;
+    case 'rollno': if (!/^[A-Za-z0-9\-_\/]+$/.test(str)) return { ok:false, msg:'Roll number: letters/numbers/hyphens only' }; break;
+    case 'name':   if (/<[^>]+>|script|javascript/i.test(str)) return { ok:false, msg:'Invalid characters in name' }; break;
+    case 'number': if (isNaN(Number(str))) return { ok:false, msg:'Must be a valid number' }; break;
   }
   return { ok: true, value: str };
 }
 
-// Rate limiter — prevents abuse of action buttons
 const RateLimiter = (() => {
   const buckets = {};
-  const LIMITS = { login: [5, 60000], import: [3, 60000], submit: [10, 60000], default: [30, 60000] };
-  let totalRequests = 0;
-
+  const LIMITS = { login:[5,60000], import:[3,60000], submit:[10,60000], default:[30,60000] };
+  let total = 0;
   function check(action) {
-    const [limit, window] = LIMITS[action] || LIMITS.default;
+    const [limit, win] = LIMITS[action] || LIMITS.default;
     const now = Date.now();
     if (!buckets[action]) buckets[action] = [];
-    buckets[action] = buckets[action].filter(t => now - t < window);
-    totalRequests++;
-    updateRLStatus(totalRequests);
+    buckets[action] = buckets[action].filter(t => now - t < win);
+    total++;
+    const el = document.getElementById('rl-status'); if (el) el.textContent = `Requests this session: ${total}`;
     if (buckets[action].length >= limit) {
-      logRLEvent(action, 'BLOCKED', limit, window / 1000);
-      return false;
+      _logRL(action, 'BLOCKED', limit, win/1000); return false;
     }
-    buckets[action].push(now);
-    return true;
+    buckets[action].push(now); return true;
   }
-
-  function updateRLStatus(n) {
-    const el = document.getElementById('rl-status');
-    if (el) el.textContent = `Requests this session: ${n}`;
-  }
-
-  function logRLEvent(action, status, limit, sec) {
-    const log = document.getElementById('rl-log');
-    if (!log) return;
+  function _logRL(action, status, limit, sec) {
+    const log = document.getElementById('rl-log'); if (!log) return;
     if (log.children.length === 1 && log.children[0].textContent.includes('No rate limit')) log.innerHTML = '';
-    const entry = document.createElement('div');
-    entry.style.cssText = `color:${status==='BLOCKED'?'var(--danger)':'var(--muted)'}`;
-    entry.textContent = `[${new Date().toLocaleTimeString()}] ${action.toUpperCase()} ${status} — limit: ${limit}/${sec}s`;
-    log.insertBefore(entry, log.firstChild);
+    const e = document.createElement('div');
+    e.style.color = status==='BLOCKED' ? 'var(--danger)' : 'var(--muted)';
+    e.textContent = `[${new Date().toLocaleTimeString()}] ${action.toUpperCase()} ${status} — limit: ${limit}/${sec}s`;
+    log.insertBefore(e, log.firstChild);
     if (log.children.length > 50) log.lastChild.remove();
   }
-
   return { check };
 })();
 
-// HTTPS enforcement check (client-side informational)
 function checkHTTPS() {
-  const el = document.getElementById('badge-https');
-  if (!el) return;
-  if (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    el.textContent = 'Active';
-    el.className = 'sec-badge active';
-  } else {
-    el.textContent = 'HTTP — Insecure';
-    el.className = 'sec-badge warn';
-    toast('⚠️ Running on HTTP — use HTTPS in production!', 'warn', 8000);
-  }
+  const el = document.getElementById('badge-https'); if (!el) return;
+  const ok = location.protocol==='https:' || ['localhost','127.0.0.1'].includes(location.hostname);
+  el.textContent = ok ? 'Active' : 'HTTP — Insecure';
+  el.className = ok ? 'sec-badge active' : 'sec-badge warn';
+  if (!ok) toast('⚠️ Running on HTTP — use HTTPS in production!','warn',8000);
 }
 
-/* ─────────────────────────────────────────────────────────────
-   UNIVERSITY DATA STORE (in-memory, Firebase-backed)
-   ───────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   IN-MEMORY CACHE (populated from Firestore)
+   ═══════════════════════════════════════════════════════════════ */
+let semesters        = [];
+let departments      = [];
+let examHalls        = [];
+let enrolledStudents = [];
+let attendanceCache  = {};  // { examId: { roll: 'present'|'absent' } }
+let csvPendingData   = [];
+let curveApplied     = 0;
 
-let semesters = [
-  { id: 'sem-1', name: 'Semester 1 — 2025', start: '2025-01-15', end: '2025-05-30', status: 'ongoing', students: 0, exams: 0 },
-  { id: 'sem-2', name: 'Semester 2 — 2025', start: '2025-07-01', end: '2025-11-30', status: 'upcoming', students: 0, exams: 0 },
-];
+/* Helper — Firestore is available after initApp() sets `db` */
+function fsDb() { return (typeof db !== 'undefined' && db) ? db : null; }
+function fsReady() { return !!(typeof firebaseReady !== 'undefined' && firebaseReady && fsDb()); }
 
-let departments = [
-  { id: 'dept-cs',   name: 'Computer Science',     icon: '💻', hod: 'Dr. Rao',    count: 0, avgScore: 0 },
-  { id: 'dept-ec',   name: 'Electronics',          icon: '⚡', hod: 'Dr. Sharma', count: 0, avgScore: 0 },
-  { id: 'dept-me',   name: 'Mechanical Engg',      icon: '⚙️', hod: 'Dr. Verma',  count: 0, avgScore: 0 },
-  { id: 'dept-ce',   name: 'Civil Engineering',    icon: '🏗️', hod: 'Dr. Reddy',  count: 0, avgScore: 0 },
-  { id: 'dept-math', name: 'Mathematics',          icon: '📐', hod: 'Dr. Nair',   count: 0, avgScore: 0 },
-  { id: 'dept-phy',  name: 'Physics',              icon: '🔭', hod: 'Dr. Pillai', count: 0, avgScore: 0 },
-];
+/* Loading overlay for panels */
+function panelLoading(id, msg = 'Loading…') {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.82rem;padding:20px 0">
+    <span style="animation:blink 1s ease infinite">⏳</span> ${sanitize(msg)}</div>`;
+}
 
-let examHalls = [
-  { id: 'hall-1', name: 'Main Auditorium', capacity: 200, assigned: 0 },
-  { id: 'hall-2', name: 'Block A — Room 101', capacity: 60, assigned: 0 },
-  { id: 'hall-3', name: 'Block B — Room 205', capacity: 60, assigned: 0 },
-  { id: 'hall-4', name: 'Lab 1 — Computer Centre', capacity: 40, assigned: 0 },
-  { id: 'hall-5', name: 'Lab 2 — Tech Block', capacity: 40, assigned: 0 },
-];
+function panelError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<div style="color:var(--danger);font-size:.8rem;padding:12px">${sanitize(msg)}</div>`;
+}
 
-// Students enrolled (populated from CSV or Firestore)
-let enrolledStudents = [
-  { roll: 'CS2025001', name: 'Ravi Kumar',    email: 'ravi@college.edu',    dept: 'Computer Science', sem: 'Semester 1 — 2025', exams: 2, avg: 88 },
-  { roll: 'CS2025002', name: 'Priya Sharma',  email: 'priya@college.edu',   dept: 'Computer Science', sem: 'Semester 1 — 2025', exams: 2, avg: 95 },
-  { roll: 'EC2025001', name: 'Arjun Reddy',   email: 'arjun@college.edu',   dept: 'Electronics',      sem: 'Semester 1 — 2025', exams: 1, avg: 72 },
-  { roll: 'EC2025002', name: 'Sneha Patel',   email: 'sneha@college.edu',   dept: 'Electronics',      sem: 'Semester 1 — 2025', exams: 2, avg: 81 },
-  { roll: 'ME2025001', name: 'Kiran Babu',    email: 'kiran@college.edu',   dept: 'Mechanical Engg',  sem: 'Semester 1 — 2025', exams: 1, avg: 65 },
-  { roll: 'CS2025003', name: 'Divya Nair',    email: 'divya@college.edu',   dept: 'Computer Science', sem: 'Semester 1 — 2025', exams: 2, avg: 90 },
-];
-
-let attendanceRecords = {}; // { examId: { studentRoll: 'present'|'absent' } }
-let csvPendingData = [];
-
-/* ─────────────────────────────────────────────────────────────
-   NAVIGATION HOOK — extend profNav to handle new panels
-   ───────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION HOOK
+   ═══════════════════════════════════════════════════════════════ */
 const _originalProfNav = window.profNav;
 window.profNav = function(panel) {
   _originalProfNav(panel);
-  // render new panels
-  const uniPanels = {
-    semesters:   renderSemesters,
-    departments: renderDepartments,
-    hallalloc:   renderHallAlloc,
-    students:    renderStudentsPanel,
-    attendance:  renderAttendance,
-    examschedule:renderExamSchedule,
-    grades:      renderGrades,
-    analytics:   renderAnalytics,
-    security:    renderSecurityPanel,
+  const handlers = {
+    semesters:    renderSemesters,
+    departments:  renderDepartments,
+    hallalloc:    renderHallAlloc,
+    students:     renderStudentsPanel,
+    attendance:   renderAttendance,
+    examschedule: renderExamSchedule,
+    grades:       renderGrades,
+    analytics:    renderAnalytics,
+    security:     renderSecurityPanel,
   };
-  if (uniPanels[panel]) uniPanels[panel]();
+  if (handlers[panel]) handlers[panel]();
 };
 
-/* ─────────────────────────────────────────────────────────────
-   SEMESTER MANAGEMENT
-   ───────────────────────────────────────────────────────────── */
-function renderSemesters() {
-  // Update student/exam counts from live data
-  semesters = semesters.map(s => ({
-    ...s,
-    students: enrolledStudents.filter(st => st.sem === s.name).length,
-    exams: 0, // would come from Firestore in production
-  }));
+/* ═══════════════════════════════════════════════════════════════
+   1. SEMESTER MANAGEMENT  —  Collection: semesters/
+   ═══════════════════════════════════════════════════════════════ */
+async function renderSemesters() {
+  panelLoading('sem-grid', 'Loading semesters…');
+  const tbody = document.getElementById('sem-tbody');
+  if (tbody) tbody.innerHTML = '';
 
+  if (!fsReady()) {
+    panelError('sem-grid', 'Firestore not connected. Configure Firebase to use this feature.');
+    return;
+  }
+
+  try {
+    const snap = await fsDb().collection('semesters').orderBy('start','asc').get();
+    semesters = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Enrich with live student counts
+    const stuSnap = await fsDb().collection('students').get();
+    const allStu = stuSnap.docs.map(d => d.data());
+
+    semesters = semesters.map(s => ({
+      ...s,
+      students: allStu.filter(st => st.sem === s.name).length,
+    }));
+
+    _renderSemestersUI(semesters);
+  } catch(e) {
+    panelError('sem-grid', `Firestore error: ${e.message}`);
+    console.error('renderSemesters:', e);
+  }
+}
+
+function _renderSemestersUI(list) {
   const grid = document.getElementById('sem-grid');
   if (grid) {
-    grid.innerHTML = semesters.map(s => `
-      <div class="sem-card ${s.status === 'ongoing' ? 'active-sem' : ''}">
+    grid.innerHTML = list.length ? list.map(s => `
+      <div class="sem-card ${s.status==='ongoing'?'active-sem':''}">
         <div class="sem-name">${sanitize(s.name)}</div>
         <div class="sem-meta">${s.start} → ${s.end}</div>
-        <div class="sem-meta" style="margin-top:4px">${s.students} students · ${s.exams} exams</div>
-        <span class="sem-status ${s.status}">${s.status.toUpperCase()}</span>
-      </div>
-    `).join('');
+        <div class="sem-meta" style="margin-top:4px">${s.students||0} students</div>
+        <span class="sem-status ${s.status}">${(s.status||'').toUpperCase()}</span>
+        <button class="btn btn-r btn-sm" style="margin-top:10px;width:100%" onclick="deleteSemester('${s.id}')">Delete</button>
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:.82rem">No semesters yet. Create one to get started.</div>';
   }
 
   const tbody = document.getElementById('sem-tbody');
   if (tbody) {
-    tbody.innerHTML = semesters.map(s => `
+    tbody.innerHTML = list.map(s => `
       <tr>
         <td style="font-weight:600;color:var(--head)">${sanitize(s.name)}</td>
         <td style="font-family:var(--ff-mono);font-size:.75rem">${s.start}</td>
         <td style="font-family:var(--ff-mono);font-size:.75rem">${s.end}</td>
-        <td style="color:var(--stu);font-weight:600">${s.students}</td>
-        <td>${s.exams}</td>
+        <td style="color:var(--stu);font-weight:600">${s.students||0}</td>
+        <td>—</td>
         <td><span class="sem-status ${s.status}">${s.status}</span></td>
-      </tr>
-    `).join('');
+      </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted)">No semesters.</td></tr>';
   }
 }
 
-function openSemesterModal() {
-  const name = prompt('Semester name (e.g. "Semester 1 — 2026"):');
+async function openSemesterModal() {
+  const name  = prompt('Semester name (e.g. "Semester 1 — 2026"):');
   if (!name) return;
   const v = validateInput(name, 'name', { maxLen: 80 });
   if (!v.ok) { toast(v.msg, 'warn'); return; }
   const start = prompt('Start date (YYYY-MM-DD):');
   const end   = prompt('End date (YYYY-MM-DD):');
   if (!start || !end) return;
+
   const now = new Date();
-  const s = new Date(start), e = new Date(end);
-  const status = now < s ? 'upcoming' : now > e ? 'ended' : 'ongoing';
-  semesters.push({ id: 'sem-' + Date.now(), name: v.value, start, end, status, students: 0, exams: 0 });
-  renderSemesters();
-  toast(`Semester "${v.value}" created!`, 'ok');
+  const status = now < new Date(start) ? 'upcoming' : now > new Date(end) ? 'ended' : 'ongoing';
+  const data = { name: v.value, start, end, status, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('semesters').add(data);
+    toast(`Semester "${v.value}" created!`, 'ok');
+    renderSemesters();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   DEPARTMENT MAPPING
-   ───────────────────────────────────────────────────────────── */
-function renderDepartments() {
-  departments = departments.map(d => ({
-    ...d,
-    count: enrolledStudents.filter(s => s.dept === d.name).length,
-    avgScore: (() => {
-      const ds = enrolledStudents.filter(s => s.dept === d.name && s.avg > 0);
-      return ds.length ? Math.round(ds.reduce((a, s) => a + s.avg, 0) / ds.length) : 0;
-    })(),
-  }));
+async function deleteSemester(id) {
+  if (!confirm('Delete this semester? This cannot be undone.')) return;
+  if (!fsReady()) return;
+  try {
+    await fsDb().collection('semesters').doc(id).delete();
+    toast('Semester deleted', 'warn');
+    renderSemesters();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
 
+/* ═══════════════════════════════════════════════════════════════
+   2. DEPARTMENT MAPPING  —  Collection: departments/
+   ═══════════════════════════════════════════════════════════════ */
+async function renderDepartments() {
+  panelLoading('dept-grid', 'Loading departments…');
+  if (!fsReady()) { panelError('dept-grid','Firestore not connected.'); return; }
+
+  try {
+    const [dSnap, sSnap] = await Promise.all([
+      fsDb().collection('departments').orderBy('name','asc').get(),
+      fsDb().collection('students').get(),
+    ]);
+    const allStu = sSnap.docs.map(d => d.data());
+    departments = dSnap.docs.map(d => {
+      const data = d.data();
+      const stuInDept = allStu.filter(s => s.dept === data.name);
+      const avgScore  = stuInDept.length
+        ? Math.round(stuInDept.filter(s=>s.avg>0).reduce((a,s)=>a+s.avg,0) / (stuInDept.filter(s=>s.avg>0).length||1))
+        : 0;
+      return { id: d.id, ...data, count: stuInDept.length, avgScore };
+    });
+    _renderDepartmentsUI(departments);
+  } catch(e) {
+    panelError('dept-grid', `Firestore error: ${e.message}`);
+  }
+}
+
+function _renderDepartmentsUI(list) {
   const grid = document.getElementById('dept-grid');
   if (grid) {
-    grid.innerHTML = departments.map(d => `
+    grid.innerHTML = list.length ? list.map(d => `
       <div class="dept-card">
-        <div class="dept-icon">${d.icon}</div>
+        <div class="dept-icon">${d.icon||'🏛️'}</div>
         <div class="dept-info">
           <div class="dept-name">${sanitize(d.name)}</div>
-          <div class="dept-count">${d.count} students · HOD: ${sanitize(d.hod)}</div>
+          <div class="dept-count">${d.count} students · HOD: ${sanitize(d.hod||'—')}</div>
         </div>
-      </div>
-    `).join('');
+        <button class="btn btn-r btn-sm btn-icon" style="margin-left:auto" onclick="deleteDept('${d.id}')">🗑</button>
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:.82rem;grid-column:1/-1">No departments yet. Add one to get started.</div>';
   }
 
   const tbody = document.getElementById('dept-tbody');
   if (tbody) {
-    tbody.innerHTML = departments.map(d => `
+    tbody.innerHTML = list.map(d => `
       <tr>
-        <td><span style="margin-right:6px">${d.icon}</span>${sanitize(d.name)}</td>
-        <td style="color:var(--soft)">${sanitize(d.hod)}</td>
+        <td><span style="margin-right:6px">${d.icon||'🏛️'}</span>${sanitize(d.name)}</td>
+        <td style="color:var(--soft)">${sanitize(d.hod||'—')}</td>
         <td style="color:var(--stu);font-weight:600">${d.count}</td>
         <td>—</td>
-        <td style="color:${d.avgScore >= 60 ? 'var(--stu)' : 'var(--danger)'};font-weight:700">${d.avgScore ? d.avgScore + '%' : '—'}</td>
-      </tr>
-    `).join('');
+        <td style="color:${d.avgScore>=60?'var(--stu)':'var(--danger)'};font-weight:700">${d.avgScore?d.avgScore+'%':'—'}</td>
+      </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No departments.</td></tr>';
   }
 }
 
-function addDept() {
+async function addDept() {
   const name = prompt('Department name:');
   if (!name) return;
-  const v = validateInput(name, 'name', { maxLen: 80 });
-  if (!v.ok) { toast(v.msg, 'warn'); return; }
+  const v   = validateInput(name, 'name', { maxLen: 80 });
+  if (!v.ok) { toast(v.msg,'warn'); return; }
   const hod  = prompt('HOD name:') || 'Dr. TBD';
-  const icons = ['🔬', '📚', '🎨', '🏛️', '🌍', '🧬'];
-  departments.push({ id: 'dept-' + Date.now(), name: v.value, icon: icons[departments.length % icons.length], hod, count: 0, avgScore: 0 });
-  renderDepartments();
-  toast(`Department "${v.value}" added!`, 'ok');
+  const icons = ['💻','⚡','⚙️','🏗️','📐','🔭','🔬','📚','🎨','🌍','🧬'];
+  const icon  = icons[Math.floor(Math.random() * icons.length)];
+
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('departments').add({
+      name: v.value, hod, icon,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(`Department "${v.value}" added!`, 'ok');
+    renderDepartments();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   HALL ALLOCATION
-   ───────────────────────────────────────────────────────────── */
-function renderHallAlloc() {
-  const list = document.getElementById('hall-list');
-  if (!list) return;
-  list.innerHTML = examHalls.map(h => {
-    const pct = h.capacity > 0 ? Math.round((h.assigned / h.capacity) * 100) : 0;
+async function deleteDept(id) {
+  if (!confirm('Delete this department?')) return;
+  if (!fsReady()) return;
+  try {
+    await fsDb().collection('departments').doc(id).delete();
+    toast('Department deleted','warn');
+    renderDepartments();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. HALL ALLOCATION  —  Collection: halls/
+   ═══════════════════════════════════════════════════════════════ */
+async function renderHallAlloc() {
+  panelLoading('hall-list', 'Loading halls…');
+  if (!fsReady()) { panelError('hall-list','Firestore not connected.'); return; }
+
+  try {
+    const [hSnap, eSnap] = await Promise.all([
+      fsDb().collection('halls').orderBy('name','asc').get(),
+      fsDb().collection('exams').get(),
+    ]);
+    examHalls = hSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _renderHallsUI(examHalls);
+
+    // Populate exam dropdown
+    const sel = document.getElementById('hallalloc-exam');
+    if (sel) {
+      sel.innerHTML = '<option value="">Select Exam to Allocate</option>';
+      eSnap.docs.forEach(d => {
+        const e = d.data();
+        const o = document.createElement('option');
+        o.value = d.id; o.textContent = e.name || d.id;
+        sel.appendChild(o);
+      });
+    }
+  } catch(e) {
+    panelError('hall-list', `Firestore error: ${e.message}`);
+  }
+}
+
+function _renderHallsUI(list) {
+  const el = document.getElementById('hall-list');
+  if (!el) return;
+  el.innerHTML = list.length ? list.map(h => {
+    const pct = h.capacity > 0 ? Math.round(((h.assigned||0)/h.capacity)*100) : 0;
     return `
       <div class="hall-row">
         <div>
           <div class="hall-name">${sanitize(h.name)}</div>
-          <div class="hall-capacity">Capacity: ${h.capacity} · Assigned: ${h.assigned}</div>
+          <div class="hall-capacity">Capacity: ${h.capacity} · Assigned: ${h.assigned||0}</div>
         </div>
         <div class="hall-fill-bar"><div class="hall-fill-inner" style="width:${pct}%"></div></div>
-        <div style="font-size:.75rem;font-family:var(--ff-mono);color:${pct > 80 ? 'var(--danger)' : pct > 50 ? 'var(--amber)' : 'var(--stu)'}">${pct}%</div>
+        <div style="font-size:.75rem;font-family:var(--ff-mono);color:${pct>80?'var(--danger)':pct>50?'var(--amber)':'var(--stu)'}">${pct}%</div>
         <button class="btn btn-ghost btn-sm" onclick="removeHall('${h.id}')">🗑</button>
       </div>`;
-  }).join('');
-
-  // Populate exam dropdown
-  const sel = document.getElementById('hallalloc-exam');
-  if (sel) {
-    sel.innerHTML = '<option value="">Select Exam to Allocate</option>';
-    // In Firebase mode these would come from the exams collection
-    if (typeof questions !== 'undefined' && questions.length) {
-      sel.innerHTML += `<option value="current">Current Exam (${questions.length} questions)</option>`;
-    }
-  }
+  }).join('')
+  : '<div style="color:var(--muted);font-size:.82rem">No halls configured yet. Add a hall to begin.</div>';
 }
 
-function openHallModal() {
+async function openHallModal() {
   const name = prompt('Hall / Room name:');
   if (!name) return;
-  const v = validateInput(name, 'name', { maxLen: 100 });
-  if (!v.ok) { toast(v.msg, 'warn'); return; }
+  const v   = validateInput(name,'name',{maxLen:100}); if (!v.ok) { toast(v.msg,'warn'); return; }
   const cap = parseInt(prompt('Seating capacity:') || '0');
-  if (!cap || cap < 1) { toast('Enter a valid capacity', 'warn'); return; }
-  examHalls.push({ id: 'hall-' + Date.now(), name: v.value, capacity: cap, assigned: 0 });
-  renderHallAlloc();
-  toast(`Hall "${v.value}" added!`, 'ok');
+  if (!cap || cap < 1) { toast('Enter a valid capacity','warn'); return; }
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('halls').add({
+      name: v.value, capacity: cap, assigned: 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(`Hall "${v.value}" added!`,'ok');
+    renderHallAlloc();
+  } catch(e) { toast('Error: '+e.message,'err'); }
 }
 
-function removeHall(id) {
+async function removeHall(id) {
   if (!confirm('Remove this hall?')) return;
-  examHalls = examHalls.filter(h => h.id !== id);
-  renderHallAlloc();
+  if (!fsReady()) return;
+  try {
+    await fsDb().collection('halls').doc(id).delete();
+    toast('Hall removed','warn');
+    renderHallAlloc();
+  } catch(e) { toast('Error: '+e.message,'err'); }
 }
 
-function autoAllocateHalls() {
-  if (!RateLimiter.check('import')) { toast('Too many allocation requests. Please wait.', 'warn'); return; }
-  const students = [...enrolledStudents];
-  if (!students.length) { toast('No students to allocate', 'warn'); return; }
-  // Reset
-  examHalls = examHalls.map(h => ({ ...h, assigned: 0 }));
-  let idx = 0;
-  const alloc = [];
-  for (const hall of examHalls) {
-    const batch = students.slice(idx, idx + hall.capacity);
-    hall.assigned = batch.length;
-    if (batch.length) alloc.push({ hall: hall.name, students: batch });
-    idx += hall.capacity;
-    if (idx >= students.length) break;
-  }
+async function autoAllocateHalls() {
+  if (!RateLimiter.check('import')) { toast('Too many requests. Wait 60s.','warn'); return; }
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  const examId = document.getElementById('hallalloc-exam')?.value;
+  if (!examId) { toast('Select an exam first','warn'); return; }
 
-  const remaining = students.length - idx;
-  const res = document.getElementById('hallalloc-result');
-  if (res) {
-    res.innerHTML = `
-      <div style="font-size:.82rem;color:var(--stu);margin-bottom:10px">✅ Allocated ${Math.min(idx, students.length)} of ${students.length} students across ${alloc.length} halls.</div>
-      ${remaining > 0 ? `<div style="color:var(--danger);font-size:.78rem;margin-bottom:10px">⚠️ ${remaining} students could not be allocated — add more halls.</div>` : ''}
-      ${alloc.map(a => `
-        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:8px">
-          <div style="font-weight:700;color:var(--head);font-size:.82rem;margin-bottom:4px">🏫 ${sanitize(a.hall)}</div>
-          <div style="font-size:.72rem;color:var(--muted);font-family:var(--ff-mono)">${a.students.map(s => sanitize(s.roll)).join(' · ')}</div>
-        </div>`).join('')}
-    `;
-  }
-  renderHallAlloc();
-  toast(`Auto-allocation complete! ${students.length} students assigned.`, 'ok');
-}
+  try {
+    const [sSnap, hSnap] = await Promise.all([
+      fsDb().collection('students').get(),
+      fsDb().collection('halls').orderBy('capacity','desc').get(),
+    ]);
+    const students = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const halls    = hSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-function exportHallCSV() {
-  if (!RateLimiter.check('submit')) { toast('Too many requests', 'warn'); return; }
-  const rows = [['Hall', 'Roll No', 'Student Name', 'Department', 'Seat']];
-  let seatNo = 1;
-  let sidx = 0;
-  for (const hall of examHalls) {
-    for (let i = 0; i < hall.assigned; i++, sidx++) {
-      const s = enrolledStudents[sidx];
-      if (!s) break;
-      rows.push([hall.name, s.roll, s.name, s.dept, seatNo++]);
+    if (!students.length) { toast('No students in Firestore to allocate','warn'); return; }
+    if (!halls.length)    { toast('No halls configured','warn'); return; }
+
+    // Reset assigned counts + build allocation
+    let idx = 0;
+    const alloc = [];
+    const batchUpdates = [];
+
+    for (const h of halls) {
+      const batch = students.slice(idx, idx + h.capacity);
+      batchUpdates.push({ ref: fsDb().collection('halls').doc(h.id), assigned: batch.length });
+      if (batch.length) alloc.push({ hall: h.name, students: batch });
+      idx += h.capacity;
+      if (idx >= students.length) break;
     }
-  }
-  downloadCSV(rows, 'hall_allocation.csv');
-  toast('Hall allocation CSV exported', 'ok');
+
+    // Write all hall assignment counts to Firestore
+    const batch = fsDb().batch();
+    batchUpdates.forEach(({ ref, assigned }) => batch.update(ref, { assigned }));
+    await batch.commit();
+
+    // Save allocation plan under the exam document
+    await fsDb().collection('hall_allocations').doc(examId).set({
+      examId, allocations: alloc.map(a => ({ hall: a.hall, rolls: a.students.map(s=>s.roll||s.id) })),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const remaining = students.length - idx;
+    const res = document.getElementById('hallalloc-result');
+    if (res) {
+      res.innerHTML = `
+        <div style="color:var(--stu);margin-bottom:10px;font-size:.82rem">✅ Allocated ${Math.min(idx,students.length)} of ${students.length} students across ${alloc.length} halls. Saved to Firestore.</div>
+        ${remaining>0?`<div style="color:var(--danger);font-size:.78rem;margin-bottom:10px">⚠️ ${remaining} students unallocated — add more halls.</div>`:''}
+        ${alloc.map(a=>`
+          <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:8px">
+            <div style="font-weight:700;color:var(--head);font-size:.82rem;margin-bottom:4px">🏫 ${sanitize(a.hall)}</div>
+            <div style="font-size:.72rem;color:var(--muted);font-family:var(--ff-mono)">${a.students.map(s=>sanitize(s.roll||s.id)).join(' · ')}</div>
+          </div>`).join('')}`;
+    }
+    toast(`Auto-allocation saved to Firestore! ${students.length} students.`,'ok');
+    renderHallAlloc();
+  } catch(e) { toast('Error: '+e.message,'err'); console.error(e); }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   STUDENT IMPORT via CSV
-   ───────────────────────────────────────────────────────────── */
+async function exportHallCSV() {
+  if (!RateLimiter.check('submit')) { toast('Too many requests','warn'); return; }
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  const examId = document.getElementById('hallalloc-exam')?.value || '';
+  try {
+    const [hSnap, sSnap] = await Promise.all([
+      fsDb().collection('halls').get(),
+      fsDb().collection('students').get(),
+    ]);
+    const halls = hSnap.docs.map(d=>({...d.data()}));
+    const stuMap = {};
+    sSnap.docs.forEach(d => { const s=d.data(); stuMap[s.roll||d.id]=s; });
+
+    const rows = [['Hall','Roll No','Student Name','Department','Seat']];
+    let seat = 1, sidx = 0;
+    const allStu = sSnap.docs.map(d=>d.data());
+    for (const h of halls.sort((a,b)=>a.name.localeCompare(b.name))) {
+      for (let i=0; i<(h.assigned||0); i++, sidx++) {
+        const s = allStu[sidx]; if (!s) break;
+        rows.push([h.name, s.roll||'', s.name||'', s.dept||'', seat++]);
+      }
+    }
+    downloadCSV(rows, 'hall_allocation.csv');
+    toast('Hall allocation CSV exported','ok');
+  } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. STUDENT MANAGEMENT  —  Collection: students/
+   ═══════════════════════════════════════════════════════════════ */
 function handleCSVDrop(e) {
   e.preventDefault();
   document.getElementById('csv-drop').classList.remove('over');
-  const file = e.dataTransfer.files[0];
-  if (file) processCSVFile(file);
+  const file = e.dataTransfer.files[0]; if (file) processCSVFile(file);
 }
-
-function handleCSVFile(e) {
-  const file = e.target.files[0];
-  if (file) processCSVFile(file);
-}
+function handleCSVFile(e) { const f = e.target.files[0]; if (f) processCSVFile(f); }
 
 function processCSVFile(file) {
-  if (!file.name.endsWith('.csv')) { toast('Please upload a .csv file', 'warn'); return; }
-  if (file.size > 2 * 1024 * 1024) { toast('File too large (max 2 MB)', 'warn'); return; }
-
+  if (!file.name.endsWith('.csv')) { toast('Please upload a .csv file','warn'); return; }
+  if (file.size > 2*1024*1024) { toast('File too large (max 2 MB)','warn'); return; }
   const reader = new FileReader();
-  reader.onload = e => {
-    const lines = e.target.result.trim().split('\n').map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
-    const header = lines[0].map(h => h.toLowerCase());
-    const expected = ['roll_no', 'name', 'email', 'department', 'semester'];
-    const hasAll = expected.every(col => header.includes(col));
-
-    if (!hasAll) {
+  reader.onload = ev => {
+    const lines = ev.target.result.trim().split('\n').map(l => l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+    const header = lines[0].map(h=>h.toLowerCase());
+    const expected = ['roll_no','name','email','department','semester'];
+    if (!expected.every(col=>header.includes(col))) {
       document.getElementById('csv-preview').innerHTML =
         `<span style="color:var(--danger)">⚠ Missing columns. Expected: ${expected.join(', ')}</span>`;
       return;
     }
-
-    csvPendingData = lines.slice(1).filter(r => r.length >= 5).map(r => ({
-      roll: r[header.indexOf('roll_no')],
-      name: r[header.indexOf('name')],
-      email: r[header.indexOf('email')],
-      dept: r[header.indexOf('department')],
-      sem:  r[header.indexOf('semester')],
-      exams: 0, avg: 0,
-    })).filter(s => s.roll && s.name && s.email);
-
+    csvPendingData = lines.slice(1).filter(r=>r.length>=5).map(r=>({
+      roll: r[header.indexOf('roll_no')], name: r[header.indexOf('name')],
+      email:r[header.indexOf('email')], dept:r[header.indexOf('department')],
+      sem:  r[header.indexOf('semester')], exams:0, avg:0,
+    })).filter(s=>s.roll&&s.name&&s.email);
     document.getElementById('csv-preview').innerHTML = `
       <div style="color:var(--stu);margin-bottom:8px">✅ ${csvPendingData.length} students parsed</div>
       <div style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
-        ${csvPendingData.slice(0, 5).map(s => `<div style="color:var(--soft)">${sanitize(s.roll)} — ${sanitize(s.name)}</div>`).join('')}
-        ${csvPendingData.length > 5 ? `<div style="color:var(--muted)">… and ${csvPendingData.length - 5} more</div>` : ''}
+        ${csvPendingData.slice(0,5).map(s=>`<div style="color:var(--soft)">${sanitize(s.roll)} — ${sanitize(s.name)}</div>`).join('')}
+        ${csvPendingData.length>5?`<div style="color:var(--muted)">… and ${csvPendingData.length-5} more</div>`:''}
       </div>`;
-
     document.getElementById('import-btn').style.display = 'inline-flex';
   };
   reader.readAsText(file);
 }
 
-function importStudentsCSV() {
-  if (!RateLimiter.check('import')) { toast('Import rate limit — please wait 60s', 'warn'); return; }
-  if (!csvPendingData.length) { toast('No valid data to import', 'warn'); return; }
+async function importStudentsCSV() {
+  if (!RateLimiter.check('import')) { toast('Import rate limit — wait 60s','warn'); return; }
+  if (!csvPendingData.length)       { toast('No valid data to import','warn'); return; }
+  if (!fsReady())                   { toast('Firestore not connected','err'); return; }
 
-  // Validate each row
-  let valid = 0, dupes = 0;
+  const btn = document.getElementById('import-btn');
+  btn.disabled = true; btn.textContent = '⏳ Importing…';
+
+  let valid=0, dupes=0, invalid=0;
+  const batchOps = [];
+
   for (const s of csvPendingData) {
-    const emailV = validateInput(s.email, 'email');
-    const rollV  = validateInput(s.roll, 'rollno', { maxLen: 20 });
-    const nameV  = validateInput(s.name, 'name', { maxLen: 100 });
-    if (!emailV.ok || !rollV.ok || !nameV.ok) continue;
-
-    if (enrolledStudents.find(e => e.roll === s.roll)) { dupes++; continue; }
-    enrolledStudents.push(s);
-    valid++;
+    const eV=validateInput(s.email,'email'), rV=validateInput(s.roll,'rollno',{maxLen:20}), nV=validateInput(s.name,'name',{maxLen:100});
+    if (!eV.ok||!rV.ok||!nV.ok) { invalid++; continue; }
+    batchOps.push({ roll:rV.value, name:nV.value, email:eV.value, dept:s.dept, sem:s.sem, exams:0, avg:0 });
   }
 
-  csvPendingData = [];
-  document.getElementById('import-btn').style.display = 'none';
-  document.getElementById('csv-preview').innerHTML = `<span style="color:var(--muted)">No file selected.</span>`;
-  renderStudentsPanel();
-  toast(`Imported ${valid} students. ${dupes ? dupes + ' duplicates skipped.' : ''}`, 'ok', 5000);
+  // Check for existing rolls in Firestore (batch get)
+  try {
+    const CHUNK = 10;
+    for (let i=0; i<batchOps.length; i+=CHUNK) {
+      const chunk = batchOps.slice(i, i+CHUNK);
+      const snap  = await fsDb().collection('students')
+        .where(firebase.firestore.FieldPath.documentId(), 'in', chunk.map(s=>s.roll)).get();
+      const existing = new Set(snap.docs.map(d=>d.id));
 
-  // Persist to Firestore if available
-  if (typeof firebaseReady !== 'undefined' && firebaseReady && typeof db !== 'undefined') {
-    const batch = db.batch();
-    enrolledStudents.slice(-valid).forEach(s => {
-      const ref = db.collection('students').doc(s.roll);
-      batch.set(ref, { ...s, importedAt: firebase.firestore.FieldValue.serverTimestamp() });
-    });
-    batch.commit().catch(e => console.warn('Firestore student import error:', e));
+      const batch = fsDb().batch();
+      for (const s of chunk) {
+        if (existing.has(s.roll)) { dupes++; continue; }
+        batch.set(fsDb().collection('students').doc(s.roll), {
+          ...s, importedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        valid++;
+      }
+      await batch.commit();
+    }
+
+    csvPendingData = [];
+    btn.disabled=false; btn.textContent='⬆ Import Students';
+    btn.style.display='none';
+    document.getElementById('csv-preview').innerHTML=`<span style="color:var(--muted)">No file selected.</span>`;
+    toast(`Imported ${valid} students to Firestore. ${dupes?dupes+' duplicates skipped.':''} ${invalid?invalid+' invalid rows skipped.':''}`, 'ok', 6000);
+    renderStudentsPanel();
+  } catch(e) {
+    btn.disabled=false; btn.textContent='⬆ Import Students';
+    toast('Import failed: '+e.message,'err');
+    console.error(e);
   }
 }
 
-function downloadCSVTemplate() {
-  const rows = [
-    ['roll_no', 'name', 'email', 'department', 'semester'],
-    ['CS2026001', 'Rahul Singh', 'rahul@college.edu', 'Computer Science', 'Semester 1 — 2026'],
-    ['EC2026001', 'Meera Joshi', 'meera@college.edu', 'Electronics', 'Semester 1 — 2026'],
-  ];
-  downloadCSV(rows, 'student_import_template.csv');
-}
+async function renderStudentsPanel() {
+  panelLoading('stu-tbody', 'Loading students from Firestore…');
+  if (!fsReady()) {
+    const t=document.getElementById('stu-tbody');
+    if(t) t.innerHTML='<tr><td colspan="7" style="color:var(--muted)">Firestore not connected.</td></tr>';
+    return;
+  }
+  try {
+    const snap = await fsDb().collection('students').orderBy('roll','asc').get();
+    enrolledStudents = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderStudentTable(enrolledStudents);
 
-function renderStudentsPanel() {
-  renderStudentTable(enrolledStudents);
-  // Populate attendance exam filter
-  const sel = document.getElementById('att-filter-exam');
-  if (sel) {
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">All Exams</option>';
-    sel.value = cur;
+    // Update attendance exam dropdown with exams from Firestore
+    const sel = document.getElementById('att-filter-exam');
+    if (sel) {
+      const eSnap = await fsDb().collection('exams').get();
+      sel.innerHTML = '<option value="">All Exams</option>';
+      eSnap.docs.forEach(d => {
+        const o=document.createElement('option'); o.value=d.id; o.textContent=d.data().name||d.id; sel.appendChild(o);
+      });
+    }
+  } catch(e) {
+    const t=document.getElementById('stu-tbody');
+    if(t) t.innerHTML=`<tr><td colspan="7" style="color:var(--danger)">Error: ${sanitize(e.message)}</td></tr>`;
   }
 }
 
 function renderStudentTable(data) {
-  const tbody = document.getElementById('stu-tbody');
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">No students enrolled yet. Import a CSV to get started.</td></tr>'; return; }
-  tbody.innerHTML = data.map(s => `
+  const tbody = document.getElementById('stu-tbody'); if (!tbody) return;
+  tbody.innerHTML = data.length ? data.map(s=>`
     <tr>
-      <td style="font-family:var(--ff-mono);font-size:.78rem">${sanitize(s.roll)}</td>
-      <td style="font-weight:600;color:var(--head)">${sanitize(s.name)}</td>
-      <td style="font-size:.75rem">${sanitize(s.email)}</td>
-      <td style="font-size:.75rem;color:var(--soft)">${sanitize(s.dept)}</td>
-      <td style="font-size:.72rem;color:var(--muted)">${sanitize(s.sem)}</td>
-      <td style="color:var(--blue)">${s.exams}</td>
-      <td style="color:${s.avg >= 60 ? 'var(--stu)' : 'var(--danger)'};font-weight:600">${s.avg ? s.avg + '%' : '—'}</td>
-    </tr>
-  `).join('');
+      <td style="font-family:var(--ff-mono);font-size:.78rem">${sanitize(s.roll||'')}</td>
+      <td style="font-weight:600;color:var(--head)">${sanitize(s.name||'')}</td>
+      <td style="font-size:.75rem">${sanitize(s.email||'')}</td>
+      <td style="font-size:.75rem;color:var(--soft)">${sanitize(s.dept||'')}</td>
+      <td style="font-size:.72rem;color:var(--muted)">${sanitize(s.sem||'')}</td>
+      <td style="color:var(--blue)">${s.exams||0}</td>
+      <td style="color:${(s.avg||0)>=60?'var(--stu)':'var(--danger)'};font-weight:600">${s.avg?s.avg+'%':'—'}</td>
+    </tr>`).join('')
+  : '<tr><td colspan="7" style="color:var(--muted)">No students enrolled. Import a CSV to get started.</td></tr>';
 }
 
-function filterStudentTable() {
-  const q = document.getElementById('stu-search')?.value.toLowerCase() || '';
-  const filtered = enrolledStudents.filter(s =>
-    s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q)
+async function filterStudentTable() {
+  const q = document.getElementById('stu-search')?.value.toLowerCase()||'';
+  const filtered = enrolledStudents.filter(s=>
+    (s.name||'').toLowerCase().includes(q)||(s.roll||'').toLowerCase().includes(q)
   );
   renderStudentTable(filtered);
 }
 
-function exportStudentsCSV() {
-  if (!RateLimiter.check('submit')) { toast('Too many requests', 'warn'); return; }
-  const rows = [['Roll No', 'Name', 'Email', 'Department', 'Semester', 'Exams Taken', 'Avg Score'],
-    ...enrolledStudents.map(s => [s.roll, s.name, s.email, s.dept, s.sem, s.exams, s.avg + '%'])];
-  downloadCSV(rows, 'enrolled_students.csv');
-  toast('Students CSV exported', 'ok');
+async function exportStudentsCSV() {
+  if (!RateLimiter.check('submit')) { toast('Too many requests','warn'); return; }
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    const snap = await fsDb().collection('students').get();
+    const data = snap.docs.map(d=>d.data());
+    const rows = [['Roll No','Name','Email','Department','Semester','Exams Taken','Avg Score'],
+      ...data.map(s=>[s.roll,s.name,s.email,s.dept,s.sem,s.exams||0,(s.avg||0)+'%'])];
+    downloadCSV(rows, 'enrolled_students.csv');
+    toast('Students CSV exported','ok');
+  } catch(e) { toast('Error: '+e.message,'err'); }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   ATTENDANCE SYSTEM
-   ───────────────────────────────────────────────────────────── */
-function renderAttendance() {
-  const examId = document.getElementById('att-filter-exam')?.value || 'default';
-  if (!attendanceRecords[examId]) {
-    // Initialize with present for students who have submissions, absent for others
-    attendanceRecords[examId] = {};
-    enrolledStudents.forEach(s => {
-      const hasSubmission = typeof submissions !== 'undefined' &&
-        submissions.some(sub => sub.student === s.name);
-      attendanceRecords[examId][s.roll] = hasSubmission ? 'present' : 'absent';
-    });
-  }
+function downloadCSVTemplate() {
+  const rows=[
+    ['roll_no','name','email','department','semester'],
+    ['CS2026001','Rahul Singh','rahul@college.edu','Computer Science','Semester 1 — 2026'],
+    ['EC2026001','Meera Joshi','meera@college.edu','Electronics','Semester 1 — 2026'],
+  ];
+  downloadCSV(rows,'student_import_template.csv');
+}
 
-  const rec = attendanceRecords[examId];
-  const present = Object.values(rec).filter(v => v === 'present').length;
-  const absent  = Object.values(rec).filter(v => v === 'absent').length;
-  const total   = present + absent;
-  const pct     = total > 0 ? Math.round((present / total) * 100) : 0;
-
-  const pEl = document.getElementById('att-present'); if (pEl) pEl.textContent = present;
-  const aEl = document.getElementById('att-absent');  if (aEl) aEl.textContent = absent;
-  const pPct = document.getElementById('att-pct-stat'); if (pPct) pPct.textContent = pct + '%';
-
-  const grid = document.getElementById('att-grid');
-  if (!grid) return;
-  if (!enrolledStudents.length) {
-    grid.innerHTML = '<div style="color:var(--muted);font-size:.82rem;grid-column:1/-1">No students enrolled.</div>';
+/* ═══════════════════════════════════════════════════════════════
+   5. ATTENDANCE SYSTEM  —  Collection: attendance/
+      Document ID: {examId}  →  { records: { roll: 'present'|'absent' }, updatedAt }
+   ═══════════════════════════════════════════════════════════════ */
+async function renderAttendance() {
+  const examId = document.getElementById('att-filter-exam')?.value || 'general';
+  if (!fsReady()) {
+    document.getElementById('att-grid').innerHTML='<div style="color:var(--muted);grid-column:1/-1">Firestore not connected.</div>';
     return;
   }
 
-  grid.innerHTML = enrolledStudents.map(s => {
-    const status = rec[s.roll] || 'absent';
-    const color  = status === 'present' ? 'var(--stu)' : 'var(--danger)';
-    return `
-      <div class="att-card" onclick="toggleAttendance('${examId}','${s.roll}')" style="cursor:pointer;transition:border-color .18s"
-           onmouseover="this.style.borderColor='${color}'" onmouseout="this.style.borderColor='var(--line)'">
-        <div class="att-name">${sanitize(s.name)}</div>
-        <div style="font-size:.68rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:4px">${sanitize(s.roll)} · ${sanitize(s.dept)}</div>
-        <div class="att-pct ${status === 'present' ? 'good' : 'low'}">${status === 'present' ? '✓ Present' : '✗ Absent'}</div>
-        <div class="att-bar-wrap">
-          <div class="att-bar-fill" style="width:${status === 'present' ? 100 : 0}%;background:${color}"></div>
-        </div>
-      </div>
-    `;
-  }).join('');
+  try {
+    // Load students + attendance record in parallel
+    const [sSnap, aSnap] = await Promise.all([
+      fsDb().collection('students').orderBy('name','asc').get(),
+      fsDb().collection('attendance').doc(examId).get(),
+    ]);
+    enrolledStudents = sSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const rec = aSnap.exists ? (aSnap.data().records||{}) : {};
+
+    // For new records: auto-mark present if student has a submission for this exam
+    let subsForExam = [];
+    if (examId !== 'general') {
+      const subSnap = await fsDb().collection('submissions').where('examId','==',examId).get();
+      subsForExam = subSnap.docs.map(d=>d.data().userId||d.data().student);
+    }
+    enrolledStudents.forEach(s => {
+      if (!(s.roll in rec)) rec[s.roll] = subsForExam.includes(s.roll)||subsForExam.includes(s.name) ? 'present' : 'absent';
+    });
+    attendanceCache[examId] = rec;
+
+    const present = Object.values(rec).filter(v=>v==='present').length;
+    const absent  = Object.values(rec).filter(v=>v==='absent').length;
+    const total   = present+absent;
+    const pct     = total>0 ? Math.round(present/total*100) : 0;
+    const set = (id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    set('att-present',present); set('att-absent',absent); set('att-pct-stat',pct+'%');
+
+    const grid = document.getElementById('att-grid'); if (!grid) return;
+    grid.innerHTML = enrolledStudents.length ? enrolledStudents.map(s=>{
+      const status = rec[s.roll||s.id]||'absent';
+      const color  = status==='present'?'var(--stu)':'var(--danger)';
+      return `
+        <div class="att-card" onclick="toggleAttendance('${examId}','${s.roll||s.id}')" style="cursor:pointer">
+          <div class="att-name">${sanitize(s.name||'')}</div>
+          <div style="font-size:.68rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:4px">${sanitize(s.roll||'')} · ${sanitize(s.dept||'')}</div>
+          <div class="att-pct ${status==='present'?'good':'low'}">${status==='present'?'✓ Present':'✗ Absent'}</div>
+          <div class="att-bar-wrap"><div class="att-bar-fill" style="width:${status==='present'?100:0}%;background:${color}"></div></div>
+        </div>`;
+    }).join('')
+    : '<div style="color:var(--muted);font-size:.82rem;grid-column:1/-1">No students enrolled.</div>';
+  } catch(e) {
+    document.getElementById('att-grid').innerHTML=`<div style="color:var(--danger);grid-column:1/-1">Error: ${sanitize(e.message)}</div>`;
+  }
 }
 
-function toggleAttendance(examId, roll) {
-  if (!attendanceRecords[examId]) attendanceRecords[examId] = {};
-  const cur = attendanceRecords[examId][roll] || 'absent';
-  attendanceRecords[examId][roll] = cur === 'present' ? 'absent' : 'present';
+async function toggleAttendance(examId, roll) {
+  if (!fsReady()) return;
+  if (!attendanceCache[examId]) attendanceCache[examId] = {};
+  const cur = attendanceCache[examId][roll]||'absent';
+  attendanceCache[examId][roll] = cur==='present'?'absent':'present';
+
+  // Debounced write to Firestore
+  clearTimeout(window._attWriteTimer);
+  window._attWriteTimer = setTimeout(async () => {
+    try {
+      await fsDb().collection('attendance').doc(examId).set({
+        records: attendanceCache[examId],
+        examId,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge:true });
+    } catch(e) { console.warn('Attendance write error:', e); }
+  }, 1000);
+
   renderAttendance();
 }
 
-function markAttendance() {
-  const examId = document.getElementById('att-filter-exam')?.value || 'default';
-  if (!attendanceRecords[examId]) attendanceRecords[examId] = {};
-  enrolledStudents.forEach(s => {
-    if (!attendanceRecords[examId][s.roll]) attendanceRecords[examId][s.roll] = 'absent';
-  });
-  renderAttendance();
-  toast('Attendance initialized for this exam', 'ok');
+async function markAttendance() {
+  const examId = document.getElementById('att-filter-exam')?.value||'general';
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    const snap = await fsDb().collection('students').get();
+    const records = {};
+    snap.docs.forEach(d=>{ records[d.data().roll||d.id]='present'; });
+    await fsDb().collection('attendance').doc(examId).set({
+      records, examId, updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    },{merge:true});
+    toast('All students marked present!','ok');
+    renderAttendance();
+  } catch(e){ toast('Error: '+e.message,'err'); }
 }
 
-function exportAttendanceCSV() {
-  if (!RateLimiter.check('submit')) { toast('Too many requests', 'warn'); return; }
-  const examId = document.getElementById('att-filter-exam')?.value || 'default';
-  const rec = attendanceRecords[examId] || {};
-  const rows = [['Roll No', 'Name', 'Department', 'Status'],
-    ...enrolledStudents.map(s => [s.roll, s.name, s.dept, rec[s.roll] || 'absent'])];
-  downloadCSV(rows, 'attendance.csv');
-  toast('Attendance CSV exported', 'ok');
+async function exportAttendanceCSV() {
+  if (!RateLimiter.check('submit')) { toast('Too many requests','warn'); return; }
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  const examId = document.getElementById('att-filter-exam')?.value||'general';
+  try {
+    const [sSnap,aSnap] = await Promise.all([
+      fsDb().collection('students').get(),
+      fsDb().collection('attendance').doc(examId).get(),
+    ]);
+    const rec = aSnap.exists?(aSnap.data().records||{}):{};
+    const rows=[['Roll No','Name','Department','Status'],
+      ...sSnap.docs.map(d=>{const s=d.data();return[s.roll||d.id,s.name,s.dept,rec[s.roll||d.id]||'absent'];})];
+    downloadCSV(rows,'attendance.csv');
+    toast('Attendance CSV exported','ok');
+  } catch(e){ toast('Error: '+e.message,'err'); }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   EXAM SCHEDULING
-   ───────────────────────────────────────────────────────────── */
-function renderExamSchedule() {
+/* ═══════════════════════════════════════════════════════════════
+   6. EXAM SCHEDULING  —  Collection: exams/
+   ═══════════════════════════════════════════════════════════════ */
+async function renderExamSchedule() {
+  panelLoading('schedule-calendar','Loading exam schedule…');
+  document.getElementById('exam-timeline').innerHTML='';
+  if (!fsReady()) { panelError('schedule-calendar','Firestore not connected.'); return; }
+
+  try {
+    const snap = await fsDb().collection('exams').orderBy('startTime','asc').get();
+    const exams = snap.docs.map(d=>({id:d.id,...d.data()}));
+    _renderScheduleUI(exams);
+  } catch(e) {
+    panelError('schedule-calendar',`Firestore error: ${e.message}`);
+  }
+}
+
+function _renderScheduleUI(exams) {
   const cal = document.getElementById('schedule-calendar');
-  const tl  = document.getElementById('exam-timeline');
-  const conflict = document.getElementById('conflict-list');
-
-  // Build scheduled exams list from in-memory and Firestore (mocked here)
-  const scheduled = [
-    { name: 'Data Structures Mid-Sem', date: '2025-03-15', time: '09:00', dept: 'Computer Science', hall: 'Main Auditorium', duration: 90 },
-    { name: 'Algorithms Final',        date: '2025-04-20', time: '10:00', dept: 'Computer Science', hall: 'Block A — Room 101', duration: 120 },
-    { name: 'Circuits Lab Exam',       date: '2025-03-22', time: '14:00', dept: 'Electronics',      hall: 'Lab 2 — Tech Block', duration: 60 },
-  ];
-
   if (cal) {
     cal.innerHTML = `
-      <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">Scheduled Exams (${scheduled.length})</div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">
+        Scheduled Exams (${exams.length}) — Live from Firestore
+      </div>
       <table class="data-table">
-        <thead><tr><th>Exam</th><th>Date</th><th>Time</th><th>Department</th><th>Hall</th><th>Duration</th></tr></thead>
-        <tbody>${scheduled.map(e => `
-          <tr>
-            <td style="font-weight:600;color:var(--head)">${sanitize(e.name)}</td>
-            <td style="font-family:var(--ff-mono);font-size:.75rem">${e.date}</td>
-            <td style="font-family:var(--ff-mono);font-size:.75rem">${e.time}</td>
-            <td style="color:var(--soft)">${sanitize(e.dept)}</td>
-            <td style="font-size:.75rem">${sanitize(e.hall)}</td>
-            <td style="color:var(--muted);font-family:var(--ff-mono)">${e.duration}m</td>
-          </tr>`).join('')}
+        <thead><tr><th>Exam</th><th>Start</th><th>End</th><th>Duration</th><th>Hall</th><th>Status</th></tr></thead>
+        <tbody>${exams.length ? exams.map(e=>{
+          const now=new Date(), s=new Date(e.startTime), en=new Date(e.endTime);
+          const status = now<s?'upcoming':now>en?'ended':'active';
+          const sc={upcoming:'var(--blue)',active:'var(--stu)',ended:'var(--muted)'}[status];
+          return `<tr>
+            <td style="font-weight:600;color:var(--head)">${sanitize(e.name||'Untitled')}</td>
+            <td style="font-family:var(--ff-mono);font-size:.73rem">${e.startTime?new Date(e.startTime).toLocaleString():'-'}</td>
+            <td style="font-family:var(--ff-mono);font-size:.73rem">${e.endTime?new Date(e.endTime).toLocaleString():'-'}</td>
+            <td style="color:var(--muted)">${e.durationMins||'-'}m</td>
+            <td style="font-size:.75rem">${sanitize(e.hall||'Not assigned')}</td>
+            <td><span style="font-family:var(--ff-mono);font-size:.7rem;color:${sc}">${status.toUpperCase()}</span></td>
+          </tr>`;
+        }).join('')
+        : '<tr><td colspan="6" style="color:var(--muted)">No exams scheduled yet.</td></tr>'}
         </tbody>
       </table>`;
   }
 
+  // Timeline — next 5 upcoming
+  const tl = document.getElementById('exam-timeline');
   if (tl) {
-    const sorted = [...scheduled].sort((a, b) => a.date.localeCompare(b.date));
-    tl.innerHTML = sorted.map(e => `
+    const upcoming = exams.filter(e=>new Date(e.startTime)>new Date()).slice(0,5);
+    tl.innerHTML = upcoming.length ? upcoming.map(e=>`
       <div class="tl-item">
-        <div class="tl-time">${e.date}<br>${e.time}</div>
+        <div class="tl-time">${new Date(e.startTime).toLocaleDateString()}<br>${new Date(e.startTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
         <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
         <div class="tl-body">
-          <div class="tl-body-title">${sanitize(e.name)}</div>
-          <div class="tl-body-sub">${sanitize(e.hall)} · ${e.duration}m</div>
+          <div class="tl-body-title">${sanitize(e.name||'Exam')}</div>
+          <div class="tl-body-sub">${sanitize(e.hall||'No hall')} · ${e.durationMins||'-'}m</div>
         </div>
-      </div>`).join('');
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:.78rem">No upcoming exams.</div>';
   }
 
-  // Conflict detection — same hall, overlapping time
+  // Conflict detection
+  const conflict = document.getElementById('conflict-list');
   if (conflict) {
-    let conflicts = [];
-    for (let i = 0; i < scheduled.length; i++) {
-      for (let j = i + 1; j < scheduled.length; j++) {
-        if (scheduled[i].hall === scheduled[j].hall && scheduled[i].date === scheduled[j].date) {
-          const [h1, m1] = scheduled[i].time.split(':').map(Number);
-          const [h2, m2] = scheduled[j].time.split(':').map(Number);
-          const start1 = h1 * 60 + m1, end1 = start1 + scheduled[i].duration;
-          const start2 = h2 * 60 + m2, end2 = start2 + scheduled[j].duration;
-          if (start1 < end2 && start2 < end1) {
-            conflicts.push(`⚠️ ${scheduled[i].name} &amp; ${scheduled[j].name} overlap in ${scheduled[i].hall} on ${scheduled[i].date}`);
-          }
-        }
+    const conflicts = [];
+    for (let i=0;i<exams.length;i++) for (let j=i+1;j<exams.length;j++) {
+      if (!exams[i].hall||!exams[j].hall||exams[i].hall!==exams[j].hall) continue;
+      const s1=new Date(exams[i].startTime),e1=new Date(exams[i].endTime);
+      const s2=new Date(exams[j].startTime),e2=new Date(exams[j].endTime);
+      if (s1<e2&&s2<e1) {
+        conflicts.push(`⚠️ "${sanitize(exams[i].name)}" &amp; "${sanitize(exams[j].name)}" overlap in ${sanitize(exams[i].hall)}`);
       }
     }
     conflict.innerHTML = conflicts.length
-      ? conflicts.map(c => `<div style="color:var(--danger);margin-bottom:6px;font-size:.78rem">${c}</div>`).join('')
+      ? conflicts.map(c=>`<div style="color:var(--danger);margin-bottom:6px;font-size:.78rem">${c}</div>`).join('')
       : '<div style="color:var(--stu)">✅ No scheduling conflicts detected.</div>';
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   GRADING EXPORTS
-   ───────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   7. GRADES & EXPORT  —  Collections: students/ + submissions/
+   ═══════════════════════════════════════════════════════════════ */
 function calcGrade(avg) {
-  if (avg >= 90) return 'A';
-  if (avg >= 75) return 'B';
-  if (avg >= 60) return 'C';
-  if (avg >= 45) return 'D';
-  return 'F';
+  if (avg>=90) return 'A'; if (avg>=75) return 'B';
+  if (avg>=60) return 'C'; if (avg>=45) return 'D'; return 'F';
 }
 
-let curveApplied = 0;
-
-function renderGrades() {
-  const filter = document.getElementById('grade-filter-sem')?.value || '';
-  const sel = document.getElementById('grade-filter-sem');
-  if (sel && sel.options.length <= 1) {
-    semesters.forEach(s => {
-      const o = document.createElement('option');
-      o.value = s.name; o.textContent = s.name; sel.appendChild(o);
-    });
+async function renderGrades() {
+  panelLoading('grades-tbody','Loading grades from Firestore…');
+  if (!fsReady()) {
+    const t=document.getElementById('grades-tbody');
+    if(t) t.innerHTML='<tr><td colspan="7" style="color:var(--muted)">Firestore not connected.</td></tr>';
+    return;
   }
 
-  const data = enrolledStudents
-    .filter(s => !filter || s.sem === filter)
-    .map(s => ({ ...s, curvedAvg: Math.min(100, s.avg + curveApplied) }));
+  // Populate semester dropdown
+  const sel=document.getElementById('grade-filter-sem');
+  if (sel&&sel.options.length<=1) {
+    const semSnap=await fsDb().collection('semesters').get();
+    semSnap.docs.forEach(d=>{const o=document.createElement('option');o.value=d.data().name;o.textContent=d.data().name;sel.appendChild(o);});
+  }
+  const semFilter=sel?.value||'';
 
-  // Grade distribution
-  const dist = { A: 0, B: 0, C: 0, D: 0, F: 0 };
-  data.forEach(s => { if (s.curvedAvg > 0) dist[calcGrade(s.curvedAvg)]++; });
+  try {
+    // Load students + all submissions in parallel
+    const [sSnap, subSnap] = await Promise.all([
+      fsDb().collection('students').orderBy('name','asc').get(),
+      fsDb().collection('submissions').get(),
+    ]);
+    let students = sSnap.docs.map(d=>({id:d.id,...d.data()}));
+    if (semFilter) students=students.filter(s=>s.sem===semFilter);
 
-  const distEl = document.getElementById('grade-dist');
+    const subs = subSnap.docs.map(d=>d.data());
+
+    // Compute avg score per student from submissions
+    const gradeData = students.map(s=>{
+      const stuSubs = subs.filter(sub=>sub.userId===s.id||sub.student===s.name||sub.studentRoll===s.roll);
+      const avg     = stuSubs.length ? Math.round(stuSubs.reduce((a,sub)=>a+sub.score,0)/stuSubs.length) : (s.avg||0);
+      const curved  = Math.min(100, avg+curveApplied);
+      return { ...s, liveAvg:avg, curved, exams:stuSubs.length||s.exams||0 };
+    });
+
+    _renderGradesUI(gradeData);
+
+    // Update Firestore avg for each student if it changed
+    const batch=fsDb().batch();
+    gradeData.forEach(s=>{
+      if (s.liveAvg!==s.avg&&s.liveAvg>0) {
+        batch.update(fsDb().collection('students').doc(s.id),{avg:s.liveAvg,exams:s.exams});
+      }
+    });
+    batch.commit().catch(()=>{});
+  } catch(e) {
+    const t=document.getElementById('grades-tbody');
+    if(t) t.innerHTML=`<tr><td colspan="7" style="color:var(--danger)">Error: ${sanitize(e.message)}</td></tr>`;
+    console.error(e);
+  }
+}
+
+function _renderGradesUI(data) {
+  const dist={A:0,B:0,C:0,D:0,F:0};
+  data.forEach(s=>{ if(s.curved>0) dist[calcGrade(s.curved)]++; });
+  const total=Object.values(dist).reduce((a,v)=>a+v,0)||1;
+  const gc={A:'var(--stu)',B:'var(--blue)',C:'var(--amber)',D:'var(--prof)',F:'var(--danger)'};
+  const distEl=document.getElementById('grade-dist');
   if (distEl) {
-    const total = Object.values(dist).reduce((a, v) => a + v, 0) || 1;
-    const colors = { A: 'var(--stu)', B: 'var(--blue)', C: 'var(--amber)', D: 'var(--prof)', F: 'var(--danger)' };
-    distEl.innerHTML = Object.entries(dist).map(([g, n]) => `
+    distEl.innerHTML=Object.entries(dist).map(([g,n])=>`
       <div class="grade-row">
         <div class="grade-letter ${g}">${g}</div>
-        <div style="flex:1">
-          <div style="background:var(--line);border-radius:99px;height:6px;overflow:hidden">
-            <div style="height:100%;background:${colors[g]};border-radius:99px;width:${Math.round(n/total*100)}%;transition:width .5s"></div>
-          </div>
-        </div>
+        <div style="flex:1"><div style="background:var(--line);border-radius:99px;height:6px;overflow:hidden">
+          <div style="height:100%;background:${gc[g]};border-radius:99px;width:${Math.round(n/total*100)}%;transition:width .5s"></div>
+        </div></div>
         <div style="font-family:var(--ff-mono);font-size:.75rem;color:var(--muted);width:50px;text-align:right">${n} (${Math.round(n/total*100)}%)</div>
       </div>`).join('');
   }
-
-  const tbody = document.getElementById('grades-tbody');
-  if (!tbody) return;
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">No students found.</td></tr>'; return; }
-  tbody.innerHTML = data.map(s => {
-    const grade = calcGrade(s.curvedAvg);
-    const gc = { A: 'var(--stu)', B: 'var(--blue)', C: 'var(--amber)', D: 'var(--prof)', F: 'var(--danger)' }[grade];
+  const tbody=document.getElementById('grades-tbody'); if(!tbody) return;
+  tbody.innerHTML=data.length ? data.map(s=>{
+    const grade=calcGrade(s.curved);
     return `<tr>
-      <td style="font-weight:600;color:var(--head)">${sanitize(s.name)}</td>
-      <td style="font-family:var(--ff-mono);font-size:.75rem">${sanitize(s.roll)}</td>
-      <td style="font-size:.75rem;color:var(--soft)">${sanitize(s.dept)}</td>
+      <td style="font-weight:600;color:var(--head)">${sanitize(s.name||'')}</td>
+      <td style="font-family:var(--ff-mono);font-size:.75rem">${sanitize(s.roll||s.id||'')}</td>
+      <td style="font-size:.75rem;color:var(--soft)">${sanitize(s.dept||'')}</td>
       <td>${s.exams}</td>
-      <td style="font-family:var(--ff-mono)">${s.curvedAvg > 0 ? s.curvedAvg * s.exams + ' pts' : '—'}</td>
-      <td style="color:${s.curvedAvg >= 60 ? 'var(--stu)' : 'var(--danger)'};font-weight:700">${s.curvedAvg ? s.curvedAvg + '%' : '—'}</td>
-      <td><span style="font-family:var(--ff-mono);font-weight:900;color:${gc}">${grade}</span></td>
+      <td style="font-family:var(--ff-mono)">${s.liveAvg>0?s.liveAvg*s.exams+' pts':'—'}</td>
+      <td style="color:${s.curved>=60?'var(--stu)':'var(--danger)'};font-weight:700">${s.curved?s.curved+'%':'—'}</td>
+      <td><span style="font-family:var(--ff-mono);font-weight:900;color:${gc[grade]}">${grade}</span></td>
     </tr>`;
-  }).join('');
+  }).join('')
+  : '<tr><td colspan="7" style="color:var(--muted)">No students.</td></tr>';
 }
 
 function applyCurve() {
-  const v = parseInt(document.getElementById('curve-val')?.value) || 0;
-  if (v < -20 || v > 20) { toast('Curve must be between -20 and +20', 'warn'); return; }
-  curveApplied = v;
-  renderGrades();
-  toast(`Curve of ${v > 0 ? '+' : ''}${v}% applied to all grades`, v === 0 ? 'info' : 'ok');
+  const v=parseInt(document.getElementById('curve-val')?.value)||0;
+  if(v<-20||v>20){toast('Curve must be between -20 and +20','warn');return;}
+  curveApplied=v; renderGrades();
+  toast(`Curve of ${v>0?'+':''}${v}% applied`, v===0?'info':'ok');
 }
 
-function exportGradesCSV() {
-  if (!RateLimiter.check('submit')) { toast('Too many requests', 'warn'); return; }
-  const rows = [['Roll No', 'Name', 'Department', 'Semester', 'Exams', 'Avg Score', 'Curved Score', 'Grade'],
-    ...enrolledStudents.map(s => {
-      const curved = Math.min(100, s.avg + curveApplied);
-      return [s.roll, s.name, s.dept, s.sem, s.exams, s.avg + '%', curved + '%', calcGrade(curved)];
-    })];
-  downloadCSV(rows, 'grade_export.csv');
-  toast('Grades exported as CSV', 'ok');
+async function exportGradesCSV() {
+  if (!RateLimiter.check('submit')) { toast('Too many requests','warn'); return; }
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    const [sSnap,subSnap]=await Promise.all([
+      fsDb().collection('students').get(),
+      fsDb().collection('submissions').get(),
+    ]);
+    const subs=subSnap.docs.map(d=>d.data());
+    const rows=[['Roll No','Name','Department','Semester','Exams','Avg Score','Curved Score','Grade']];
+    sSnap.docs.forEach(d=>{
+      const s=d.data();
+      const stuSubs=subs.filter(sub=>sub.userId===d.id||sub.student===s.name);
+      const avg=stuSubs.length?Math.round(stuSubs.reduce((a,sub)=>a+sub.score,0)/stuSubs.length):(s.avg||0);
+      const curved=Math.min(100,avg+curveApplied);
+      rows.push([s.roll||d.id,s.name,s.dept,s.sem,stuSubs.length||s.exams||0,avg+'%',curved+'%',calcGrade(curved)]);
+    });
+    downloadCSV(rows,'grade_export.csv');
+    toast('Grades exported from Firestore ✅','ok');
+  } catch(e){ toast('Error: '+e.message,'err'); }
 }
 
-function exportGradesPDF() {
-  toast('PDF export requires server-side rendering (e.g. Puppeteer). CSV export is available instead.', 'info', 5000);
+function exportGradesPDF(){
+  toast('PDF export requires server-side rendering. Use CSV export instead.','info',5000);
 }
 
-/* ─────────────────────────────────────────────────────────────
-   ANALYTICS DASHBOARD
-   ───────────────────────────────────────────────────────────── */
-function renderAnalytics() {
-  const allSubs = typeof submissions !== 'undefined' ? submissions : [];
-  const allVios = typeof violations  !== 'undefined' ? violations  : [];
+/* ═══════════════════════════════════════════════════════════════
+   8. ANALYTICS DASHBOARD  —  Collections: submissions/ + violations/ + students/
+   ═══════════════════════════════════════════════════════════════ */
+async function renderAnalytics() {
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('an-avgScore','…'); set('an-passRate','…'); set('an-totalExams','…'); set('an-flagRate','…');
 
-  const avgScore = allSubs.length ? Math.round(allSubs.reduce((a, s) => a + s.score, 0) / allSubs.length) : null;
-  const passRate = allSubs.length ? Math.round((allSubs.filter(s => s.score >= 60).length / allSubs.length) * 100) : null;
-  const flagRate = allSubs.length ? Math.round((allSubs.filter(s => s.vios > 0).length / allSubs.length) * 100) : null;
-
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('an-avgScore', avgScore !== null ? avgScore + '%' : '—');
-  set('an-passRate', passRate !== null ? passRate + '%' : '—');
-  set('an-totalExams', (typeof questions !== 'undefined' ? questions.length : 0));
-  set('an-flagRate', flagRate !== null ? flagRate + '%' : '—');
-
-  // Score distribution
-  const scoreDist = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
-  allSubs.forEach(s => {
-    if (s.score <= 20) scoreDist['0-20']++;
-    else if (s.score <= 40) scoreDist['21-40']++;
-    else if (s.score <= 60) scoreDist['41-60']++;
-    else if (s.score <= 80) scoreDist['61-80']++;
-    else scoreDist['81-100']++;
-  });
-  const maxSD = Math.max(...Object.values(scoreDist), 1);
-  const colors = ['var(--danger)', 'var(--amber)', 'var(--amber)', 'var(--blue)', 'var(--stu)'];
-  const sd = document.getElementById('an-score-dist');
-  if (sd) {
-    sd.innerHTML = Object.entries(scoreDist).map(([k, v], i) => `
-      <div class="bar-row">
-        <div class="bar-label">${k}%</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxSD*100)}%;background:${colors[i]}"></div></div>
-        <div class="bar-val">${v}</div>
-      </div>`).join('');
+  if (!fsReady()) {
+    ['an-score-dist','an-q-attempts','an-vio-types','an-lang-usage','an-timeline']
+      .forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<div style="color:var(--muted);font-size:.78rem">Firestore not connected.</div>';});
+    return;
   }
 
-  // Question attempts
-  const qa = document.getElementById('an-q-attempts');
-  if (qa && typeof questions !== 'undefined') {
-    const attempts = questions.map(q => ({
-      name: q.title,
-      count: allSubs.filter(s => s.problem === q.title).length,
-    })).sort((a, b) => b.count - a.count).slice(0, 6);
-    const maxA = Math.max(...attempts.map(a => a.count), 1);
-    qa.innerHTML = attempts.map(a => `
-      <div class="bar-row">
-        <div class="bar-label" title="${sanitize(a.name)}">${sanitize(a.name.substring(0, 14))}${a.name.length > 14 ? '…' : ''}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(a.count/maxA*100)}%;background:var(--cyan)"></div></div>
-        <div class="bar-val">${a.count}</div>
-      </div>`).join('') || '<div style="color:var(--muted);font-size:.78rem">No submissions yet.</div>';
-  }
+  try {
+    const [subSnap, vioSnap, stuSnap, qSnap] = await Promise.all([
+      fsDb().collection('submissions').get(),
+      fsDb().collection('violations').get(),
+      fsDb().collection('students').get(),
+      fsDb().collection('questions_public').get(),
+    ]);
+    const allSubs = subSnap.docs.map(d=>d.data());
+    const allVios = vioSnap.docs.map(d=>d.data());
+    const allQs   = qSnap.docs.map(d=>({id:d.id,...d.data()}));
 
-  // Violation types
-  const vioTypes = {};
-  allVios.forEach(v => { vioTypes[v.type] = (vioTypes[v.type] || 0) + 1; });
-  const vt = document.getElementById('an-vio-types');
-  if (vt) {
-    const sorted = Object.entries(vioTypes).sort((a, b) => b[1] - a[1]);
-    const maxV = Math.max(...sorted.map(v => v[1]), 1);
-    vt.innerHTML = sorted.length
-      ? sorted.map(([k, v]) => `
-          <div class="bar-row">
-            <div class="bar-label">${sanitize(k)}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxV*100)}%;background:var(--danger)"></div></div>
-            <div class="bar-val">${v}</div>
-          </div>`).join('')
-      : '<div style="color:var(--muted);font-size:.78rem">No violations recorded.</div>';
-  }
+    const avgScore = allSubs.length?Math.round(allSubs.reduce((a,s)=>a+s.score,0)/allSubs.length):null;
+    const passRate = allSubs.length?Math.round(allSubs.filter(s=>s.score>=60).length/allSubs.length*100):null;
+    const flagRate = allSubs.length?Math.round(allSubs.filter(s=>s.vios>0).length/allSubs.length*100):null;
 
-  // Language usage
-  const langs = {};
-  allSubs.forEach(s => { langs[s.lang] = (langs[s.lang] || 0) + 1; });
-  const lu = document.getElementById('an-lang-usage');
-  const langColors = { python: 'var(--blue)', javascript: 'var(--amber)', cpp: 'var(--cyan)', java: 'var(--prof)', c: 'var(--stu)' };
-  if (lu) {
-    const sorted = Object.entries(langs).sort((a, b) => b[1] - a[1]);
-    const maxL = Math.max(...sorted.map(v => v[1]), 1);
-    lu.innerHTML = sorted.length
-      ? sorted.map(([k, v]) => `
-          <div class="bar-row">
-            <div class="bar-label">${sanitize(k)}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxL*100)}%;background:${langColors[k]||'var(--blue)'}"></div></div>
-            <div class="bar-val">${v}</div>
-          </div>`).join('')
-      : '<div style="color:var(--muted);font-size:.78rem">No language data.</div>';
+    set('an-avgScore', avgScore!==null?avgScore+'%':'—');
+    set('an-passRate', passRate!==null?passRate+'%':'—');
+    set('an-totalExams', allQs.length);
+    set('an-flagRate', flagRate!==null?flagRate+'%':'—');
+
+    // Score distribution
+    const scoreDist={'0–20':0,'21–40':0,'41–60':0,'61–80':0,'81–100':0};
+    allSubs.forEach(s=>{
+      if(s.score<=20) scoreDist['0–20']++;
+      else if(s.score<=40) scoreDist['21–40']++;
+      else if(s.score<=60) scoreDist['41–60']++;
+      else if(s.score<=80) scoreDist['61–80']++;
+      else scoreDist['81–100']++;
+    });
+    const maxSD=Math.max(...Object.values(scoreDist),1);
+    const sdColors=['var(--danger)','var(--amber)','var(--amber)','var(--blue)','var(--stu)'];
+    const sd=document.getElementById('an-score-dist');
+    if(sd) sd.innerHTML=Object.entries(scoreDist).map(([k,v],i)=>`
+      <div class="bar-row"><div class="bar-label">${k}%</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxSD*100)}%;background:${sdColors[i]}"></div></div>
+        <div class="bar-val">${v}</div></div>`).join('');
+
+    // Top questions
+    const qa=document.getElementById('an-q-attempts');
+    if(qa){
+      const attempts=allQs.map(q=>({name:q.title||q.id,count:allSubs.filter(s=>s.problem===q.title||s.questionId===q.id).length}))
+        .sort((a,b)=>b.count-a.count).slice(0,6);
+      const maxA=Math.max(...attempts.map(a=>a.count),1);
+      qa.innerHTML=attempts.length?attempts.map(a=>`
+        <div class="bar-row"><div class="bar-label" title="${sanitize(a.name)}">${sanitize(a.name.substring(0,14))}${a.name.length>14?'…':''}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(a.count/maxA*100)}%;background:var(--cyan)"></div></div>
+          <div class="bar-val">${a.count}</div></div>`).join('')
+      :'<div style="color:var(--muted);font-size:.78rem">No submissions yet.</div>';
+    }
+
+    // Violation types
+    const vioTypes={};
+    allVios.forEach(v=>{ vioTypes[v.type]=(vioTypes[v.type]||0)+1; });
+    const vt=document.getElementById('an-vio-types');
+    if(vt){
+      const sorted=Object.entries(vioTypes).sort((a,b)=>b[1]-a[1]);
+      const maxV=Math.max(...sorted.map(v=>v[1]),1);
+      vt.innerHTML=sorted.length?sorted.map(([k,v])=>`
+        <div class="bar-row"><div class="bar-label">${sanitize(k)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxV*100)}%;background:var(--danger)"></div></div>
+          <div class="bar-val">${v}</div></div>`).join('')
+      :'<div style="color:var(--muted);font-size:.78rem">No violations recorded.</div>';
+    }
+
+    // Language usage
+    const langs={};
+    allSubs.forEach(s=>{ langs[s.lang]=(langs[s.lang]||0)+1; });
+    const lu=document.getElementById('an-lang-usage');
+    const lc={python:'var(--blue)',javascript:'var(--amber)',cpp:'var(--cyan)',java:'var(--prof)',c:'var(--stu)'};
+    if(lu){
+      const sorted=Object.entries(langs).sort((a,b)=>b[1]-a[1]);
+      const maxL=Math.max(...sorted.map(v=>v[1]),1);
+      lu.innerHTML=sorted.length?sorted.map(([k,v])=>`
+        <div class="bar-row"><div class="bar-label">${sanitize(k)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxL*100)}%;background:${lc[k]||'var(--blue)'}"></div></div>
+          <div class="bar-val">${v}</div></div>`).join('')
+      :'<div style="color:var(--muted);font-size:.78rem">No language data.</div>';
+    }
+
+    // Submission timeline (last 10 subs)
+    const tl=document.getElementById('an-timeline');
+    if(tl){
+      const recent=[...allSubs].sort((a,b)=>{
+        const ta=a.timestamp?.seconds||0, tb=b.timestamp?.seconds||0; return tb-ta;
+      }).slice(0,10);
+      tl.innerHTML=recent.length?`<table class="data-table">
+        <thead><tr><th>Student</th><th>Problem</th><th>Language</th><th>Score</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody>${recent.map(s=>`<tr>
+          <td>${sanitize(s.student||'')}</td>
+          <td style="font-size:.78rem">${sanitize(s.problem||'')}</td>
+          <td style="font-family:var(--ff-mono);font-size:.72rem">${sanitize(s.lang||'')}</td>
+          <td style="color:var(--stu);font-weight:700">${s.score}%</td>
+          <td><span class="diff ${s.score===100?'easy':s.score>0?'med':'hard'}">${s.status||''}</span></td>
+          <td style="color:var(--muted);font-size:.72rem;font-family:var(--ff-mono)">${s.time||''}</td>
+        </tr>`).join('')}</tbody></table>`
+      :'<div style="color:var(--muted);font-size:.78rem">No submissions yet.</div>';
+    }
+  } catch(e) {
+    console.error('renderAnalytics:', e);
+    toast('Analytics error: '+e.message,'err');
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   SECURITY PANEL
-   ───────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   9. SECURITY PANEL  (no Firestore — displays configuration status)
+   ═══════════════════════════════════════════════════════════════ */
 function renderSecurityPanel() {
   checkHTTPS();
   // All other badges are already rendered in HTML as "Active"
 }
 
-/* ─────────────────────────────────────────────────────────────
-   UTILITY: CSV DOWNLOAD
-   ───────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   SHARED UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
 function downloadCSV(rows, filename) {
-  const csv = rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const csv=rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
-/* ─────────────────────────────────────────────────────────────
-   PATCH: Override toast to sanitize message (XSS)
-   ───────────────────────────────────────────────────────────── */
-const _origToast = window.toast;
-window.toast = function(msg, type, dur) {
-  // sanitize the message to prevent XSS in toast content
-  const icons = {ok:'✅', warn:'⚠️', err:'❌', info:'💬'};
-  const safeMsg = typeof msg === 'string' ? msg.replace(/</g, '&lt;').replace(/>/g, '&gt;') : msg;
-  const el = document.createElement('div');
-  el.className = `toast ${type || 'ok'}`;
-  el.innerHTML = `<span>${icons[type]||'💬'}</span><span>${safeMsg}</span>`;
+/* Patch toast for XSS safety */
+const _origToast=window.toast;
+window.toast=function(msg,type,dur){
+  const icons={ok:'✅',warn:'⚠️',err:'❌',info:'💬'};
+  const safe=typeof msg==='string'?msg.replace(/</g,'&lt;').replace(/>/g,'&gt;'):msg;
+  const el=document.createElement('div');
+  el.className=`toast ${type||'ok'}`;
+  el.innerHTML=`<span>${icons[type]||'💬'}</span><span>${safe}</span>`;
   document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), dur || 3500);
+  setTimeout(()=>el.remove(),dur||3500);
 };
 
-/* ─────────────────────────────────────────────────────────────
-   PATCH: Wrap handleLogin with rate limiting
-   ───────────────────────────────────────────────────────────── */
-const _origHandleLogin = window.handleLogin;
-window.handleLogin = async function() {
-  if (!RateLimiter.check('login')) {
-    toast('Too many login attempts. Please wait 60 seconds.', 'err', 6000);
-    return;
-  }
-  return _origHandleLogin.apply(this, arguments);
+/* Patch handleLogin with rate limiting */
+const _origHandleLogin=window.handleLogin;
+window.handleLogin=async function(){
+  if(!RateLimiter.check('login')){toast('Too many login attempts. Wait 60 seconds.','err',6000);return;}
+  return _origHandleLogin.apply(this,arguments);
 };
-
-/* Auto-init university data when prof loads */
-document.addEventListener('DOMContentLoaded', () => {
-  // Update dashboard stat for students
-  setTimeout(() => {
-    const el = document.getElementById('s-active');
-    // inject student count into stat grid
-  }, 100);
-});
 
 
 </script>
