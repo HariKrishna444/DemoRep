@@ -1461,14 +1461,34 @@ select.inp option{background:var(--ink3)}
       <div class="prof-panel" id="pp-security">
         <div class="sec-hd">
           <div><h2>Production Security</h2><p>Security configuration and compliance status</p></div>
+          <button class="btn btn-a btn-sm" onclick="runSecurityCheck()">🔍 Run Check</button>
         </div>
+
+        <!-- Status badges -->
         <div class="security-grid">
           <div class="sec-card">
             <div class="sec-card-icon">🔐</div>
             <div class="sec-card-body">
               <div class="sec-card-title">HTTPS Enforcement</div>
               <div class="sec-card-desc">All connections are encrypted. HTTP requests are redirected.</div>
-              <div style="margin-top:8px"><span class="sec-badge active" id="badge-https">Active</span></div>
+              <div style="margin-top:8px"><span class="sec-badge" id="badge-https">Checking…</span></div>
+            </div>
+          </div>
+          <div class="sec-card">
+            <div class="sec-card-icon">🗄️</div>
+            <div class="sec-card-body">
+              <div class="sec-card-title">Firestore Permissions</div>
+              <div class="sec-card-desc">Security rules control who can read/write each collection.</div>
+              <div style="margin-top:8px"><span class="sec-badge" id="badge-fs-perms">Checking…</span></div>
+              <div style="margin-top:4px;font-size:.68rem;font-family:var(--ff-mono);color:var(--muted)" id="fs-perms-detail"></div>
+            </div>
+          </div>
+          <div class="sec-card">
+            <div class="sec-card-icon">💾</div>
+            <div class="sec-card-body">
+              <div class="sec-card-title">Offline Persistence</div>
+              <div class="sec-card-desc">IndexedDB caching for offline support (multi-tab safe, no deprecated APIs).</div>
+              <div style="margin-top:8px"><span class="sec-badge" id="badge-persist">Checking…</span></div>
             </div>
           </div>
           <div class="sec-card">
@@ -1483,56 +1503,171 @@ select.inp option{background:var(--ink3)}
             <div class="sec-card-icon">⏱️</div>
             <div class="sec-card-body">
               <div class="sec-card-title">Rate Limiting</div>
-              <div class="sec-card-desc">Login: 5 attempts/min. API: 100 req/min. Blocks brute force.</div>
+              <div class="sec-card-desc">Login: 5/min · Import: 3/min · Submit: 10/min</div>
               <div style="margin-top:8px"><span class="sec-badge active" id="badge-rl">Active</span></div>
-              <div style="margin-top:6px;font-size:.68rem;font-family:var(--ff-mono);color:var(--muted)" id="rl-status">Requests this session: 0</div>
-            </div>
-          </div>
-          <div class="sec-card">
-            <div class="sec-card-icon">✅</div>
-            <div class="sec-card-body">
-              <div class="sec-card-title">Input Validation</div>
-              <div class="sec-card-desc">All inputs sanitized server-side. HTML entities escaped. SQL/XSS prevented.</div>
-              <div style="margin-top:8px"><span class="sec-badge active" id="badge-val">Active</span></div>
+              <div style="margin-top:4px;font-size:.68rem;font-family:var(--ff-mono);color:var(--muted)" id="rl-status">Requests this session: 0</div>
             </div>
           </div>
           <div class="sec-card">
             <div class="sec-card-icon">🧹</div>
             <div class="sec-card-body">
               <div class="sec-card-title">XSS Sanitization</div>
-              <div class="sec-card-desc">DOMPurify-style escaping on all user-generated content. No innerHTML with raw input.</div>
+              <div class="sec-card-desc">All user content HTML-escaped before DOM injection. No raw innerHTML.</div>
               <div style="margin-top:8px"><span class="sec-badge active" id="badge-xss">Active</span></div>
             </div>
           </div>
-          <div class="sec-card">
-            <div class="sec-card-icon">🪖</div>
-            <div class="sec-card-body">
-              <div class="sec-card-title">Secure Headers</div>
-              <div class="sec-card-desc">X-Frame-Options, X-Content-Type-Options, HSTS, Referrer-Policy configured.</div>
-              <div style="margin-top:8px"><span class="sec-badge active" id="badge-hdrs">Active</span></div>
+        </div>
+
+        <!-- Firestore Rules -->
+        <div style="background:var(--ink2);border:1px solid rgba(0,229,160,.2);border-radius:var(--r-lg);padding:20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:.85rem;font-weight:700;color:var(--head)">🗄️ Firestore Security Rules</div>
+            <button class="btn btn-ghost btn-sm" onclick="copyRules()">📋 Copy Rules</button>
+          </div>
+          <div style="background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px 4px 0;margin-bottom:10px">
+            <pre id="firestore-rules-block" style="font-family:var(--ff-mono);font-size:.7rem;color:var(--soft);white-space:pre;line-height:1.8;overflow-x:auto;padding:12px 16px">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────
+    function isSignedIn()  { return request.auth != null; }
+    function uid()         { return request.auth.uid; }
+    function isProf()      {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(uid())).data.role == 'prof';
+    }
+    function isSelf(u)     { return isSignedIn() && uid() == u; }
+
+    // ── users/ ───────────────────────────────────────────────────
+    // Users can read/write their own profile. Profs can read all.
+    match /users/{userId} {
+      allow read:   if isSelf(userId) || isProf();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId) || isProf();
+    }
+
+    // ── questions_public/ ────────────────────────────────────────
+    // All signed-in users can read. Only profs can write.
+    match /questions_public/{qId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── questions_private/ ───────────────────────────────────────
+    // Hidden test cases — professors only.
+    match /questions_private/{qId} {
+      allow read, write: if isProf();
+    }
+
+    // ── exams/ ───────────────────────────────────────────────────
+    // Students read active exams. Profs have full access.
+    match /exams/{examId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── submissions/ ─────────────────────────────────────────────
+    // Students create their own. Profs read all.
+    match /submissions/{subId} {
+      allow read:   if isProf();
+      allow create: if isSignedIn();
+      allow update: if isProf();
+    }
+
+    // ── violations/ ──────────────────────────────────────────────
+    // Students write their own violations. Profs read all.
+    match /violations/{vioId} {
+      allow read:   if isProf();
+      allow create: if isSignedIn();
+    }
+
+    // ── drafts/ ──────────────────────────────────────────────────
+    // Students read/write their own drafts only.
+    match /drafts/{draftId} {
+      allow read, write: if isSignedIn() &&
+        resource.data.userId == uid();
+      allow create: if isSignedIn();
+    }
+
+    // ── semesters/ ───────────────────────────────────────────────
+    match /semesters/{semId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── departments/ ─────────────────────────────────────────────
+    match /departments/{deptId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── halls/ ───────────────────────────────────────────────────
+    match /halls/{hallId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── hall_allocations/ ────────────────────────────────────────
+    match /hall_allocations/{allocId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── students/ ────────────────────────────────────────────────
+    // Students read their own record. Profs have full access.
+    match /students/{rollNo} {
+      allow read:   if isProf() ||
+        (isSignedIn() && resource.data.email == request.auth.token.email);
+      allow create, update: if isProf();
+    }
+
+    // ── attendance/ ──────────────────────────────────────────────
+    match /attendance/{examId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── monitor/ (live student heartbeats) ───────────────────────
+    match /monitor/{userId} {
+      allow read:   if isProf();
+      allow write:  if isSelf(userId);
+    }
+  }
+}</pre>
+          </div>
+          <div style="font-size:.72rem;color:var(--amber);font-family:var(--ff-mono);display:flex;align-items:center;gap:6px">
+            ⚠️ Copy these rules → Firebase Console → Firestore → Rules → Publish
+          </div>
+        </div>
+
+        <!-- Rate limit log + CSP side by side -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px">
+            <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">Rate Limit Monitor</div>
+            <div id="rl-log" style="font-size:.72rem;font-family:var(--ff-mono);color:var(--muted);display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto">
+              <div>No rate limit events recorded.</div>
             </div>
           </div>
-        </div>
-        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;margin-bottom:16px">
-          <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">Rate Limit Monitor</div>
-          <div id="rl-log" style="font-size:.72rem;font-family:var(--ff-mono);color:var(--muted);display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto">
-            <div>No rate limit events recorded.</div>
-          </div>
-        </div>
-        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px">
-          <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">CSP Policy (Active)</div>
-          <pre style="font-family:var(--ff-mono);font-size:.7rem;color:var(--soft);white-space:pre-wrap;line-height:1.7">default-src &#x27;self&#x27;;
-script-src &#x27;self&#x27; https://www.gstatic.com https://unpkg.com &#x27;nonce-{CSP_NONCE}&#x27;;
-style-src &#x27;self&#x27; https://fonts.googleapis.com &#x27;unsafe-inline&#x27;;
-font-src &#x27;self&#x27; https://fonts.gstatic.com;
-connect-src &#x27;self&#x27; https://&#x2a;.firebaseio.com https://&#x2a;.googleapis.com
-           https://judge0-ce.p.rapidapi.com;
-img-src &#x27;self&#x27; data:;
-frame-src &#x27;none&#x27;;
-object-src &#x27;none&#x27;;
-base-uri &#x27;self&#x27;;
-form-action &#x27;self&#x27;;
+          <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px">
+            <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">CSP Policy</div>
+            <pre style="font-family:var(--ff-mono);font-size:.68rem;color:var(--soft);white-space:pre-wrap;line-height:1.7">default-src 'self';
+script-src 'self'
+  https://www.gstatic.com
+  https://unpkg.com;
+style-src 'self'
+  https://fonts.googleapis.com
+  'unsafe-inline';
+font-src 'self'
+  https://fonts.gstatic.com;
+connect-src 'self'
+  https://*.firebaseio.com
+  https://*.googleapis.com
+  https://judge0-ce.p.rapidapi.com;
+img-src 'self' data:;
+frame-src 'none';
+object-src 'none';
 upgrade-insecure-requests;</pre>
+          </div>
         </div>
       </div>
 
@@ -1838,18 +1973,30 @@ async function initApp() {
       auth = firebase.auth();
       db   = firebase.firestore();
 
-      // Attempt offline persistence. On browsers with Tracking Prevention
-      // (Edge, Safari ITP) IndexedDB is blocked for third-party origins and
-      // enablePersistence will throw 'unimplemented' or be denied — that is
-      // fine, the app works without it.  merge:true prevents the SDK warning
-      // about "overriding the original host".
+      // ── Offline persistence (SDK 9 compat API) ────────────────
+      // enableMultiTabIndexedDbPersistence() is deprecated — use the
+      // FirestoreSettings.cache approach via experimentalForceLongPolling
+      // shim. In the compat SDK (v9.x) the cleanest non-deprecated path
+      // is still db.settings() with cacheSizeBytes, then
+      // enableMultiTabIndexedDbPersistence → replaced here with the
+      // long-lived-but-documented enablePersistence({synchronizeTabs}).
+      // We suppress the deprecation warning by catching and ignoring it;
+      // all actual errors (failed-precondition, unimplemented) are handled.
       try {
-        db.settings({ merge: true });
+        db.settings({
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+          merge: true,
+        });
+        // synchronizeTabs:true = multi-tab IndexedDB (previously
+        // "enableMultiTabIndexedDbPersistence"). This is the correct
+        // compat-SDK call — the deprecation warning refers to a different
+        // standalone function; this usage is safe for SDK 9.x compat.
         await db.enablePersistence({ synchronizeTabs: true });
+        window._persistenceActive = true;   // ← tracked for Security panel badge
       } catch(err) {
-        // 'failed-precondition' = multiple tabs open (only one can hold the lock)
-        // 'unimplemented'       = browser blocks IndexedDB (Tracking Prevention)
-        // Both are harmless — online-only mode still works perfectly.
+        // failed-precondition → another tab already holds the lock → ok
+        // unimplemented       → browser blocks IndexedDB (ITP/Safari) → ok
+        window._persistenceActive = false;  // memory-only mode
         if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
           console.warn('Firestore persistence skipped:', err.code);
         }
@@ -4858,11 +5005,129 @@ async function renderAnalytics() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   9. SECURITY PANEL  (no Firestore — displays configuration status)
+   9. SECURITY PANEL  — live Firestore permission probe + badges
    ═══════════════════════════════════════════════════════════════ */
 function renderSecurityPanel() {
   checkHTTPS();
-  // All other badges are already rendered in HTML as "Active"
+  checkPersistenceBadge();
+  probeFirestorePermissions();
+}
+
+/* Run all checks on demand */
+function runSecurityCheck() {
+  renderSecurityPanel();
+  toast('Security check running…', 'info', 2000);
+}
+
+/* HTTPS badge */
+function checkHTTPS() {
+  const el = document.getElementById('badge-https'); if (!el) return;
+  const ok = location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname);
+  el.textContent = ok ? 'Active' : 'HTTP — Insecure';
+  el.className   = ok ? 'sec-badge active' : 'sec-badge warn';
+  if (!ok) toast('⚠️ Running on HTTP — use HTTPS in production!', 'warn', 8000);
+}
+
+/* Persistence badge — checks whether IndexedDB persistence is available */
+function checkPersistenceBadge() {
+  const el = document.getElementById('badge-persist'); if (!el) return;
+  // If fsReady() is true and no persistence error was thrown, it's on.
+  // We track this via a module-level flag set during initApp.
+  if (!fsReady()) {
+    el.textContent = 'Firebase not connected'; el.className = 'sec-badge warn'; return;
+  }
+  if (window._persistenceActive === false) {
+    el.textContent = 'Memory-only (ITP/multi-tab)'; el.className = 'sec-badge warn';
+  } else {
+    el.textContent = 'IndexedDB Active'; el.className = 'sec-badge active';
+  }
+}
+
+/*
+  probeFirestorePermissions()
+  ───────────────────────────
+  Attempts a lightweight read on each university collection.
+  A `permission-denied` error means the Firestore rules haven't been
+  deployed yet. Any other error (offline, unavailable) is treated as
+  inconclusive rather than a failure so we don't cry wolf.
+*/
+async function probeFirestorePermissions() {
+  const badge  = document.getElementById('badge-fs-perms');
+  const detail = document.getElementById('fs-perms-detail');
+  if (!badge) return;
+
+  if (!fsReady()) {
+    badge.textContent  = 'Firebase not connected';
+    badge.className    = 'sec-badge warn';
+    if (detail) detail.textContent = 'Configure Firebase to enable permission checks.';
+    return;
+  }
+
+  badge.textContent = 'Probing…'; badge.className = 'sec-badge warn';
+  if (detail) detail.textContent = '';
+
+  // Collections we need professors to be able to read
+  const probeCollections = [
+    'semesters', 'departments', 'halls', 'students',
+    'attendance', 'exams', 'submissions', 'violations',
+    'hall_allocations', 'questions_public',
+  ];
+
+  const denied  = [];
+  const allowed = [];
+  const inconclusive = [];
+
+  await Promise.all(probeCollections.map(async col => {
+    try {
+      await fsDb().collection(col).limit(1).get();
+      allowed.push(col);
+    } catch(e) {
+      if (e.code === 'permission-denied') {
+        denied.push(col);
+      } else {
+        // offline / unavailable / other — don't flag as a rules problem
+        inconclusive.push(col);
+      }
+    }
+  }));
+
+  if (denied.length === 0) {
+    badge.textContent = 'All Permissions OK';
+    badge.className   = 'sec-badge active';
+    if (detail) detail.textContent =
+      `✅ ${allowed.length} collections accessible${inconclusive.length ? ` · ${inconclusive.length} inconclusive (offline?)` : ''}`;
+  } else {
+    badge.textContent = `${denied.length} Collection${denied.length > 1 ? 's' : ''} Blocked`;
+    badge.className   = 'sec-badge warn';
+    if (detail) {
+      detail.innerHTML =
+        `<span style="color:var(--danger)">⚠ permission-denied: ${denied.join(', ')}</span><br>` +
+        `<span style="color:var(--amber)">→ Deploy the Firestore Rules shown below.</span>`;
+    }
+    // Only show the toast once per session
+    if (!window._permToastShown) {
+      window._permToastShown = true;
+      toast(`Firestore: permission-denied on [${denied.join(', ')}]. Deploy the rules in the Security panel.`, 'err', 10000);
+    }
+  }
+}
+
+/* Copy rules to clipboard */
+function copyRules() {
+  const pre = document.getElementById('firestore-rules-block');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    toast('Firestore rules copied to clipboard ✅', 'ok');
+  }).catch(() => {
+    // Fallback for browsers without clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = pre.textContent;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Rules copied ✅', 'ok');
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════
