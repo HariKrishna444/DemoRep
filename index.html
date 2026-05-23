@@ -1891,14 +1891,19 @@ const FB_CONFIG = {
 // Piston configuration — completely free, no API key required
 // Default: public Piston API at emkc.org
 // Self-hosted: change PISTON_BASE to your own instance URL
-const PISTON_BASE = "http://localhost:2000/api/v2/piston"; // or your server IP
+const PISTON_BASE = "https://emkc.org/api/v2/piston"; // public Piston API
 // Piston language/version map — version strings fetched at runtime if needed
 const PISTON_LANGS = {
-  python:     { language: 'python',     version: '3.10.0' },
+  python:     { language: 'python',     version: '3.10.0'  },
   javascript: { language: 'javascript', version: '18.15.0' },
-  cpp:        { language: 'c++',        version: '10.2.0' },
-  java:       { language: 'java',       version: '15.0.2' },
-  c:          { language: 'c',          version: '10.2.0' },
+  cpp:        { language: 'cpp',        version: '10.2.0'  },
+  java:       { language: 'java',       version: '15.0.2'  },
+  c:          { language: 'c',          version: '10.2.0'  },
+  sql:        { language: 'sqlite3',    version: '3.36.0'  },
+  r:          { language: 'r',          version: '4.1.1'   },
+  html:       null,
+  css:        null,
+  xml:        null,
 };
 const LANG_MONACO = {
   python:'python', javascript:'javascript', cpp:'cpp', java:'java', c:'c'
@@ -1970,8 +1975,7 @@ async function initApp() {
       // all actual errors (failed-precondition, unimplemented) are handled.
       const _origWarn = console.warn.bind(console);
       try {
-        // compat SDK 9.x: db.enablePersistence() is the correct API.
-        // Temporarily suppress the deprecation warning — cosmetic only.
+        // compat SDK 9.x — suppress the deprecation warning (cosmetic only)
         console.warn = (...a) => { if (!String(a[0]).includes('enableMultiTabIndexedDbPersistence')) _origWarn(...a); };
         await db.enablePersistence({ synchronizeTabs: true });
         window._persistenceActive = true;
@@ -3309,7 +3313,7 @@ function loadMonaco() {
       if (label === 'css'||label === 'scss'||label === 'less')  w = _mvs + '/language/css/cssWorker.js';
       if (label === 'html'||label === 'handlebars')             w = _mvs + '/language/html/htmlWorker.js';
       if (label === 'typescript'||label === 'javascript')       w = _mvs + '/language/typescript/tsWorker.js';
-      // baseUrl = .../min/ so AMD inside worker resolves vs/foo -> .../min/vs/foo (no doubling)
+      // _mmin = .../min so AMD resolves vs/foo -> .../min/vs/foo (no double vs/vs)
       const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
       return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
     }
