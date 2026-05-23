@@ -6,9 +6,9 @@
 <title>ExamShield — College Coding Exam Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
 <!-- CSP note: served via GitHub Pages — CSP must be set via server response
-     headers, not <meta> tags. Monaco is loaded from unpkg.com (instead of
-     jsDelivr) to avoid "Tracking Prevention blocked access to storage" errors
-     that Edge/Safari ITP fire when jsDelivr tries cross-origin IndexedDB writes.
+     headers, not <meta> tags. Monaco is loaded from cdnjs.cloudflare.com to avoid "Tracking Prevention
+     blocked access to storage" errors that Edge/Safari ITP fire when unpkg.com
+     or jsDelivr try cross-origin IndexedDB writes.
      If self-hosting, add CSP as an HTTP response header instead of a meta tag. -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -1653,7 +1653,7 @@ service cloud.firestore {
             <pre style="font-family:var(--ff-mono);font-size:.68rem;color:var(--soft);white-space:pre-wrap;line-height:1.7">default-src 'self';
 script-src 'self'
   https://www.gstatic.com
-  https://unpkg.com;
+  https://cdnjs.cloudflare.com;
 style-src 'self'
   https://fonts.googleapis.com
   'unsafe-inline';
@@ -1763,11 +1763,6 @@ upgrade-insecure-requests;</pre>
             <option value="cpp">C++ 17</option>
             <option value="java">Java 11</option>
             <option value="c">C</option>
-            <option value="sql">SQL (SQLite3)</option>
-            <option value="r">R</option>
-            <option value="html">HTML</option>
-            <option value="css">CSS</option>
-            <option value="xml">XML</option>
           </select>
           <select class="sel" id="theme-sel" onchange="changeTheme(this.value)">
             <option value="vs-dark">Dark</option>
@@ -1879,7 +1874,7 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 
 <script>
 
@@ -1896,24 +1891,17 @@ const FB_CONFIG = {
 // Piston configuration — completely free, no API key required
 // Default: public Piston API at emkc.org
 // Self-hosted: change PISTON_BASE to your own instance URL
-// Line 1899 — change to:
-const PISTON_BASE = "https://emkc.org/api/v2/piston"; // or your server IP
+const PISTON_BASE = "http://localhost:2000/api/v2/piston"; // or your server IP
 // Piston language/version map — version strings fetched at runtime if needed
 const PISTON_LANGS = {
-  python:     { language: 'python',     version: '3.10.0'  },
+  python:     { language: 'python',     version: '3.10.0' },
   javascript: { language: 'javascript', version: '18.15.0' },
-  cpp:        { language: 'cpp',        version: '10.2.0'  },
-  java:       { language: 'java',       version: '15.0.2'  },
-  c:          { language: 'c',          version: '10.2.0'  },
-  sql:        { language: 'sqlite3',    version: '3.36.0'  },
-  r:          { language: 'r',          version: '4.1.1'   },
-  html:       null,
-  css:        null,
-  xml:        null,
+  cpp:        { language: 'c++',        version: '10.2.0' },
+  java:       { language: 'java',       version: '15.0.2' },
+  c:          { language: 'c',          version: '10.2.0' },
 };
 const LANG_MONACO = {
-  python:'python', javascript:'javascript', cpp:'cpp', java:'java', c:'c',
-  sql:'sql', r:'r', html:'html', css:'css', xml:'xml'
+  python:'python', javascript:'javascript', cpp:'cpp', java:'java', c:'c'
 };
 
 // ── Platform constants ───────────────────────────────────────
@@ -3316,13 +3304,13 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  // Use unpkg instead of jsDelivr — avoids the "Tracking Prevention blocked
+  // Use cdnjs instead of unpkg/jsDelivr — avoids "Tracking Prevention blocked
   // access to storage" errors that Edge/Safari ITP fire when jsDelivr tries
   // to write to IndexedDB/localStorage from a cross-origin context.
   // 'vs/nls' with empty availableLanguages stops the locale fetch that also
   // triggers storage writes. ignoreDuplicateModules silences AMD re-reg warnings.
   require.config({
-    paths: { vs: 'https://unpkg.com/monaco-editor@0.44.0/min/vs' },
+    paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' },
     'vs/nls': { availableLanguages: {} },
     ignoreDuplicateModules: ['vs/editor/editor.main'],
   });
@@ -3490,16 +3478,13 @@ function removeRunning() { document.getElementById('run-ind')?.remove(); }
 
 async function pistonExecute(code, lang, stdin) {
   const langCfg = PISTON_LANGS[lang] || PISTON_LANGS['python'];
-  if (!langCfg) throw new Error('BROWSER_RENDER'); // html/css/xml
-  // gcc needs correct file extension to detect C vs C++
-  const fileName = (lang === 'cpp') ? 'main.cpp' : (lang === 'c') ? 'main.c' : 'main';
   const res = await fetch(`${PISTON_BASE}/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       language: langCfg.language,
       version:  langCfg.version,
-      files:    [{ name: fileName, content: code }],
+      files:    [{ name: 'main', content: code }],
       stdin:    stdin || '',
     })
   });
@@ -3554,31 +3539,6 @@ async function runCode() {
     if (!stdout&&!stderr&&!ce) outLine('warn','(no output)');
   } catch(e) {
     removeRunning();
-    if (e.message === 'BROWSER_RENDER') {
-      outLine('info', `▶ Rendering ${currentLang.toUpperCase()} in browser...`);
-      let renderContent = code;
-      if (currentLang === 'css') {
-        renderContent = `<style>${code}</style><div style="padding:16px;font-family:sans-serif"><h2>CSS Preview</h2><p class="sample">Sample paragraph</p><button class="sample-btn">Sample Button</button></div>`;
-      } else if (currentLang === 'xml') {
-        renderContent = `<pre style="font-family:monospace;white-space:pre-wrap;padding:16px;background:#1e2535;color:#c2cfe0">${code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>`;
-      }
-      const outPanel = document.getElementById('out-panel') || document.querySelector('[id$=out-panel]') || document.querySelector('.con-body');
-      if (outPanel) {
-        let iframe = document.getElementById('browser-render-frame');
-        if (!iframe) {
-          iframe = document.createElement('iframe');
-          iframe.id = 'browser-render-frame';
-          iframe.sandbox = 'allow-scripts';
-          iframe.style.cssText = 'width:100%;height:400px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:8px;display:block';
-          outPanel.appendChild(iframe);
-        }
-        iframe.style.display = 'block';
-        const blob = new Blob([renderContent], { type: 'text/html' });
-        iframe.src = URL.createObjectURL(blob);
-      }
-      outLine('ok', `✓ ${currentLang.toUpperCase()} rendered below`);
-      return;
-    }
     outLine('err', '⛔ Code execution failed: ' + e.message);
     outLine('warn', 'Piston sandbox could not be reached. Check your internet connection.');
     outLine('info', 'Tip: Make sure you are connected and try again.');
