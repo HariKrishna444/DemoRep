@@ -1969,26 +1969,17 @@ async function initApp() {
       // We suppress the deprecation warning by catching and ignoring it;
       // all actual errors (failed-precondition, unimplemented) are handled.
       try {
-        db.settings({
-  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-  merge: true,
-  // New cache API — suppresses the deprecation warning entirely
-  cache: {
-    kind: 'persistent',
-    tabManager: firebase.firestore.PersistentMultipleTabManager.getInstance(),
-  }
-});
-// No separate enablePersistence() call needed when using cache setting
-        window._persistenceActive = true;   // ← tracked for Security panel badge
+        // compat SDK (9.x): use enableIndexedDbPersistence with synchronizeTabs.
+        // PersistentMultipleTabManager is modular-SDK only — not available here.
+        await db.enableIndexedDbPersistence({ synchronizeTabs: true });
+        window._persistenceActive = true;
       } catch(err) {
-        // failed-precondition → another tab already holds the lock → ok
-        // unimplemented       → browser blocks IndexedDB (ITP/Safari) → ok
-        window._persistenceActive = false;  // memory-only mode
+        window._persistenceActive = false;
         const code = err?.code || err?.message || 'unavailable';
+        // failed-precondition = multiple tabs; unimplemented = ITP/Safari — both are fine
         if (code !== 'failed-precondition' && code !== 'unimplemented') {
           console.warn('Firestore persistence skipped:', code);
         }
-        // Silently fall back to memory-only — app works fine without persistence
       }
 
       firebaseReady = true;
@@ -3306,32 +3297,25 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  // MonacoEnvironment must be set BEFORE require.config.
-  // Use a blob-based worker to avoid ITP "Tracking Prevention blocked
-  // access to storage" errors in Edge/Safari. Cross-origin workers are
-  // blocked by ITP; a blob: URL is same-origin and bypasses this entirely.
+  // Blob-URL workers bypass ITP cross-origin storage restrictions.
+  // baseUrl in worker lets the AMD loader resolve relative paths correctly,
+  // fixing the "Failed to parse URL from ../../../vs/..." NLS error.
+  const _monacoBase = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
-      // Build a blob worker that simply imports the real worker script.
-      // This avoids cross-origin worker restrictions AND ITP storage blocks.
-      const base = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
-      let workerPath = base + '/base/worker/workerMain.js';
-      if (label === 'json')       workerPath = base + '/language/json/jsonWorker.js';
-      if (label === 'css' || label === 'scss' || label === 'less')
-                                  workerPath = base + '/language/css/cssWorker.js';
-      if (label === 'html' || label === 'handlebars' || label === 'razor')
-                                  workerPath = base + '/language/html/htmlWorker.js';
-      if (label === 'typescript' || label === 'javascript')
-                                  workerPath = base + '/language/typescript/tsWorker.js';
-      const blob = new Blob(
-        ['importScripts("' + workerPath + '");'],
-        { type: 'application/javascript' }
-      );
-      return URL.createObjectURL(blob);
+      let worker = _monacoBase + '/base/worker/workerMain.js';
+      if (label === 'json')                                    worker = _monacoBase + '/language/json/jsonWorker.js';
+      if (label === 'css'||label === 'scss'||label === 'less') worker = _monacoBase + '/language/css/cssWorker.js';
+      if (label === 'html'||label === 'handlebars')            worker = _monacoBase + '/language/html/htmlWorker.js';
+      if (label === 'typescript'||label === 'javascript')      worker = _monacoBase + '/language/typescript/tsWorker.js';
+      // Blob URL is same-origin → ITP never blocks it.
+      // Injecting importScripts base URL fixes relative NLS path resolution.
+      const src = `self.MonacoEnvironment={baseUrl:'${_monacoBase}/'};importScripts('${worker}');`;
+      return URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
     }
   };
   require.config({
-    paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' },
+    paths: { vs: _monacoBase },
     'vs/nls': { availableLanguages: {} },
     ignoreDuplicateModules: ['vs/editor/editor.main'],
   });
