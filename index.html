@@ -1968,21 +1968,21 @@ async function initApp() {
       // long-lived-but-documented enablePersistence({synchronizeTabs}).
       // We suppress the deprecation warning by catching and ignoring it;
       // all actual errors (failed-precondition, unimplemented) are handled.
+      const _origWarn = console.warn.bind(console);
       try {
-        // compat SDK 9.x: db.enablePersistence() is the only correct API.
-        // Suppress the deprecation warning — it's cosmetic, functionality is fine.
-        const origWarn = console.warn.bind(console);
-        console.warn = (...a) => { if (!String(a[0]).includes('enableMultiTabIndexedDbPersistence')) origWarn(...a); };
+        // compat SDK 9.x: db.enablePersistence() is the correct API.
+        // Temporarily suppress the deprecation warning — cosmetic only.
+        console.warn = (...a) => { if (!String(a[0]).includes('enableMultiTabIndexedDbPersistence')) _origWarn(...a); };
         await db.enablePersistence({ synchronizeTabs: true });
-        console.warn = origWarn;
         window._persistenceActive = true;
       } catch(err) {
-        console.warn = origWarn; // restore even on error
         window._persistenceActive = false;
         const code = err?.code || err?.message || 'unavailable';
         if (code !== 'failed-precondition' && code !== 'unimplemented') {
-          console.warn('Firestore persistence skipped:', code);
+          _origWarn('Firestore persistence skipped:', code);
         }
+      } finally {
+        console.warn = _origWarn; // always restore
       }
 
       firebaseReady = true;
@@ -3300,16 +3300,17 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  const _mvs = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+  const _mvs  = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+  const _mmin = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
       let w = _mvs + '/base/worker/workerMain.js';
-      if (label === 'json')                                    w = _mvs + '/language/json/jsonWorker.js';
-      if (label === 'css'||label === 'scss'||label === 'less') w = _mvs + '/language/css/cssWorker.js';
-      if (label === 'html'||label === 'handlebars')            w = _mvs + '/language/html/htmlWorker.js';
-      if (label === 'typescript'||label === 'javascript')      w = _mvs + '/language/typescript/tsWorker.js';
-      // baseUrl ends at /min/ (not /min/vs/) so AMD resolves vs/foo -> /min/vs/foo with NO doubling
-      const src = "self.MonacoEnvironment={baseUrl:'" + _mvs.replace('/vs','') + "/'};importScripts('" + w + "');";
+      if (label === 'json')                                     w = _mvs + '/language/json/jsonWorker.js';
+      if (label === 'css'||label === 'scss'||label === 'less')  w = _mvs + '/language/css/cssWorker.js';
+      if (label === 'html'||label === 'handlebars')             w = _mvs + '/language/html/htmlWorker.js';
+      if (label === 'typescript'||label === 'javascript')       w = _mvs + '/language/typescript/tsWorker.js';
+      // baseUrl = .../min/ so AMD inside worker resolves vs/foo -> .../min/vs/foo (no doubling)
+      const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
       return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
     }
   };
