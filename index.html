@@ -1896,16 +1896,17 @@ const FB_CONFIG = {
 // Piston configuration — completely free, no API key required
 // Default: public Piston API at emkc.org
 // Self-hosted: change PISTON_BASE to your own instance URL
-const PISTON_BASE = "http://localhost:2000/api/v2"; // or your server IP
+// Line 1899 — change to:
+const PISTON_BASE = "https://emkc.org/api/v2/piston"; // or your server IP
 // Piston language/version map — version strings fetched at runtime if needed
 const PISTON_LANGS = {
   python:     { language: 'python',     version: '3.10.0'  },
-  javascript: { language: 'node',       version: '18.15.0' },
-  cpp:        { language: 'gcc',        version: '10.2.0'  },
+  javascript: { language: 'javascript', version: '18.15.0' },
+  cpp:        { language: 'cpp',        version: '10.2.0'  },
   java:       { language: 'java',       version: '15.0.2'  },
-  c:          { language: 'gcc',        version: '10.2.0'  },
+  c:          { language: 'c',          version: '10.2.0'  },
   sql:        { language: 'sqlite3',    version: '3.36.0'  },
-  r:          { language: 'rscript',    version: '4.1.1'   },
+  r:          { language: 'r',          version: '4.1.1'   },
   html:       null,
   css:        null,
   xml:        null,
