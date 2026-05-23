@@ -6,9 +6,9 @@
 <title>ExamShield — College Coding Exam Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
 <!-- CSP note: served via GitHub Pages — CSP must be set via server response
-     headers, not <meta> tags. Monaco is loaded from cdnjs.cloudflare.com to avoid "Tracking Prevention
-     blocked access to storage" errors that Edge/Safari ITP fire when unpkg.com
-     or jsDelivr try cross-origin IndexedDB writes.
+     headers, not <meta> tags. Monaco is loaded from unpkg.com (instead of
+     jsDelivr) to avoid "Tracking Prevention blocked access to storage" errors
+     that Edge/Safari ITP fire when jsDelivr tries cross-origin IndexedDB writes.
      If self-hosting, add CSP as an HTTP response header instead of a meta tag. -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -1653,7 +1653,7 @@ service cloud.firestore {
             <pre style="font-family:var(--ff-mono);font-size:.68rem;color:var(--soft);white-space:pre-wrap;line-height:1.7">default-src 'self';
 script-src 'self'
   https://www.gstatic.com
-  https://cdnjs.cloudflare.com;
+  https://unpkg.com;
 style-src 'self'
   https://fonts.googleapis.com
   'unsafe-inline';
@@ -1874,7 +1874,7 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.js"></script>
 
 <script>
 
@@ -3304,15 +3304,27 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  // Use cdnjs instead of unpkg/jsDelivr — avoids "Tracking Prevention blocked
+  // Use unpkg instead of jsDelivr — avoids the "Tracking Prevention blocked
   // access to storage" errors that Edge/Safari ITP fire when jsDelivr tries
   // to write to IndexedDB/localStorage from a cross-origin context.
   // 'vs/nls' with empty availableLanguages stops the locale fetch that also
   // triggers storage writes. ignoreDuplicateModules silences AMD re-reg warnings.
+  // Disable Monaco's IndexedDB/localStorage caching entirely.
+  // This is the only reliable fix for Edge/Safari ITP
+  // "Tracking Prevention blocked access to storage" errors.
+  self.MonacoEnvironment = {
+    getWorkerUrl: function() { return ''; },
+    globalAPI: true,
+  };
+  if (typeof window !== 'undefined') {
+    try { window.indexedDB && window.indexedDB.deleteDatabase('monaco-editor-storage'); } catch(e){}
+    try { localStorage.removeItem('vscode-web-state-db-key'); } catch(e){}
+  }
   require.config({
     paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' },
     'vs/nls': { availableLanguages: {} },
     ignoreDuplicateModules: ['vs/editor/editor.main'],
+    'vs/platform/storage/browser/storageService': { storageType: 'inMemory' },
   });
   require(['vs/editor/editor.main'], mono => {
     window._mono = mono;
@@ -3339,7 +3351,16 @@ function loadMonaco() {
       cursorBlinking:'expand',
       smoothScrolling:true,
       suggest:{showSnippets:true},
+      // Disable all storage/persistence to prevent ITP errors in Edge/Safari
+      'semanticHighlighting.enabled': false,
+      quickSuggestionsDelay: 500,
     });
+    // Suppress Monaco's internal storage attempts after init
+    try {
+      if (window.monaco && window.monaco.editor) {
+        window.monaco.editor.remeasureFonts();
+      }
+    } catch(e){}
 
     // Block paste via Monaco API
     monaco_editor.onDidPaste(()=>{
