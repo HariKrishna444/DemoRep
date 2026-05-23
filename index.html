@@ -1969,14 +1969,16 @@ async function initApp() {
       // We suppress the deprecation warning by catching and ignoring it;
       // all actual errors (failed-precondition, unimplemented) are handled.
       try {
-        // compat SDK (9.x): use enableIndexedDbPersistence with synchronizeTabs.
-        // PersistentMultipleTabManager is modular-SDK only — not available here.
-        await db.enableIndexedDbPersistence({ synchronizeTabs: true });
+        // compat SDK 9.x: enablePersistence() is the correct API.
+        // enableIndexedDbPersistence & PersistentMultipleTabManager are
+        // modular-only and do not exist on the compat build.
+        await db.enablePersistence({ synchronizeTabs: true });
         window._persistenceActive = true;
       } catch(err) {
         window._persistenceActive = false;
         const code = err?.code || err?.message || 'unavailable';
-        // failed-precondition = multiple tabs; unimplemented = ITP/Safari — both are fine
+        // failed-precondition = multiple tabs open (fine)
+        // unimplemented = browser blocks IndexedDB / ITP (fine)
         if (code !== 'failed-precondition' && code !== 'unimplemented') {
           console.warn('Firestore persistence skipped:', code);
         }
@@ -3297,25 +3299,25 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  // Blob-URL workers bypass ITP cross-origin storage restrictions.
-  // baseUrl in worker lets the AMD loader resolve relative paths correctly,
-  // fixing the "Failed to parse URL from ../../../vs/..." NLS error.
-  const _monacoBase = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+  // Blob workers are same-origin → ITP never blocks them.
+  // baseUrl inside worker = .../min/vs/ so AMD resolves vs/... paths correctly
+  // (avoids the double vs/vs/ that happens when baseUrl already contains /vs).
+  const _monacoBase = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
-      let worker = _monacoBase + '/base/worker/workerMain.js';
-      if (label === 'json')                                    worker = _monacoBase + '/language/json/jsonWorker.js';
-      if (label === 'css'||label === 'scss'||label === 'less') worker = _monacoBase + '/language/css/cssWorker.js';
-      if (label === 'html'||label === 'handlebars')            worker = _monacoBase + '/language/html/htmlWorker.js';
-      if (label === 'typescript'||label === 'javascript')      worker = _monacoBase + '/language/typescript/tsWorker.js';
-      // Blob URL is same-origin → ITP never blocks it.
-      // Injecting importScripts base URL fixes relative NLS path resolution.
-      const src = `self.MonacoEnvironment={baseUrl:'${_monacoBase}/'};importScripts('${worker}');`;
+      const vsBase = _monacoBase + '/vs';
+      let worker = vsBase + '/base/worker/workerMain.js';
+      if (label === 'json')                                     worker = vsBase + '/language/json/jsonWorker.js';
+      if (label === 'css'||label === 'scss'||label === 'less')  worker = vsBase + '/language/css/cssWorker.js';
+      if (label === 'html'||label === 'handlebars')             worker = vsBase + '/language/html/htmlWorker.js';
+      if (label === 'typescript'||label === 'javascript')       worker = vsBase + '/language/typescript/tsWorker.js';
+      // baseUrl must end with /vs/ so AMD inside the worker resolves vs/... correctly
+      const src = `self.MonacoEnvironment={baseUrl:'${vsBase}/'};importScripts('${worker}');`;
       return URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
     }
   };
   require.config({
-    paths: { vs: _monacoBase },
+    paths: { vs: _monacoBase + '/vs' },
     'vs/nls': { availableLanguages: {} },
     ignoreDuplicateModules: ['vs/editor/editor.main'],
   });
