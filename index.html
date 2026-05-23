@@ -1891,16 +1891,16 @@ const FB_CONFIG = {
 // Piston configuration — completely free, no API key required
 // Default: public Piston API at emkc.org
 // Self-hosted: change PISTON_BASE to your own instance URL
-const PISTON_BASE = "https://emkc.org/api/v2/piston"; // public Piston API
+const PISTON_BASE = "http://localhost:2000/api/v2/piston";
 // Piston language/version map — version strings fetched at runtime if needed
 const PISTON_LANGS = {
-  python:     { language: 'python',     version: '3.10.0'  },
-  javascript: { language: 'javascript', version: '18.15.0' },
-  cpp:        { language: 'cpp',        version: '10.2.0'  },
-  java:       { language: 'java',       version: '15.0.2'  },
-  c:          { language: 'c',          version: '10.2.0'  },
-  sql:        { language: 'sqlite3',    version: '3.36.0'  },
-  r:          { language: 'r',          version: '4.1.1'   },
+  python:     { language: 'python',  version: '3.10.0'  },
+  javascript: { language: 'node',    version: '18.15.0' },
+  cpp:        { language: 'gcc',     version: '10.2.0'  },
+  java:       { language: 'java',    version: '15.0.2'  },
+  c:          { language: 'gcc',     version: '10.2.0'  },
+  sql:        { language: 'sqlite3', version: '3.36.0'  },
+  r:          { language: 'rscript', version: '4.1.1'   },
   html:       null,
   css:        null,
   xml:        null,
@@ -1975,7 +1975,6 @@ async function initApp() {
       // all actual errors (failed-precondition, unimplemented) are handled.
       const _origWarn = console.warn.bind(console);
       try {
-        // compat SDK 9.x — suppress the deprecation warning (cosmetic only)
         console.warn = (...a) => { if (!String(a[0]).includes('enableMultiTabIndexedDbPersistence')) _origWarn(...a); };
         await db.enablePersistence({ synchronizeTabs: true });
         window._persistenceActive = true;
@@ -1986,7 +1985,7 @@ async function initApp() {
           _origWarn('Firestore persistence skipped:', code);
         }
       } finally {
-        console.warn = _origWarn; // always restore
+        console.warn = _origWarn;
       }
 
       firebaseReady = true;
@@ -3304,17 +3303,16 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  const _mvs  = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
-  const _mmin = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
+  const _mvs = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
       let w = _mvs + '/base/worker/workerMain.js';
-      if (label === 'json')                                     w = _mvs + '/language/json/jsonWorker.js';
-      if (label === 'css'||label === 'scss'||label === 'less')  w = _mvs + '/language/css/cssWorker.js';
-      if (label === 'html'||label === 'handlebars')             w = _mvs + '/language/html/htmlWorker.js';
-      if (label === 'typescript'||label === 'javascript')       w = _mvs + '/language/typescript/tsWorker.js';
-      // _mmin = .../min so AMD resolves vs/foo -> .../min/vs/foo (no double vs/vs)
-      const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
+      if (label === 'json')                                    w = _mvs + '/language/json/jsonWorker.js';
+      if (label === 'css'||label === 'scss'||label === 'less') w = _mvs + '/language/css/cssWorker.js';
+      if (label === 'html'||label === 'handlebars')            w = _mvs + '/language/html/htmlWorker.js';
+      if (label === 'typescript'||label === 'javascript')      w = _mvs + '/language/typescript/tsWorker.js';
+      // baseUrl ends at /min/ (not /min/vs/) so AMD resolves vs/foo -> /min/vs/foo with NO doubling
+      const src = "self.MonacoEnvironment={baseUrl:'" + _mvs.replace('/vs','') + "/'};importScripts('" + w + "');";
       return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
     }
   };
@@ -3487,9 +3485,13 @@ function removeRunning() { document.getElementById('run-ind')?.remove(); }
 
 async function pistonExecute(code, lang, stdin) {
   const langCfg = PISTON_LANGS[lang] || PISTON_LANGS['python'];
+  if (!langCfg) throw new Error('BROWSER_RENDER'); // html/css/xml
   const res = await fetch(`${PISTON_BASE}/execute`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true', // skip ngrok browser warning page
+    },
     body: JSON.stringify({
       language: langCfg.language,
       version:  langCfg.version,
@@ -3500,7 +3502,7 @@ async function pistonExecute(code, lang, stdin) {
   if (!res.ok) throw new Error(`Piston execute failed: HTTP ${res.status}`);
   const data = await res.json();
   if (data.message) throw new Error('Piston error: ' + data.message);
-  return data; // { run: { stdout, stderr, code, signal, output }, compile: { ... } }
+  return data;
 }
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
