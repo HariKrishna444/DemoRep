@@ -1984,9 +1984,11 @@ async function initApp() {
         // failed-precondition → another tab already holds the lock → ok
         // unimplemented       → browser blocks IndexedDB (ITP/Safari) → ok
         window._persistenceActive = false;  // memory-only mode
-        if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
-          console.warn('Firestore persistence skipped:', err.code);
+        const code = err?.code || err?.message || 'unavailable';
+        if (code !== 'failed-precondition' && code !== 'unimplemented') {
+          console.warn('Firestore persistence skipped:', code);
         }
+        // Silently fall back to memory-only — app works fine without persistence
       }
 
       firebaseReady = true;
@@ -3304,27 +3306,34 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  // Use unpkg instead of jsDelivr — avoids the "Tracking Prevention blocked
-  // access to storage" errors that Edge/Safari ITP fire when jsDelivr tries
-  // to write to IndexedDB/localStorage from a cross-origin context.
-  // 'vs/nls' with empty availableLanguages stops the locale fetch that also
-  // triggers storage writes. ignoreDuplicateModules silences AMD re-reg warnings.
-  // Disable Monaco's IndexedDB/localStorage caching entirely.
-  // This is the only reliable fix for Edge/Safari ITP
-  // "Tracking Prevention blocked access to storage" errors.
-  self.MonacoEnvironment = {
-    getWorkerUrl: function() { return ''; },
-    globalAPI: true,
+  // MonacoEnvironment must be set BEFORE require.config.
+  // Use a blob-based worker to avoid ITP "Tracking Prevention blocked
+  // access to storage" errors in Edge/Safari. Cross-origin workers are
+  // blocked by ITP; a blob: URL is same-origin and bypasses this entirely.
+  window.MonacoEnvironment = {
+    getWorkerUrl: function(moduleId, label) {
+      // Build a blob worker that simply imports the real worker script.
+      // This avoids cross-origin worker restrictions AND ITP storage blocks.
+      const base = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+      let workerPath = base + '/base/worker/workerMain.js';
+      if (label === 'json')       workerPath = base + '/language/json/jsonWorker.js';
+      if (label === 'css' || label === 'scss' || label === 'less')
+                                  workerPath = base + '/language/css/cssWorker.js';
+      if (label === 'html' || label === 'handlebars' || label === 'razor')
+                                  workerPath = base + '/language/html/htmlWorker.js';
+      if (label === 'typescript' || label === 'javascript')
+                                  workerPath = base + '/language/typescript/tsWorker.js';
+      const blob = new Blob(
+        ['importScripts("' + workerPath + '");'],
+        { type: 'application/javascript' }
+      );
+      return URL.createObjectURL(blob);
+    }
   };
-  if (typeof window !== 'undefined') {
-    try { window.indexedDB && window.indexedDB.deleteDatabase('monaco-editor-storage'); } catch(e){}
-    try { localStorage.removeItem('vscode-web-state-db-key'); } catch(e){}
-  }
   require.config({
     paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' },
     'vs/nls': { availableLanguages: {} },
     ignoreDuplicateModules: ['vs/editor/editor.main'],
-    'vs/platform/storage/browser/storageService': { storageType: 'inMemory' },
   });
   require(['vs/editor/editor.main'], mono => {
     window._mono = mono;
@@ -3351,16 +3360,7 @@ function loadMonaco() {
       cursorBlinking:'expand',
       smoothScrolling:true,
       suggest:{showSnippets:true},
-      // Disable all storage/persistence to prevent ITP errors in Edge/Safari
-      'semanticHighlighting.enabled': false,
-      quickSuggestionsDelay: 500,
     });
-    // Suppress Monaco's internal storage attempts after init
-    try {
-      if (window.monaco && window.monaco.editor) {
-        window.monaco.editor.remeasureFonts();
-      }
-    } catch(e){}
 
     // Block paste via Monaco API
     monaco_editor.onDidPaste(()=>{
