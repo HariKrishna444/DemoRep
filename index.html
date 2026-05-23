@@ -1653,7 +1653,7 @@ service cloud.firestore {
             <pre style="font-family:var(--ff-mono);font-size:.68rem;color:var(--soft);white-space:pre-wrap;line-height:1.7">default-src 'self';
 script-src 'self'
   https://www.gstatic.com
-  https://unpkg.com;
+  https://cdnjs.cloudflare.com;
 style-src 'self'
   https://fonts.googleapis.com
   'unsafe-inline';
@@ -1874,7 +1874,7 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 
 <script>
 
@@ -1969,16 +1969,17 @@ async function initApp() {
       // We suppress the deprecation warning by catching and ignoring it;
       // all actual errors (failed-precondition, unimplemented) are handled.
       try {
-        // compat SDK 9.x: enablePersistence() is the correct API.
-        // enableIndexedDbPersistence & PersistentMultipleTabManager are
-        // modular-only and do not exist on the compat build.
+        // compat SDK 9.x: db.enablePersistence() is the only correct API.
+        // Suppress the deprecation warning — it's cosmetic, functionality is fine.
+        const origWarn = console.warn.bind(console);
+        console.warn = (...a) => { if (!String(a[0]).includes('enableMultiTabIndexedDbPersistence')) origWarn(...a); };
         await db.enablePersistence({ synchronizeTabs: true });
+        console.warn = origWarn;
         window._persistenceActive = true;
       } catch(err) {
+        console.warn = origWarn; // restore even on error
         window._persistenceActive = false;
         const code = err?.code || err?.message || 'unavailable';
-        // failed-precondition = multiple tabs open (fine)
-        // unimplemented = browser blocks IndexedDB / ITP (fine)
         if (code !== 'failed-precondition' && code !== 'unimplemented') {
           console.warn('Firestore persistence skipped:', code);
         }
@@ -3299,25 +3300,21 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  // Blob workers are same-origin → ITP never blocks them.
-  // baseUrl inside worker = .../min/vs/ so AMD resolves vs/... paths correctly
-  // (avoids the double vs/vs/ that happens when baseUrl already contains /vs).
-  const _monacoBase = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
+  const _mvs = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
-      const vsBase = _monacoBase + '/vs';
-      let worker = vsBase + '/base/worker/workerMain.js';
-      if (label === 'json')                                     worker = vsBase + '/language/json/jsonWorker.js';
-      if (label === 'css'||label === 'scss'||label === 'less')  worker = vsBase + '/language/css/cssWorker.js';
-      if (label === 'html'||label === 'handlebars')             worker = vsBase + '/language/html/htmlWorker.js';
-      if (label === 'typescript'||label === 'javascript')       worker = vsBase + '/language/typescript/tsWorker.js';
-      // baseUrl must end with /vs/ so AMD inside the worker resolves vs/... correctly
-      const src = `self.MonacoEnvironment={baseUrl:'${vsBase}/'};importScripts('${worker}');`;
-      return URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+      let w = _mvs + '/base/worker/workerMain.js';
+      if (label === 'json')                                    w = _mvs + '/language/json/jsonWorker.js';
+      if (label === 'css'||label === 'scss'||label === 'less') w = _mvs + '/language/css/cssWorker.js';
+      if (label === 'html'||label === 'handlebars')            w = _mvs + '/language/html/htmlWorker.js';
+      if (label === 'typescript'||label === 'javascript')      w = _mvs + '/language/typescript/tsWorker.js';
+      // baseUrl ends at /min/ (not /min/vs/) so AMD resolves vs/foo -> /min/vs/foo with NO doubling
+      const src = "self.MonacoEnvironment={baseUrl:'" + _mvs.replace('/vs','') + "/'};importScripts('" + w + "');";
+      return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
     }
   };
   require.config({
-    paths: { vs: _monacoBase + '/vs' },
+    paths: { vs: _mvs },
     'vs/nls': { availableLanguages: {} },
     ignoreDuplicateModules: ['vs/editor/editor.main'],
   });
