@@ -1875,6 +1875,7 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
 
 <script>
 
@@ -1887,76 +1888,24 @@ const FB_CONFIG = {
   appId:             "1:668902009818:web:0d11d663d85d376d96aee3"            // App ID
 };
 
-// ── Piston ───────────────────────────────────────────────────
-// Piston configuration — completely free, no API key required
-// Default: public Piston API at emkc.org
 // ── Pyodide (in-browser Python) ──────────────────────────────
-// ── Pyodide blob Worker — isolated from Monaco AMD ──────────────
-const _workerLines = [
-  'importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");',
-  'var _py = null;',
-  'self.onmessage = async function(e) {',
-  '  var id = e.data.id, code = e.data.code, stdin = e.data.stdin || "";',
-  '  try {',
-  '    if (!_py) _py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });',
-  '    var stdout = "", stderr = "";',
-  '    _py.setStdout({ batched: function(s){ stdout += s; } });',
-  '    _py.setStderr({ batched: function(s){ stderr += s; } });',
-  '    if (stdin) {',
-  '      var lines = stdin.split("\n");',
-  '      _py.globals.set("_stdin_lines", _py.toPy(lines));',
-  '      await _py.runPythonAsync([',
-  '        "import builtins",',
-  '        "_stdin_lines = list(_stdin_lines)",',
-  '        "_stdin_idx = [0]",',
-  '        "def _input(prompt=\'\'):",',
-  '        "    idx = _stdin_idx[0]",',
-  '        "    if idx < len(_stdin_lines):",',
-  '        "        val = _stdin_lines[idx]",',
-  '        "        _stdin_idx[0] += 1",',
-  '        "        return val",',
-  '        "    return \'\'",',
-  '        "builtins.input = _input"',
-  '      ].join("\n"));',
-  '    }',
-  '    var exitCode = 0;',
-  '    try { await _py.runPythonAsync(code); }',
-  '    catch(err) { stderr += (err.message || String(err)); exitCode = 1; }',
-  '    self.postMessage({ id: id, ok: true, stdout: stdout.trim(), stderr: stderr.trim(), exitCode: exitCode });',
-  '  } catch(err) {',
-  '    self.postMessage({ id: id, ok: false, error: err.message || String(err) });',
-  '  }',
-  '};',
-];
-let _pyWorker = null;
-let _pyCallbacks = {};
-let _pyCallId = 0;
-function getPyWorker() {
-  if (_pyWorker) return _pyWorker;
-  var blob = new Blob([_workerLines.join('\n')], { type: 'application/javascript' });
-  _pyWorker = new Worker(URL.createObjectURL(blob));
-  _pyWorker.onmessage = function(e) {
-    var cb = _pyCallbacks[e.data.id];
-    if (!cb) return;
-    delete _pyCallbacks[e.data.id];
-    if (e.data.ok) cb.resolve(e.data);
-    else           cb.reject(new Error(e.data.error));
-  };
-  _pyWorker.onerror = function(e) {
-    Object.values(_pyCallbacks).forEach(function(cb){ cb.reject(new Error(e.message||'Worker error')); });
-    _pyCallbacks = {};
-    _pyWorker = null;
-  };
-  return _pyWorker;
-}
-setTimeout(function() {
-  try {
-    var id = ++_pyCallId;
-    _pyCallbacks[id] = { resolve: function(){}, reject: function(){} };
-    getPyWorker().postMessage({ id: id, code: 'pass', stdin: '' });
-  } catch(e) {}
-}, 2000);
+let _pyodide = null;
+let _pyodideLoading = false;
+let _pyodideReady = false;
 
+async function getPyodide() {
+  if (_pyodideReady) return _pyodide;
+  if (_pyodideLoading) {
+    while (!_pyodideReady) await new Promise(r => setTimeout(r, 100));
+    return _pyodide;
+  }
+  _pyodideLoading = true;
+  _pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/' });
+  _pyodideReady = true;
+  return _pyodide;
+}
+
+setTimeout(() => getPyodide().catch(() => {}), 1000);
 const PISTON_LANGS = {
   python:     "pyodide",
   javascript: null,
@@ -3551,29 +3500,51 @@ async function pistonExecute(code, lang, stdin) {
   const engine = PISTON_LANGS[lang];
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
-  return new Promise(function(resolve, reject) {
-    var id = ++_pyCallId;
-    var timer = setTimeout(function() {
-      delete _pyCallbacks[id];
-      reject(new Error('Python execution timed out (30s)'));
-    }, 30000);
-    _pyCallbacks[id] = {
-      resolve: function(r) {
-        clearTimeout(timer);
-        resolve({ run: { stdout: r.stdout, stderr: r.stderr, code: r.exitCode, output: r.stdout }, compile: {} });
-      },
-      reject: function(e) { clearTimeout(timer); reject(e); }
-    };
-    try { getPyWorker().postMessage({ id: id, code: code, stdin: stdin || '' }); }
-    catch(e) { clearTimeout(timer); delete _pyCallbacks[id]; reject(e); }
-  });
+
+  const pyodide = await getPyodide();
+
+  let stdout = '';
+  let stderr = '';
+
+  pyodide.setStdout({ batched: (s) => { stdout += s; } });
+  pyodide.setStderr({ batched: (s) => { stderr += s; } });
+
+  if (stdin && stdin.trim()) {
+    const lines = stdin.split('\n');
+    pyodide.globals.set('_stdin_lines', pyodide.toPy(lines));
+    await pyodide.runPythonAsync(
+      'import builtins\n' +
+      '_stdin_lines = list(_stdin_lines)\n' +
+      '_stdin_idx = [0]\n' +
+      'def _input(prompt=""):\n' +
+      '    idx = _stdin_idx[0]\n' +
+      '    if idx < len(_stdin_lines):\n' +
+      '        val = _stdin_lines[idx]\n' +
+      '        _stdin_idx[0] += 1\n' +
+      '        return val\n' +
+      '    return ""\n' +
+      'builtins.input = _input'
+    );
+  }
+
+  let exitCode = 0;
+  try {
+    await pyodide.runPythonAsync(code);
+  } catch(e) {
+    stderr += (e.message || String(e));
+    exitCode = 1;
+  }
+
+  return {
+    run: {
+      stdout: stdout,
+      stderr: stderr,
+      code:   exitCode,
+      output: stdout,
+    },
+    compile: {}
+  };
 }
-
-function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
-
-/* ═══════════════════════════════════════════════════════════════
-   RUN CODE
-   ═══════════════════════════════════════════════════════════════ */
 async function runCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
