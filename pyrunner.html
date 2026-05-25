@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+<script>
+var py = null;
+
+loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(function(p) {
+  py = p;
+  parent.postMessage({ type: "py_ready" }, "*");
+});
+
+var STDIN_SETUP = "import builtins\n_sl=list(_sl)\n_si=[0]\ndef _inp(p=''):\n  i=_si[0];_si[0]+=1\n  return _sl[i] if i<len(_sl) else ''\nbuiltins.input=_inp";
+
+window.addEventListener("message", async function(e) {
+  if (!e.data || e.data.t !== "run") return;
+  if (!py) {
+    parent.postMessage({ id: e.data.id, ok: false, error: "Pyodide not ready" }, "*");
+    return;
+  }
+  var o = "", er = "", ec = 0;
+  py.setStdout({ batched: function(s) { o += s; } });
+  py.setStderr({ batched: function(s) { er += s; } });
+  var lines = (e.data.stdin || "").split("\n");
+  py.globals.set("_sl", py.toPy(lines));
+  try { await py.runPythonAsync(STDIN_SETUP); } catch(x) {}
+  try { await py.runPythonAsync(e.data.code); }
+  catch(x) { er += (x.message || String(x)); ec = 1; }
+  parent.postMessage({ id: e.data.id, ok: true, stdout: o, stderr: er, ec: ec }, "*");
+});
+</script>
+</body>
+</html>
