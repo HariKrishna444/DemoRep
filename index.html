@@ -1887,85 +1887,84 @@ const FB_CONFIG = {
   appId:             "1:668902009818:web:0d11d663d85d376d96aee3"            // App ID
 };
 
-// ── Pyodide iframe bridge ────────────────────────────────────
-// Run Pyodide in a hidden iframe to isolate it from Monaco AMD loader
+// ── Pyodide via hidden iframe (isolated from Monaco AMD) ────────
 let _pyFrame = null;
+let _pyReady = false;
 let _pyCallbacks = {};
 let _pyCallId = 0;
 
-function getPyFrame() {
-  if (_pyFrame) return _pyFrame;
-  var frameHTML = [
-    '<!DOCTYPE html><html><body>',
-    '<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script>',
-    '<script>',
-    'var _py = null;',
-    'var ready = false;',
-    'loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(function(p) {',
-    '  _py = p; ready = true;',
-    '  window.parent.postMessage({ type: "pyodide_ready" }, "*");',
-    '});',
-    'window.addEventListener("message", async function(e) {',
-    '  if (!e.data || e.data.target !== "pyframe") return;',
-    '  var id = e.data.id, code = e.data.code, stdin = e.data.stdin || "";',
-    '  if (!ready) { e.source.postMessage({ id: id, ok: false, error: "Pyodide not ready" }, "*"); return; }',
-    '  var stdout = "", stderr = "";',
-    '  _py.setStdout({ batched: function(s){ stdout += s; } });',
-    '  _py.setStderr({ batched: function(s){ stderr += s; } });',
-    '  if (stdin.trim()) {',
-    '    var lines = stdin.split("\n");',
-    '    _py.globals.set("_stdin_lines", _py.toPy(lines));',
-    '    try { await _py.runPythonAsync(' +
-    '      "import builtins\n_stdin_lines=list(_stdin_lines)\n_stdin_idx=[0]\n" +',
-    '      "def _input(prompt=chr(0)[:0]):\n    i=_stdin_idx[0]\n    _stdin_idx[0]+=1\n    return _stdin_lines[i] if i<len(_stdin_lines) else chr(0)[:0]\n" +',
-    '      "builtins.input=_input"',
-    '    ); } catch(e2) {}',
-    '  }',
-    '  var exitCode = 0;',
-    '  try { await _py.runPythonAsync(code); }',
-    '  catch(err) { stderr += (err.message || String(err)); exitCode = 1; }',
-    '  e.source.postMessage({ id: id, ok: true, stdout: stdout, stderr: stderr, exitCode: exitCode }, "*");',
-    '});',
-    '<\/script></body></html>',
-  ].join("\n");
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'pyodide_ready') { _pyReady = true; return; }
+  var cb = _pyCallbacks[e.data.id];
+  if (!cb) return;
+  delete _pyCallbacks[e.data.id];
+  if (e.data.ok) cb.resolve(e.data);
+  else cb.reject(new Error(e.data.error || 'Pyodide error'));
+});
 
-  var iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  iframe.srcdoc = frameHTML;
-  document.body.appendChild(iframe);
-  _pyFrame = iframe;
-
-  window.addEventListener("message", function(e) {
-    if (e.data && e.data.type === "pyodide_ready") return;
-    if (!e.data || !e.data.id) return;
-    var cb = _pyCallbacks[e.data.id];
-    if (!cb) return;
-    delete _pyCallbacks[e.data.id];
-    if (e.data.ok) cb.resolve(e.data);
-    else cb.reject(new Error(e.data.error || "Pyodide error"));
-  });
-
-  return iframe;
+function initPyFrame() {
+  if (_pyFrame) return;
+  var html = '<!DOCTYPE html><html><body>' +
+    '<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script>' +
+    '<script>' +
+    'var py=null;' +
+    'loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.25.1/full/"}).then(function(p){' +
+    '  py=p;' +
+    '  window.parent.postMessage({type:"pyodide_ready"},"*");' +
+    '});' +
+    'window.addEventListener("message",async function(e){' +
+    '  if(!e.data||e.data.target!=="pyframe")return;' +
+    '  var id=e.data.id,code=e.data.code,stdin=e.data.stdin||"";' +
+    '  if(!py){window.parent.postMessage({id:id,ok:false,error:"Pyodide not ready yet"},"*");return;}' +
+    '  var out="",err="";' +
+    '  py.setStdout({batched:function(s){out+=s;}});' +
+    '  py.setStderr({batched:function(s){err+=s;}});' +
+    '  if(stdin.trim()){' +
+    '    var lines=stdin.split("\n");' +
+    '    py.globals.set("_sl",py.toPy(lines));' +
+    '    try{await py.runPythonAsync("import builtins\n_sl=list(_sl)\n_si=[0]\ndef _inp(p=\"\"):\n i=_si[0];_si[0]+=1\n return _sl[i] if i<len(_sl) else \"\"]\nbuiltins.input=_inp");}catch(ex){}' +
+    '  }' +
+    '  var ec=0;' +
+    '  try{await py.runPythonAsync(code);}' +
+    '  catch(ex){err+=(ex.message||String(ex));ec=1;}' +
+    '  window.parent.postMessage({id:id,ok:true,stdout:out,stderr:err,exitCode:ec},"*");' +
+    '});' +
+    '<\/script></body></html>';
+  var f = document.createElement('iframe');
+  f.style.display = 'none';
+  f.srcdoc = html;
+  document.body.appendChild(f);
+  _pyFrame = f;
 }
 
-function runInPyFrame(code, stdin) {
+function waitForPyodide(timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    if (_pyReady) { resolve(); return; }
+    var start = Date.now();
+    var check = setInterval(function() {
+      if (_pyReady) { clearInterval(check); resolve(); return; }
+      if (Date.now() - start > timeoutMs) { clearInterval(check); reject(new Error('Pyodide load timeout — please reload the page')); }
+    }, 200);
+  });
+}
+
+function runPython(code, stdin) {
   return new Promise(function(resolve, reject) {
     var id = ++_pyCallId;
-    _pyCallbacks[id] = { resolve: resolve, reject: reject };
-    setTimeout(function() {
-      if (_pyCallbacks[id]) {
-        delete _pyCallbacks[id];
-        reject(new Error("Pyodide timeout"));
-      }
-    }, 30000);
-    getPyFrame().contentWindow.postMessage({ target: "pyframe", id: id, code: code, stdin: stdin || "" }, "*");
+    var timer = setTimeout(function() {
+      delete _pyCallbacks[id];
+      reject(new Error('Pyodide timeout'));
+    }, 60000);
+    _pyCallbacks[id] = {
+      resolve: function(r) { clearTimeout(timer); resolve(r); },
+      reject:  function(e) { clearTimeout(timer); reject(e); }
+    };
+    _pyFrame.contentWindow.postMessage({ target: 'pyframe', id: id, code: code, stdin: stdin || '' }, '*');
   });
 }
 
-// Preload iframe on page load
-document.addEventListener("DOMContentLoaded", function() {
-  setTimeout(function() { try { getPyFrame(); } catch(e) {} }, 500);
-});
+document.addEventListener('DOMContentLoaded', function() { setTimeout(initPyFrame, 300); });
 const PISTON_LANGS = {
   python:     "pyodide",
   javascript: null,
@@ -3561,7 +3560,13 @@ async function pistonExecute(code, lang, stdin) {
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
 
-  const result = await runInPyFrame(code, stdin || '');
+  // Make sure iframe is created
+  if (!_pyFrame) initPyFrame();
+
+  // Wait up to 60s for Pyodide to finish loading
+  await waitForPyodide(60000);
+
+  const result = await runPython(code, stdin || '');
   return {
     run: {
       stdout: result.stdout || '',
@@ -3572,6 +3577,11 @@ async function pistonExecute(code, lang, stdin) {
     compile: {}
   };
 }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+/* ═══════════════════════════════════════════════════════════════
+   RUN CODE
+   ═══════════════════════════════════════════════════════════════ */
 async function runCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
