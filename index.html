@@ -1891,88 +1891,75 @@ const FB_CONFIG = {
 // Piston configuration — completely free, no API key required
 // Default: public Piston API at emkc.org
 // ── Pyodide (in-browser Python) ──────────────────────────────
-// ── Pyodide runs inside a blob Web Worker ──────────────────────
-// This fully isolates Pyodide's AMD modules (stackframe, error-stack-parser)
-// from Monaco's global AMD require, eliminating all three errors:
-//   • "Loading stackframe failed"
-//   • "wasm instantiation failed"
-//   • "DataCloneError: URL object could not be cloned"
-const PYODIDE_WORKER_SRC = `
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");
-let pyodide = null;
-self.onmessage = async (e) => {
-  const { id, code, stdin } = e.data;
-  try {
-    if (!pyodide) {
-      pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });
-    }
-    let stdout = "", stderr = "";
-    pyodide.setStdout({ batched: s => { stdout += s + "\n"; } });
-    pyodide.setStderr({ batched: s => { stderr += s + "\n"; } });
-    if (stdin) {
-      const lines = stdin.split("\n");
-      pyodide.globals.set("_stdin_lines", pyodide.toPy(lines));
-      await pyodide.runPythonAsync([
-        "import builtins",
-        "_stdin_lines = list(_stdin_lines)",
-        "_stdin_idx = [0]",
-        "def _input(prompt=\"\"):",
-        "    idx = _stdin_idx[0]",
-        "    if idx < len(_stdin_lines):",
-        "        val = _stdin_lines[idx]",
-        "        _stdin_idx[0] += 1",
-        "        return val",
-        "    return \"\"",
-        "builtins.input = _input",
-      ].join("\n"));
-    }
-    let exitCode = 0;
-    try {
-      await pyodide.runPythonAsync(code);
-    } catch(err) {
-      stderr += (err.message || String(err));
-      exitCode = 1;
-    }
-    self.postMessage({ id, ok: true, stdout: stdout.trim(), stderr: stderr.trim(), exitCode });
-  } catch(err) {
-    self.postMessage({ id, ok: false, error: err.message || String(err) });
-  }
-};
-`;
+// Pyodide runs in an isolated blob Worker to avoid AMD conflicts with Monaco.
+// Using array-join construction avoids quote escaping issues in the blob src.
+const _workerLines = [
+  'importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");',
+  'var _py = null;',
+  'self.onmessage = async function(e) {',
+  '  var id = e.data.id, code = e.data.code, stdin = e.data.stdin || "";',
+  '  try {',
+  '    if (!_py) _py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });',
+  '    var stdout = "", stderr = "";',
+  '    _py.setStdout({ batched: function(s){ stdout += s + "\\n"; } });',
+  '    _py.setStderr({ batched: function(s){ stderr += s + "\\n"; } });',
+  '    if (stdin) {',
+  '      var lines = stdin.split("\\n");',
+  '      _py.globals.set("_stdin_lines", _py.toPy(lines));',
+  '      await _py.runPythonAsync([',
+  '        "import builtins",',
+  '        "_stdin_lines = list(_stdin_lines)",',
+  '        "_stdin_idx = [0]",',
+  '        "def _input(prompt=\'\'):",',
+  '        "    idx = _stdin_idx[0]",',
+  '        "    if idx < len(_stdin_lines):",',
+  '        "        val = _stdin_lines[idx]",',
+  '        "        _stdin_idx[0] += 1",',
+  '        "        return val",',
+  '        "    return \'\'",',
+  '        "builtins.input = _input"',
+  '      ].join("\\n"));',
+  '    }',
+  '    var exitCode = 0;',
+  '    try { await _py.runPythonAsync(code); }',
+  '    catch(err) { stderr += (err.message || String(err)); exitCode = 1; }',
+  '    self.postMessage({ id: id, ok: true, stdout: stdout.trim(), stderr: stderr.trim(), exitCode: exitCode });',
+  '  } catch(err) {',
+  '    self.postMessage({ id: id, ok: false, error: err.message || String(err) });',
+  '  }',
+  '};',
+];
 
 let _pyWorker = null;
-let _pyWorkerReady = false;
 let _pyCallbacks = {};
 let _pyCallId = 0;
 
 function getPyWorker() {
   if (_pyWorker) return _pyWorker;
-  const blob = new Blob([PYODIDE_WORKER_SRC], { type: 'application/javascript' });
+  var blob = new Blob([_workerLines.join('\n')], { type: 'application/javascript' });
   _pyWorker = new Worker(URL.createObjectURL(blob));
-  _pyWorker.onmessage = (e) => {
-    const { id, ok, stdout, stderr, exitCode, error } = e.data;
-    const cb = _pyCallbacks[id];
+  _pyWorker.onmessage = function(e) {
+    var cb = _pyCallbacks[e.data.id];
     if (!cb) return;
-    delete _pyCallbacks[id];
-    if (ok) cb.resolve({ stdout, stderr, exitCode });
-    else     cb.reject(new Error(error));
+    delete _pyCallbacks[e.data.id];
+    if (e.data.ok) cb.resolve(e.data);
+    else           cb.reject(new Error(e.data.error));
   };
-  _pyWorker.onerror = (e) => {
-    // Reject all pending calls on worker crash
-    Object.values(_pyCallbacks).forEach(cb => cb.reject(new Error(e.message || 'Worker error')));
+  _pyWorker.onerror = function(e) {
+    Object.values(_pyCallbacks).forEach(function(cb){ cb.reject(new Error(e.message||'Worker error')); });
     _pyCallbacks = {};
-    _pyWorker = null; // will be recreated on next call
+    _pyWorker = null;
   };
+  console.log('Worker Created');
   return _pyWorker;
 }
 
-// Warm up the worker in the background
-setTimeout(() => {
+// Warm up worker in background
+setTimeout(function() {
   try {
-    const w = getPyWorker();
-    const id = ++_pyCallId;
-    _pyCallbacks[id] = { resolve: ()=>{}, reject: ()=>{} };
-    w.postMessage({ id, code: 'pass', stdin: '' });
+    var id = ++_pyCallId;
+    _pyCallbacks[id] = { resolve: function(){}, reject: function(){} };
+    getPyWorker().postMessage({ id: id, code: 'pass', stdin: '' });
   } catch(e) {}
 }, 2000);
 
@@ -3395,7 +3382,6 @@ function loadMonaco() {
       if (label === 'css'||label === 'scss'||label === 'less')  w = _mvs + '/language/css/cssWorker.js';
       if (label === 'html'||label === 'handlebars')             w = _mvs + '/language/html/htmlWorker.js';
       if (label === 'typescript'||label === 'javascript')       w = _mvs + '/language/typescript/tsWorker.js';
-      // _mmin ends at /min (no /vs) so AMD resolves vs/foo -> /min/vs/foo with no doubling
       const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
       return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
     }
@@ -3572,24 +3558,21 @@ async function pistonExecute(code, lang, stdin) {
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
 
-  return new Promise((resolve, reject) => {
-    const id = ++_pyCallId;
-    const timer = setTimeout(() => {
+  return new Promise(function(resolve, reject) {
+    var id = ++_pyCallId;
+    var timer = setTimeout(function() {
       delete _pyCallbacks[id];
       reject(new Error('Python execution timed out (30s)'));
     }, 30000);
     _pyCallbacks[id] = {
-      resolve: (r) => {
+      resolve: function(r) {
         clearTimeout(timer);
-        resolve({
-          run:     { stdout: r.stdout, stderr: r.stderr, code: r.exitCode, output: r.stdout },
-          compile: {}
-        });
+        resolve({ run: { stdout: r.stdout, stderr: r.stderr, code: r.exitCode, output: r.stdout }, compile: {} });
       },
-      reject: (e) => { clearTimeout(timer); reject(e); }
+      reject: function(e) { clearTimeout(timer); reject(e); }
     };
     try {
-      getPyWorker().postMessage({ id, code, stdin: stdin || '' });
+      getPyWorker().postMessage({ id: id, code: code, stdin: stdin || '' });
     } catch(e) {
       clearTimeout(timer);
       delete _pyCallbacks[id];
