@@ -962,6 +962,102 @@ select.inp option{background:var(--ink3)}
 #py-loader-bar{height:100%;width:0%;background:linear-gradient(90deg,#6c63ff,#a78bfa);border-radius:99px;transition:width 0.3s;}
 #py-loader-text{color:#e2e8f0;font-size:1rem;font-weight:600;}
 #py-loader-sub{color:#64748b;font-size:0.78rem;}
+
+/* ═══════════════════════════════════════════════════
+   PHASE 1 — EXAM STATUS BANNER (student page)
+   ═══════════════════════════════════════════════════ */
+#exam-status-banner{
+  display:none;align-items:center;gap:12px;
+  padding:10px 24px;font-size:.8rem;font-family:var(--ff-mono);
+  position:sticky;top:0;z-index:190;
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(14px);
+}
+#exam-status-banner.show{display:flex}
+#exam-status-banner.phase-waiting{background:rgba(59,130,246,.08);border-bottom-color:rgba(59,130,246,.2)}
+#exam-status-banner.phase-active{background:rgba(0,229,160,.06);border-bottom-color:rgba(0,229,160,.18)}
+#exam-status-banner.phase-ended{background:rgba(255,59,92,.06);border-bottom-color:rgba(255,59,92,.2)}
+.esb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.phase-waiting .esb-dot{background:var(--blue);animation:blink 1.4s ease infinite}
+.phase-active  .esb-dot{background:var(--stu);animation:blink .9s ease infinite}
+.phase-ended   .esb-dot{background:var(--danger)}
+.esb-label{font-weight:700}
+.phase-waiting .esb-label{color:var(--blue)}
+.phase-active  .esb-label{color:var(--stu)}
+.phase-ended   .esb-label{color:var(--danger)}
+.esb-countdown{margin-left:auto;color:var(--muted);letter-spacing:1px}
+.esb-countdown strong{color:var(--head)}
+
+/* Phase 1 — "no active exam" hero improvements */
+.no-exam-hero{
+  grid-column:1/-1;display:flex;flex-direction:column;align-items:center;
+  padding:80px 20px;text-align:center;gap:16px;
+}
+.no-exam-icon{font-size:3.5rem;line-height:1}
+.no-exam-title{font-size:1.2rem;font-weight:800;color:var(--head)}
+.no-exam-sub{font-size:.85rem;color:var(--soft);line-height:1.7;max-width:360px}
+.no-exam-meta{font-family:var(--ff-mono);font-size:.72rem;color:var(--muted);
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:8px 14px;margin-top:4px}
+
+/* ═══════════════════════════════════════════════════
+   PHASE 2 — EXAM MANAGEMENT PANEL (professor)
+   ═══════════════════════════════════════════════════ */
+.exam-mgmt-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-lg);overflow:hidden;margin-bottom:12px;
+  transition:border-color .18s;
+}
+.exam-mgmt-card:hover{border-color:var(--line2)}
+.exam-mgmt-header{
+  display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;
+  padding:16px 20px;
+}
+.exam-mgmt-name{font-size:.92rem;font-weight:700;color:var(--head)}
+.exam-mgmt-meta{font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);margin-top:2px}
+.exam-mgmt-body{
+  border-top:1px solid var(--line);padding:14px 20px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  background:rgba(255,255,255,.01);
+}
+.exam-mgmt-stat{text-align:center}
+.exam-mgmt-stat .v{font-size:1.2rem;font-weight:900;color:var(--head);font-family:var(--ff-head)}
+.exam-mgmt-stat .l{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:2px}
+.exam-mgmt-footer{
+  border-top:1px solid var(--line);padding:10px 20px;
+  display:flex;align-items:center;gap:8px;
+}
+.status-pill{
+  padding:3px 10px;border-radius:99px;font-size:.68rem;font-weight:700;
+  font-family:var(--ff-mono);letter-spacing:.5px;
+}
+.status-pill.scheduled{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.25)}
+.status-pill.active   {background:rgba(0,229,160,.12);color:var(--stu);border:1px solid rgba(0,229,160,.25);animation:blink 1.2s ease infinite}
+.status-pill.ended    {background:var(--ink3);color:var(--muted);border:1px solid var(--line)}
+
+/* ═══════════════════════════════════════════════════
+   PHASE 3 — LIFECYCLE CONTROLS  (professor)
+   ═══════════════════════════════════════════════════ */
+.lifecycle-bar{
+  display:flex;align-items:center;gap:0;
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;margin-bottom:20px;
+}
+.lc-step{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:14px 10px;gap:5px;position:relative;
+  border-right:1px solid var(--line);font-size:.73rem;
+  color:var(--muted);transition:all .2s;
+}
+.lc-step:last-child{border-right:none}
+.lc-step.done{color:var(--stu)}
+.lc-step.current{color:var(--amber);background:rgba(245,166,35,.05)}
+.lc-step .lc-icon{font-size:1.2rem}
+.lc-step .lc-label{font-family:var(--ff-mono);font-size:.65rem;text-transform:uppercase;letter-spacing:1px}
+.lc-step.done .lc-icon::after{content:'✓';font-size:.55rem;color:var(--stu);vertical-align:super}
+
+/* Edit exam modal */
+#edit-exam-modal .modal{box-shadow:var(--sh),var(--glow-a);max-width:580px}
 </style>
 </head>
 <body>
@@ -1082,6 +1178,7 @@ select.inp option{background:var(--ink3)}
       <div class="sbar-section">Exam Management</div>
       <div class="sbar-item" id="sb-questions"  onclick="profNav('questions')"><span class="sbar-icon">📝</span>Questions</div>
       <div class="sbar-item" id="sb-createexam" onclick="profNav('createexam')"><span class="sbar-icon">🗂️</span>Create Exam</div>
+      <div class="sbar-item" id="sb-exammanage" onclick="profNav('exammanage')"><span class="sbar-icon">📋</span>Manage Exams<span class="sbar-badge" id="active-exam-badge" style="display:none;background:var(--stu)">1</span></div>
       <div class="sbar-item" id="sb-violations" onclick="profNav('violations')"><span class="sbar-icon">🚨</span>Violations<span class="sbar-badge" id="vio-count-badge">0</span></div>
       <div class="sbar-item" id="sb-results"    onclick="profNav('presults')"><span class="sbar-icon">📈</span>Results</div>
 
@@ -1844,6 +1941,37 @@ upgrade-insecure-requests;</pre>
   </div>
 </div>
 
+      <!-- ═══ PHASE 2: EXAM MANAGEMENT ═══ -->
+      <div class="prof-panel" id="pp-exammanage">
+        <div class="sec-hd">
+          <div><h2>Manage Exams</h2><p>View, control, and track all exam sessions</p></div>
+          <button class="btn btn-a btn-sm" onclick="profNav('createexam')">+ New Exam</button>
+        </div>
+
+        <!-- Phase 3: Lifecycle bar -->
+        <div class="lifecycle-bar" id="lc-bar">
+          <div class="lc-step" id="lc-draft"><div class="lc-icon">📝</div><div class="lc-label">Draft</div></div>
+          <div class="lc-step" id="lc-scheduled"><div class="lc-icon">📅</div><div class="lc-label">Scheduled</div></div>
+          <div class="lc-step" id="lc-active"><div class="lc-icon">🟢</div><div class="lc-label">Active</div></div>
+          <div class="lc-step" id="lc-ended"><div class="lc-icon">🏁</div><div class="lc-label">Ended</div></div>
+        </div>
+
+        <!-- Filter bar -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+          <div style="display:flex;gap:4px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:3px">
+            <button class="btn btn-ghost btn-sm" id="ef-all"       onclick="filterExams('all')"       style="padding:5px 12px">All</button>
+            <button class="btn btn-ghost btn-sm" id="ef-scheduled" onclick="filterExams('scheduled')" style="padding:5px 12px">Scheduled</button>
+            <button class="btn btn-ghost btn-sm" id="ef-active"    onclick="filterExams('active')"    style="padding:5px 12px">Active</button>
+            <button class="btn btn-ghost btn-sm" id="ef-ended"     onclick="filterExams('ended')"     style="padding:5px 12px">Ended</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="renderExamManage()">↻ Refresh</button>
+        </div>
+
+        <div id="exam-mgmt-list">
+          <div style="color:var(--muted);font-size:.82rem">Loading exams…</div>
+        </div>
+      </div>
+
 <!-- ══════════════════════════════════════════════════
      ADD QUESTION MODAL
      ══════════════════════════════════════════════════ -->
@@ -1881,6 +2009,27 @@ upgrade-insecure-requests;</pre>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeAddQ()">Cancel</button>
       <button class="btn btn-a" onclick="saveQuestion()">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PHASE 3: EDIT EXAM MODAL ═══ -->
+<div class="modal-bg" id="edit-exam-modal">
+  <div class="modal" style="max-width:580px;box-shadow:var(--sh),var(--glow-a)">
+    <h3>Edit Exam</h3>
+    <p class="sub">Update exam settings. Changes apply immediately.</p>
+    <input type="hidden" id="edit-exam-id">
+    <div class="modal-fields">
+      <div class="field"><label>Exam Name</label><input class="inp" id="edit-ex-name" placeholder="Exam name"></div>
+      <div class="modal-row">
+        <div class="field"><label>Start Time</label><input class="inp" id="edit-ex-start" type="datetime-local"></div>
+        <div class="field"><label>End Time</label><input class="inp" id="edit-ex-end" type="datetime-local"></div>
+      </div>
+      <div class="field"><label>Duration (minutes)</label><input class="inp" id="edit-ex-duration" type="number" min="10" max="300"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('edit-exam-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-a" onclick="saveEditedExam()">💾 Save Changes</button>
     </div>
   </div>
 </div>
@@ -5305,6 +5454,390 @@ const _origHandleLogin=window.handleLogin;
 window.handleLogin=async function(){
   if(!RateLimiter.check('login')){toast('Too many login attempts. Wait 60 seconds.','err',6000);return;}
   return _origHandleLogin.apply(this,arguments);
+};
+
+
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  PHASE 1 — STUDENT UX ENHANCEMENTS                             ║
+   ║  • Exam status banner with live countdown                       ║
+   ║  • Improved "no exam" states (waiting/ended/soon)               ║
+   ║  • Banner auto-updates every second                             ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+
+let _examBannerInterval = null;
+
+function updateExamStatusBanner() {
+  const banner = document.getElementById('exam-status-banner');
+  if (!banner) return;
+  const exam = window._activeExam || null;
+  const now  = new Date();
+
+  if (!exam) { banner.classList.remove('show'); return; }
+
+  const start = exam.startTime ? new Date(exam.startTime) : null;
+  const end   = exam.endTime   ? new Date(exam.endTime)   : null;
+
+  // Determine phase
+  let phase = 'waiting';
+  if (start && end) {
+    if (now < start) phase = 'waiting';
+    else if (now >= start && now <= end) phase = 'active';
+    else phase = 'ended';
+  }
+
+  banner.className = 'show exam-status-banner phase-' + phase;
+  const label   = document.getElementById('esb-label');
+  const detail  = document.getElementById('esb-detail');
+  const cdEl    = document.getElementById('esb-countdown');
+  banner.classList.add('show');
+
+  if (phase === 'waiting') {
+    label.textContent  = '⏳ Exam Starts Soon';
+    detail.textContent = exam.name || '';
+    if (start) {
+      const diff = Math.max(0, Math.floor((start - now) / 1000));
+      const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
+      cdEl.innerHTML = `Starts in <strong>${h > 0 ? h + 'h ' : ''}${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s</strong>`;
+    }
+  } else if (phase === 'active') {
+    label.textContent  = '🟢 Exam In Progress';
+    detail.textContent = exam.name || '';
+    if (end) {
+      const diff = Math.max(0, Math.floor((end - now) / 1000));
+      const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
+      const low = diff < 300; // last 5 min
+      cdEl.innerHTML = `Ends in <strong style="color:${low ? 'var(--danger)' : 'var(--stu)'}">${h > 0 ? h + 'h ' : ''}${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s</strong>`;
+    }
+  } else {
+    label.textContent  = '🏁 Exam Ended';
+    detail.textContent = exam.name || '';
+    cdEl.innerHTML = end ? `Closed at <strong>${end.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</strong>` : '';
+    clearInterval(_examBannerInterval);
+  }
+}
+
+function startExamBanner() {
+  clearInterval(_examBannerInterval);
+  updateExamStatusBanner();
+  _examBannerInterval = setInterval(updateExamStatusBanner, 1000);
+}
+
+// Override renderStuPage to also start banner
+const _origRenderStuPage = window.renderStuPage;
+window.renderStuPage = function() {
+  _origRenderStuPage.apply(this, arguments);
+  startExamBanner();
+};
+
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  PHASE 2 — EXAM MANAGEMENT PANEL                               ║
+   ║  • List all exams from Firestore with stats                     ║
+   ║  • Per-exam card with questions, time window, language list     ║
+   ║  • Edit exam settings inline                                    ║
+   ║  • Delete exam with confirmation                                ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+
+let _allExams        = [];
+let _examMgmtFilter  = 'all';
+let _examSubmissions = {}; // examId → submission count
+let _examStudents    = {}; // examId → unique student count
+
+// Hook into profNav to render exam management panel
+const _origProfNavP2 = window.profNav;
+window.profNav = function(panel) {
+  _origProfNavP2(panel);
+  if (panel === 'exammanage') renderExamManage();
+};
+
+async function renderExamManage() {
+  const list = document.getElementById('exam-mgmt-list');
+  if (!list) return;
+  list.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:20px 0">Loading exams…</div>';
+
+  if (!fsReady()) {
+    list.innerHTML = `<div style="color:var(--muted);font-size:.82rem">
+      Connect Firebase to manage exams. <span style="color:var(--amber)">Configure Firebase in the FB_CONFIG at the top of this file.</span>
+    </div>`;
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const snap = await fsDb().collection('exams').orderBy('createdAt', 'desc').get();
+    _allExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Enrich with submission counts (batch read)
+    const subSnap = await fsDb().collection('submissions').get();
+    _examSubmissions = {};
+    _examStudents    = {};
+    subSnap.docs.forEach(d => {
+      const s = d.data();
+      const eid = s.examId || '__none__';
+      _examSubmissions[eid] = (_examSubmissions[eid] || 0) + 1;
+      if (!_examStudents[eid]) _examStudents[eid] = new Set();
+      if (s.userId) _examStudents[eid].add(s.userId);
+    });
+
+    // Auto-update status based on time
+    _allExams = _allExams.map(e => {
+      const start = e.startTime ? new Date(e.startTime) : null;
+      const end   = e.endTime   ? new Date(e.endTime)   : null;
+      let status = e.status || 'scheduled';
+      if (start && end) {
+        if (now < start) status = 'scheduled';
+        else if (now >= start && now <= end) status = 'active';
+        else if (now > end) status = 'ended';
+      }
+      return { ...e, status };
+    });
+
+    // Update active exam badge
+    const activeCount = _allExams.filter(e => e.status === 'active').length;
+    const badge = document.getElementById('active-exam-badge');
+    if (badge) {
+      if (activeCount > 0) { badge.textContent = activeCount; badge.style.display = ''; }
+      else badge.style.display = 'none';
+    }
+
+    // Update lifecycle bar (based on most recent active exam state)
+    _updateLifecycleBar(_allExams);
+
+    renderExamMgmtList();
+  } catch(e) {
+    list.innerHTML = `<div style="color:var(--danger);font-size:.82rem">Error: ${sanitize(e.message)}</div>`;
+  }
+}
+
+function _updateLifecycleBar(exams) {
+  const hasScheduled = exams.some(e => e.status === 'scheduled');
+  const hasActive    = exams.some(e => e.status === 'active');
+  const hasEnded     = exams.some(e => e.status === 'ended');
+
+  const steps = ['draft','scheduled','active','ended'];
+  steps.forEach(s => {
+    const el = document.getElementById('lc-' + s);
+    if (el) el.className = 'lc-step';
+  });
+
+  // Mark progression
+  if (hasEnded) {
+    ['draft','scheduled','active'].forEach(s => {
+      const el = document.getElementById('lc-' + s);
+      if (el) el.classList.add('done');
+    });
+    const el = document.getElementById('lc-ended');
+    if (el) el.classList.add('current');
+  } else if (hasActive) {
+    ['draft','scheduled'].forEach(s => {
+      const el = document.getElementById('lc-' + s);
+      if (el) el.classList.add('done');
+    });
+    const el = document.getElementById('lc-active');
+    if (el) el.classList.add('current');
+  } else if (hasScheduled) {
+    const el = document.getElementById('lc-draft');
+    if (el) el.classList.add('done');
+    const el2 = document.getElementById('lc-scheduled');
+    if (el2) el2.classList.add('current');
+  } else {
+    const el = document.getElementById('lc-draft');
+    if (el) el.classList.add('current');
+  }
+}
+
+function filterExams(f) {
+  _examMgmtFilter = f;
+  // Highlight active filter button
+  ['all','scheduled','active','ended'].forEach(id => {
+    const btn = document.getElementById('ef-' + id);
+    if (btn) btn.className = 'btn btn-sm ' + (id === f ? 'btn-a' : 'btn-ghost');
+  });
+  renderExamMgmtList();
+}
+
+function renderExamMgmtList() {
+  const list = document.getElementById('exam-mgmt-list');
+  if (!list) return;
+
+  const filtered = _examMgmtFilter === 'all'
+    ? _allExams
+    : _allExams.filter(e => e.status === _examMgmtFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = `<div style="color:var(--muted);font-size:.82rem;padding:20px 0">
+      No ${_examMgmtFilter === 'all' ? '' : _examMgmtFilter + ' '}exams found. 
+      <span onclick="profNav('createexam')" style="color:var(--amber);cursor:pointer">Create one →</span>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => {
+    const start    = e.startTime ? new Date(e.startTime) : null;
+    const end      = e.endTime   ? new Date(e.endTime)   : null;
+    const subs     = _examSubmissions[e.id] || 0;
+    const stuCount = _examStudents[e.id]   ? _examStudents[e.id].size : 0;
+    const qCount   = (e.questionIds || []).length;
+    const langs    = (e.allowedLanguages || ['python']).join(', ');
+    const fmtDt    = dt => dt ? dt.toLocaleDateString([], {month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+
+    const statusActions = {
+      scheduled: `<button class="btn btn-g btn-sm" onclick="activateExam('${e.id}')">▶ Activate Now</button>
+                  <button class="btn btn-ghost btn-sm" onclick="openEditExam('${e.id}')">✏ Edit</button>
+                  <button class="btn btn-r btn-sm" onclick="deleteExam('${e.id}', '${sanitize(e.name||'')}')">🗑</button>`,
+      active:    `<button class="btn btn-r btn-sm" onclick="endExam('${e.id}', '${sanitize(e.name||'')}')">⏹ End Exam</button>
+                  <button class="btn btn-ghost btn-sm" onclick="openEditExam('${e.id}')">✏ Edit</button>`,
+      ended:     `<button class="btn btn-blue btn-sm" onclick="profNav('presults')">📈 View Results</button>
+                  <button class="btn btn-ghost btn-sm" onclick="openEditExam('${e.id}')">📋 Duplicate</button>
+                  <button class="btn btn-r btn-sm" onclick="deleteExam('${e.id}', '${sanitize(e.name||'')}')">🗑</button>`,
+    };
+
+    return `
+    <div class="exam-mgmt-card" id="ecard-${e.id}">
+      <div class="exam-mgmt-header">
+        <div>
+          <div class="exam-mgmt-name">${sanitize(e.name || 'Untitled Exam')}</div>
+          <div class="exam-mgmt-meta">${fmtDt(start)} → ${fmtDt(end)} · ${e.durationMins || 90} min · ${sanitize(langs)}</div>
+        </div>
+        <span class="status-pill ${e.status}">${e.status.toUpperCase()}</span>
+        <span style="font-family:var(--ff-mono);font-size:.7rem;color:var(--muted)">#${e.id.slice(-6)}</span>
+      </div>
+      <div class="exam-mgmt-body">
+        <div class="exam-mgmt-stat"><div class="v">${qCount}</div><div class="l">Questions</div></div>
+        <div class="exam-mgmt-stat"><div class="v" style="color:var(--stu)">${stuCount}</div><div class="l">Students</div></div>
+        <div class="exam-mgmt-stat"><div class="v" style="color:var(--amber)">${subs}</div><div class="l">Submissions</div></div>
+        <div class="exam-mgmt-stat"><div class="v" style="color:var(--blue)">${e.durationMins||90}m</div><div class="l">Duration</div></div>
+      </div>
+      <div class="exam-mgmt-footer">
+        ${statusActions[e.status] || ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  PHASE 3 — EXAM LIFECYCLE CONTROLS                             ║
+   ║  • Activate / End / Delete exam                                 ║
+   ║  • Edit exam settings (name, times, duration)                   ║
+   ║  • Status synced to Firestore exams/ collection                 ║
+   ║  • Student page polls for status every 30s                      ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+
+async function activateExam(examId) {
+  if (!confirm('Activate this exam now? Students will immediately see questions.')) return;
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('exams').doc(examId).update({
+      status: 'active',
+      startTime: new Date().toISOString(),  // override start to now
+    });
+    toast('✅ Exam is now ACTIVE — students can see it!', 'ok', 5000);
+    renderExamManage();
+    // Update the sidebar badge
+    const badge = document.getElementById('active-exam-badge');
+    if (badge) { badge.textContent = '1'; badge.style.display = ''; }
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+async function endExam(examId, examName) {
+  if (!confirm(`End exam "${examName}"?\n\nStudents will no longer be able to submit. This cannot be undone.`)) return;
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('exams').doc(examId).update({
+      status: 'ended',
+      endTime: new Date().toISOString(),
+    });
+    toast('🏁 Exam ended. Results are now final.', 'ok', 5000);
+    renderExamManage();
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+async function deleteExam(examId, examName) {
+  if (!confirm(`Permanently delete "${examName}"?\n\nThis cannot be undone.`)) return;
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('exams').doc(examId).delete();
+    toast('Exam deleted.', 'warn');
+    renderExamManage();
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+function openEditExam(examId) {
+  const exam = _allExams.find(e => e.id === examId);
+  if (!exam) { toast('Exam not found','warn'); return; }
+
+  document.getElementById('edit-exam-id').value        = examId;
+  document.getElementById('edit-ex-name').value        = exam.name || '';
+  document.getElementById('edit-ex-duration').value    = exam.durationMins || 90;
+
+  // Convert ISO datetime to datetime-local format
+  const toLocal = iso => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const pad = n => String(n).padStart(2,'0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch(e) { return ''; }
+  };
+  document.getElementById('edit-ex-start').value = toLocal(exam.startTime);
+  document.getElementById('edit-ex-end').value   = toLocal(exam.endTime);
+
+  document.getElementById('edit-exam-modal').classList.add('open');
+}
+
+async function saveEditedExam() {
+  const examId   = document.getElementById('edit-exam-id').value;
+  const name     = document.getElementById('edit-ex-name').value.trim();
+  const start    = document.getElementById('edit-ex-start').value;
+  const end      = document.getElementById('edit-ex-end').value;
+  const duration = parseInt(document.getElementById('edit-ex-duration').value) || 90;
+
+  if (!name)  { toast('Enter an exam name','warn'); return; }
+  if (start && end && new Date(end) <= new Date(start)) {
+    toast('End time must be after start time','warn'); return;
+  }
+
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    const updates = { name, durationMins: duration };
+    if (start) updates.startTime = start;
+    if (end)   updates.endTime   = end;
+    await fsDb().collection('exams').doc(examId).update(updates);
+    document.getElementById('edit-exam-modal').classList.remove('open');
+    toast('✅ Exam updated!', 'ok');
+    renderExamManage();
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+/* Phase 3 — Student page polls for exam status changes every 30s.
+   This lets the banner and question list auto-update when a professor
+   activates or ends an exam while the student already has the page open. */
+let _stuPollInterval = null;
+
+function startStudentStatusPoll() {
+  clearInterval(_stuPollInterval);
+  _stuPollInterval = setInterval(async () => {
+    if (document.getElementById('page-stu').classList.contains('active')) {
+      await loadQuestionsFromFirestore();
+      renderStuPage();
+    }
+  }, 30000); // every 30 seconds
+}
+
+// Hook into onAuthSuccess to start the poll for students
+const _origOnAuthSuccess = window.onAuthSuccess;
+window.onAuthSuccess = function() {
+  _origOnAuthSuccess.apply(this, arguments);
+  if (typeof currentRole !== 'undefined' && currentRole === 'stu') {
+    startStudentStatusPoll();
+  }
 };
 
 
