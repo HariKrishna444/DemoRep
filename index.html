@@ -1875,7 +1875,6 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
 
 <script>
 
@@ -1892,24 +1891,90 @@ const FB_CONFIG = {
 // Piston configuration — completely free, no API key required
 // Default: public Piston API at emkc.org
 // ── Pyodide (in-browser Python) ──────────────────────────────
-let _pyodide = null;
-let _pyodideLoading = false;
-let _pyodideReady = false;
-
-async function getPyodide() {
-  if (_pyodideReady) return _pyodide;
-  if (_pyodideLoading) {
-    while (!_pyodideReady) await sleep(100);
-    return _pyodide;
+// ── Pyodide runs inside a blob Web Worker ──────────────────────
+// This fully isolates Pyodide's AMD modules (stackframe, error-stack-parser)
+// from Monaco's global AMD require, eliminating all three errors:
+//   • "Loading stackframe failed"
+//   • "wasm instantiation failed"
+//   • "DataCloneError: URL object could not be cloned"
+const PYODIDE_WORKER_SRC = `
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");
+let pyodide = null;
+self.onmessage = async (e) => {
+  const { id, code, stdin } = e.data;
+  try {
+    if (!pyodide) {
+      pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });
+    }
+    let stdout = "", stderr = "";
+    pyodide.setStdout({ batched: s => { stdout += s + "\n"; } });
+    pyodide.setStderr({ batched: s => { stderr += s + "\n"; } });
+    if (stdin) {
+      const lines = stdin.split("\n");
+      pyodide.globals.set("_stdin_lines", pyodide.toPy(lines));
+      await pyodide.runPythonAsync([
+        "import builtins",
+        "_stdin_lines = list(_stdin_lines)",
+        "_stdin_idx = [0]",
+        "def _input(prompt=\"\"):",
+        "    idx = _stdin_idx[0]",
+        "    if idx < len(_stdin_lines):",
+        "        val = _stdin_lines[idx]",
+        "        _stdin_idx[0] += 1",
+        "        return val",
+        "    return \"\"",
+        "builtins.input = _input",
+      ].join("\n"));
+    }
+    let exitCode = 0;
+    try {
+      await pyodide.runPythonAsync(code);
+    } catch(err) {
+      stderr += (err.message || String(err));
+      exitCode = 1;
+    }
+    self.postMessage({ id, ok: true, stdout: stdout.trim(), stderr: stderr.trim(), exitCode });
+  } catch(err) {
+    self.postMessage({ id, ok: false, error: err.message || String(err) });
   }
-  _pyodideLoading = true;
-  _pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });
-  _pyodideReady = true;
-  return _pyodide;
+};
+`;
+
+let _pyWorker = null;
+let _pyWorkerReady = false;
+let _pyCallbacks = {};
+let _pyCallId = 0;
+
+function getPyWorker() {
+  if (_pyWorker) return _pyWorker;
+  const blob = new Blob([PYODIDE_WORKER_SRC], { type: 'application/javascript' });
+  _pyWorker = new Worker(URL.createObjectURL(blob));
+  _pyWorker.onmessage = (e) => {
+    const { id, ok, stdout, stderr, exitCode, error } = e.data;
+    const cb = _pyCallbacks[id];
+    if (!cb) return;
+    delete _pyCallbacks[id];
+    if (ok) cb.resolve({ stdout, stderr, exitCode });
+    else     cb.reject(new Error(error));
+  };
+  _pyWorker.onerror = (e) => {
+    // Reject all pending calls on worker crash
+    Object.values(_pyCallbacks).forEach(cb => cb.reject(new Error(e.message || 'Worker error')));
+    _pyCallbacks = {};
+    _pyWorker = null; // will be recreated on next call
+  };
+  return _pyWorker;
 }
 
-// Preload Pyodide in background on page load
-setTimeout(() => getPyodide().catch(() => {}), 2000);
+// Warm up the worker in the background
+setTimeout(() => {
+  try {
+    const w = getPyWorker();
+    const id = ++_pyCallId;
+    _pyCallbacks[id] = { resolve: ()=>{}, reject: ()=>{} };
+    w.postMessage({ id, code: 'pass', stdin: '' });
+  } catch(e) {}
+}, 2000);
 
 const PISTON_LANGS = {
   python:     "pyodide",
@@ -3321,16 +3386,17 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  const _mvs = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+  const _mvs  = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+  const _mmin = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
       let w = _mvs + '/base/worker/workerMain.js';
-      if (label === 'json')                                    w = _mvs + '/language/json/jsonWorker.js';
-      if (label === 'css'||label === 'scss'||label === 'less') w = _mvs + '/language/css/cssWorker.js';
-      if (label === 'html'||label === 'handlebars')            w = _mvs + '/language/html/htmlWorker.js';
-      if (label === 'typescript'||label === 'javascript')      w = _mvs + '/language/typescript/tsWorker.js';
-      // baseUrl ends at /min/ (not /min/vs/) so AMD resolves vs/foo -> /min/vs/foo with NO doubling
-      const src = "self.MonacoEnvironment={baseUrl:'" + _mvs.replace('/vs','') + "/'};importScripts('" + w + "');";
+      if (label === 'json')                                     w = _mvs + '/language/json/jsonWorker.js';
+      if (label === 'css'||label === 'scss'||label === 'less')  w = _mvs + '/language/css/cssWorker.js';
+      if (label === 'html'||label === 'handlebars')             w = _mvs + '/language/html/htmlWorker.js';
+      if (label === 'typescript'||label === 'javascript')       w = _mvs + '/language/typescript/tsWorker.js';
+      // _mmin ends at /min (no /vs) so AMD resolves vs/foo -> /min/vs/foo with no doubling
+      const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
       return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
     }
   };
@@ -3506,49 +3572,30 @@ async function pistonExecute(code, lang, stdin) {
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
 
-  const pyodide = await getPyodide();
-
-  let stdout = '';
-  let stderr = '';
-
-  pyodide.setStdout({ batched: (s) => { stdout += s; } });
-  pyodide.setStderr({ batched: (s) => { stderr += s; } });
-
-  if (stdin) {
-    const lines = stdin.split('\n');
-    pyodide.globals.set('_stdin_lines', pyodide.toPy(lines));
-    await pyodide.runPythonAsync([
-      'import builtins',
-      '_stdin_lines = list(_stdin_lines)',
-      '_stdin_idx = [0]',
-      'def _input(prompt=""):',
-      '    idx = _stdin_idx[0]',
-      '    if idx < len(_stdin_lines):',
-      '        val = _stdin_lines[idx]',
-      '        _stdin_idx[0] += 1',
-      '        return val',
-      '    return ""',
-      'builtins.input = _input',
-    ].join('\n'));
-  }
-
-  let exitCode = 0;
-  try {
-    await pyodide.runPythonAsync(code);
-  } catch(e) {
-    stderr += e.message || String(e);
-    exitCode = 1;
-  }
-
-  return {
-    run: {
-      stdout: stdout,
-      stderr: stderr,
-      code:   exitCode,
-      output: stdout,
-    },
-    compile: {}
-  };
+  return new Promise((resolve, reject) => {
+    const id = ++_pyCallId;
+    const timer = setTimeout(() => {
+      delete _pyCallbacks[id];
+      reject(new Error('Python execution timed out (30s)'));
+    }, 30000);
+    _pyCallbacks[id] = {
+      resolve: (r) => {
+        clearTimeout(timer);
+        resolve({
+          run:     { stdout: r.stdout, stderr: r.stderr, code: r.exitCode, output: r.stdout },
+          compile: {}
+        });
+      },
+      reject: (e) => { clearTimeout(timer); reject(e); }
+    };
+    try {
+      getPyWorker().postMessage({ id, code, stdin: stdin || '' });
+    } catch(e) {
+      clearTimeout(timer);
+      delete _pyCallbacks[id];
+      reject(e);
+    }
+  });
 }
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
@@ -3649,22 +3696,16 @@ async function submitCode() {
   const { tcs: hiddenTCs, denied: hiddenDenied } = await fetchHiddenTestcases(currentQ.id);
 
   if (hiddenDenied) {
-    outLine('warn', `⚠ Hidden test cases could not be loaded (permission denied). Only visible test cases will run locally. Your final score may differ.`);
+    outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length !== 1 ? 's' : ''} locally.`);
   }
 
   // Merge: visible first, then hidden (empty for students — that's correct).
   const allTCs = [
-    ...visibleTCs.map(tc => ({ input: tc.input, expected: (tc.expected || tc.expectedOutput || '').trim(),       hidden: false })),
-    ...hiddenTCs.map(tc  => ({ input: tc.input, expected: (tc.expectedOutput || tc.expected || '').trim(), hidden: true  })),
+    ...visibleTCs.map(tc => ({ input: tc.input, expected: tc.expected,       hidden: false })),
+    ...hiddenTCs.map(tc  => ({ input: tc.input, expected: tc.expectedOutput, hidden: true  })),
   ];
 
   const totalTC = allTCs.length;
-  if (totalTC === 0) {
-    outLine('err', '⛔ No test cases available. Cannot submit.');
-    toast('No test cases found for this question.', 'err');
-    btn.disabled=false; btn.textContent='✓ Submit';
-    return;
-  }
   if (!hiddenDenied) {
     outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC !== 1 ? 's' : ''} (${hiddenTCs.length} hidden)`);
   }
@@ -3780,7 +3821,7 @@ console.log(`TC${i+1} OUT:`, JSON.stringify(out), 'EXP:', JSON.stringify(exp), '
   // Exit fullscreen
   if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
 
-  showResults(results, passed, totalTC, totalMs, score, allOk);
+  showResults(results, passed, currentQ.testcases.length, totalMs, score, allOk);
   btn.disabled=false; btn.textContent='✓ Submit';
 }
 
