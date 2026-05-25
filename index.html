@@ -3620,23 +3620,15 @@ async function runCode() {
   // Switch to output tab
   conTab('out', document.querySelector('.con-tab'));
 
-  // Determine stdin:
-  // 1. If custom-input tab is active and has content → use that
-  // 2. Otherwise → fall back to the question's example input from Firestore
-  const customActive   = document.getElementById('custom-in').classList.contains('show');
-  const customTyped    = document.getElementById('stdin-ta').value.trim();
-  const exampleInput   = (currentQ?.example        || '').trim();
-  const exampleOutput  = (currentQ?.exampleOutput  || '').trim();
+  // example fields are display-only labels (e.g. `Input: "hello"`) — never fed as stdin.
+  // stdin for Run comes from: custom input tab (if typed) → empty string.
+  const customActive  = document.getElementById('custom-in').classList.contains('show');
+  const customTyped   = document.getElementById('stdin-ta').value.trim();
+  const exampleInput  = (currentQ?.example       || '').trim();  // display label only
+  const exampleOutput = (currentQ?.exampleOutput || '').trim();  // display label only
 
-  let stdin;
-  let usingExample = false;
-  if (customActive && customTyped) {
-    stdin = customTyped;
-  } else {
-    // Use example input from the question (Firestore)
-    stdin = exampleInput;
-    usingExample = true;
-  }
+  const stdin        = (customActive && customTyped) ? customTyped : '';
+  const usingExample = !customActive || !customTyped;
 
   outLine('info',`▶ Running ${currentLang}...`);
   outRunning();
@@ -3653,37 +3645,32 @@ async function runCode() {
     const exitCode = run.code;
     const status  = exitCode === 0 ? 'Accepted' : `Exit Code ${exitCode}`;
 
-    // Show which input was used
     if (usingExample) {
-      outLine('info', '── Example Input (from question) ──');
+      // Show the question's example input/output as display labels
+      if (exampleInput) {
+        outLine('info', '── Example Input ──────────────────');
+        exampleInput.split('\n').forEach(l => outLine('info', l));
+      }
+      outLine('info', '── Your Output ────────────────────');
+      if (stdout) {
+        stdout.split('\n').forEach(l => outLine('ok', l));
+      } else {
+        outLine('warn', '(no output)');
+      }
+      if (exampleOutput) {
+        outLine('info', '── Expected Output ────────────────');
+        exampleOutput.split('\n').forEach(l => outLine('info', l));
+      }
     } else {
-      outLine('info', '── Custom Input ──────────────────');
-    }
-    if (stdin) {
+      // Custom input mode — show the typed stdin and the raw output
+      outLine('info', '── Custom Input ───────────────────');
       stdin.split('\n').forEach(l => outLine('info', l));
-    } else {
-      outLine('info', '(no input)');
-    }
-
-    outLine('info', '── Your Output ────────────────────');
-    if (stdout) {
-      stdout.split('\n').forEach(l => outLine('ok', l));
-    } else {
-      outLine('warn', '(no output)');
-    }
-
-    // Show expected output: example output if using example, else TC[0].expected
-    const shownExpected = usingExample
-      ? exampleOutput
-      : (currentQ?.testcases?.[0]?.expected || '').trim();
-
-    if (shownExpected) {
-      outLine('info', '── Expected Output ────────────────');
-      shownExpected.split('\n').forEach(l => outLine('info', l));
-
-      // Quick match check (only when we have a definitive expected value)
-      const match = stdout === shownExpected;
-      outLine(match ? 'ok' : 'warn', match ? '✔ Output matches expected!' : '✘ Output does not match expected.');
+      outLine('info', '── Your Output ────────────────────');
+      if (stdout) {
+        stdout.split('\n').forEach(l => outLine('ok', l));
+      } else {
+        outLine('warn', '(no output)');
+      }
     }
 
     outLine('info', `── Status: ${status} ──`);
