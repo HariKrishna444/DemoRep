@@ -3467,8 +3467,24 @@ function getTemplate() {
 function changeLang(lang) {
   currentLang = lang;
   if (!monaco_editor || !window._mono) return;
+
+  // Temporarily disable anti-cheat to prevent false violations during
+  // language switch (Monaco re-renders and can briefly steal / lose focus)
+  const wasEnabled = acEnabled;
+  acEnabled = false;
+
   window._mono.editor.setModelLanguage(monaco_editor.getModel(), LANG_MONACO[lang]||lang);
   monaco_editor.setValue(getTemplate());
+
+  // Re-enable anti-cheat after the browser has had a chance to settle focus
+  if (wasEnabled) {
+    setTimeout(() => {
+      acEnabled = true;
+      // Reset blur/hidden timestamps so the focus-poll doesn't fire immediately
+      _lastBlurTime   = Date.now();
+      _lastHiddenTime = Date.now();
+    }, 600);
+  }
 }
 
 function changeTheme(t) { if(window._mono) window._mono.editor.setTheme(t); }
@@ -3806,6 +3822,12 @@ console.log(`TC${i+1} OUT:`, JSON.stringify(out), 'EXP:', JSON.stringify(exp), '
   disableAntiCheat(); disableDOMGuard();
   document.getElementById('guard-pill').classList.remove('vis');
 
+  // Reset integrity state so a fresh exam attempt starts clean
+  integrityScore = 100;
+  totalVioCount  = 0;
+  tabVioCount    = 0;
+  updateIntegrity(0); // redraw the integrity bar back to 100%
+
   // Exit fullscreen
   if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
 
@@ -3884,6 +3906,9 @@ function leaveEditor() {
   disableAntiCheat(); disableDOMGuard();
   if(document.exitFullscreen) document.exitFullscreen().catch(()=>{});
   document.getElementById('guard-pill').classList.remove('vis');
+  // Reset integrity for the next attempt
+  integrityScore = 100; totalVioCount = 0; tabVioCount = 0;
+  updateIntegrity(0);
   showPage('stu'); renderStuPage();
 }
 
