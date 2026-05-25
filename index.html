@@ -956,21 +956,11 @@ select.inp option{background:var(--ink3)}
 .sec-card-desc{font-size:.72rem;color:var(--muted);line-height:1.5}
 
 
-/* ── Pyodide Loading Overlay ── */
-#py-loader{
-  position:fixed;inset:0;background:rgba(10,12,18,0.92);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  z-index:9999;gap:20px;backdrop-filter:blur(4px);
-}
+#py-loader{position:fixed;inset:0;background:rgba(10,12,18,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:18px;backdrop-filter:blur(4px);}
 #py-loader.hidden{display:none;}
-#py-loader-bar-wrap{
-  width:280px;height:6px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden;
-}
-#py-loader-bar{
-  height:100%;width:0%;background:linear-gradient(90deg,#6c63ff,#a78bfa);
-  border-radius:99px;transition:width 0.3s ease;
-}
-#py-loader-text{color:#e2e8f0;font-size:1rem;font-weight:500;}
+#py-loader-bar-wrap{width:280px;height:6px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden;}
+#py-loader-bar{height:100%;width:0%;background:linear-gradient(90deg,#6c63ff,#a78bfa);border-radius:99px;transition:width 0.3s;}
+#py-loader-text{color:#e2e8f0;font-size:1rem;font-weight:600;}
 #py-loader-sub{color:#64748b;font-size:0.78rem;}
 </style>
 </head>
@@ -979,7 +969,7 @@ select.inp option{background:var(--ink3)}
   <div style="font-size:2.5rem">🐍</div>
   <div id="py-loader-text">Loading Python Engine...</div>
   <div id="py-loader-bar-wrap"><div id="py-loader-bar"></div></div>
-  <div id="py-loader-sub">Setting up in-browser Python (one-time, ~10 seconds)</div>
+  <div id="py-loader-sub">Setting up in-browser Python (one-time, ~10s)</div>
 </div>
 
 
@@ -1911,32 +1901,86 @@ const FB_CONFIG = {
   appId:             "1:668902009818:web:0d11d663d85d376d96aee3"            // App ID
 };
 
-// ── Python Engine (Pyodide via hidden iframe) ────────────────
-let _pyReady = false;
-let _pyFrame = null;
-let _pyCbs = {};
-let _pyId = 0;
+// ── Python Engine via hidden iframe ─────────────────────────
+var _pyFrame = null, _pyReady = false, _pyCbs = {}, _pyId = 0, _pyReadyQ = [];
 
 window.addEventListener('message', function(ev) {
   if (!ev.data) return;
-  if (ev.data.type === 'py_ready') { _pyReady = true; _onPyReady(); return; }
+  if (ev.data.type === 'py_ready') {
+    _pyReady = true;
+    _pyReadyQ.forEach(function(fn){ fn(); });
+    _pyReadyQ = [];
+    // dismiss overlay
+    var ol = document.getElementById('py-loader');
+    var bar = document.getElementById('py-loader-bar');
+    var txt = document.getElementById('py-loader-text');
+    if (bar) bar.style.width = '100%';
+    if (txt) txt.textContent = 'Python Engine Ready!';
+    setTimeout(function(){ if(ol) ol.classList.add('hidden'); }, 700);
+    return;
+  }
   var cb = _pyCbs[ev.data.id];
   if (cb) { delete _pyCbs[ev.data.id]; cb(ev.data); }
 });
 
-var _pyReadyCbs = [];
-function _onPyReady() {
-  _pyReadyCbs.forEach(function(fn){ fn(); });
-  _pyReadyCbs = [];
-  // Dismiss loading overlay
-  var overlay = document.getElementById('py-loader');
-  var bar = document.getElementById('py-loader-bar');
-  var txt = document.getElementById('py-loader-text');
-  if (bar) bar.style.width = '100%';
-  if (txt) txt.textContent = 'Python Engine Ready!';
-  setTimeout(function(){
-    if (overlay) overlay.classList.add('hidden');
-  }, 600);
+function startPyodide() {
+  if (_pyFrame) return;
+  // Write iframe HTML to a real separate URL using blob to avoid srcdoc escaping issues
+  var lines = [];
+  lines.push('<!DOCTYPE html><html><body>');
+  lines.push('<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><' + '/script>');
+  lines.push('<script>');
+  lines.push('var py=null;');
+  lines.push('loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.25.1/full/"}).then(function(p){');
+  lines.push('  py=p;');
+  lines.push('  parent.postMessage({type:"py_ready"},"*");');
+  lines.push('});');
+  lines.push('window.addEventListener("message",async function(e){');
+  lines.push('  if(!e.data||e.data.t!=="run")return;');
+  lines.push('  if(!py){parent.postMessage({id:e.data.id,ok:false,error:"not ready"},"*");return;}');
+  lines.push('  var o="",er="",ec=0;');
+  lines.push('  py.setStdout({batched:function(s){o+=s;}});');
+  lines.push('  py.setStderr({batched:function(s){er+=s;}});');
+  lines.push('  var sl=(e.data.stdin||"").split("\n");');
+  lines.push('  py.globals.set("_sl",py.toPy(sl));');
+  lines.push('  py.globals.set("_si",py.toPy([0]));');
+  lines.push('  var setup="import builtins,sys\n_sl=list(_sl)\n_si=list(_si)\n";');
+  lines.push('  setup+="def _inp(p=chr(0)[:0]):\n  i=_si[0];_si[0]+=1\n  return _sl[i] if i<len(_sl) else chr(0)[:0]\n";');
+  lines.push('  setup+="builtins.input=_inp";');
+  lines.push('  try{await py.runPythonAsync(setup);}catch(x){}');
+  lines.push('  try{await py.runPythonAsync(e.data.code);}');
+  lines.push('  catch(x){er+=(x.message||String(x));ec=1;}');
+  lines.push('  parent.postMessage({id:e.data.id,ok:true,stdout:o,stderr:er,ec:ec},"*");');
+  lines.push('});');
+  lines.push('<' + '/script></body></html>');
+  var blob = new Blob([lines.join('\n')], {type:'text/html'});
+  var url = URL.createObjectURL(blob);
+  var f = document.createElement('iframe');
+  f.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px;';
+  f.src = url;
+  document.body.appendChild(f);
+  _pyFrame = f;
+}
+
+function waitPyReady(ms) {
+  if (_pyReady) return Promise.resolve();
+  return new Promise(function(res, rej) {
+    var t = setTimeout(function(){ rej(new Error('Python engine load timeout — reload the page')); }, ms||60000);
+    _pyReadyQ.push(function(){ clearTimeout(t); res(); });
+  });
+}
+
+function runPy(code, stdin) {
+  return new Promise(function(res, rej) {
+    var id = ++_pyId;
+    var t = setTimeout(function(){ delete _pyCbs[id]; rej(new Error('Python timed out')); }, 60000);
+    _pyCbs[id] = function(d) {
+      clearTimeout(t);
+      if (d.ok) res({stdout:d.stdout||'', stderr:d.stderr||'', ec:d.ec||0});
+      else rej(new Error(d.error||'Python error'));
+    };
+    _pyFrame.contentWindow.postMessage({t:'run',id:id,code:code,stdin:stdin||''},'*');
+  });
 }
 
 function _animatePyLoader() {
@@ -1944,79 +1988,13 @@ function _animatePyLoader() {
   var sub = document.getElementById('py-loader-sub');
   if (!bar) return;
   var progress = 0;
-  var msgs = [
-    'Downloading Python runtime...',
-    'Initializing WebAssembly...',
-    'Loading standard library...',
-    'Almost ready...'
-  ];
-  var interval = setInterval(function(){
-    if (_pyReady) { clearInterval(interval); return; }
-    progress = Math.min(progress + Math.random() * 8, 88);
-    bar.style.width = progress + '%';
-    var msgIdx = Math.floor(progress / 25);
-    if (sub && msgs[msgIdx]) sub.textContent = msgs[msgIdx];
+  var msgs = ['Downloading Python runtime...','Initializing WebAssembly...','Loading standard library...','Almost ready...'];
+  var iv = setInterval(function(){
+    if (_pyReady) { clearInterval(iv); return; }
+    progress = Math.min(progress + Math.random()*7, 88);
+    bar.style.width = progress+'%';
+    if (sub) sub.textContent = msgs[Math.min(Math.floor(progress/25), 3)];
   }, 400);
-}
-function waitPyReady() {
-  if (_pyReady) return Promise.resolve();
-  return new Promise(function(res){ _pyReadyCbs.push(res); });
-}
-
-function startPyodide() {
-  if (_pyFrame) return;
-  // Build iframe HTML as a data URI to avoid blob URL restrictions
-  var src = [
-    '<!DOCTYPE html><html><body>',
-    '<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script>',
-    '<script>',
-    '(async function(){',
-    '  var py = await loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.25.1/full/"});',
-    '  parent.postMessage({type:"py_ready"},"*");',
-    '  var SETUP_STDIN = [',
-    '    "import builtins,sys",',
-    '    "_sl=[];_si=[0]",',
-    '    "def _inp(p=chr(0)[:0]):",',
-    '    "    i=_si[0];_si[0]+=1",',
-    '    "    return _sl[i] if i<len(_sl) else chr(0)[:0]",',
-    '    "builtins.input=_inp"',
-    '  ].join("\n");',
-    '  window.addEventListener("message",async function(e){',
-    '    if(!e.data||e.data.t!=="run")return;',
-    '    var o="",err="",ec=0;',
-    '    py.setStdout({batched:function(s){o+=s;}});',
-    '    py.setStderr({batched:function(s){err+=s;}});',
-    '    py.globals.set("_sl",py.toPy((e.data.stdin||"").split("\n")));',
-    '    py.globals.set("_si",py.toPy([0]));',
-    '    try{await py.runPythonAsync(SETUP_STDIN);}catch(x){}',
-    '    try{await py.runPythonAsync(e.data.code);}',
-    '    catch(x){err+=(x.message||String(x));ec=1;}',
-    '    parent.postMessage({id:e.data.id,ok:true,stdout:o,stderr:err,ec:ec},"*");',
-    '  });',
-    '})();',
-    '<\/script></body></html>'
-  ].join('');
-  var f = document.createElement('iframe');
-  f.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;';
-  f.srcdoc = src;
-  document.body.appendChild(f);
-  _pyFrame = f;
-}
-
-function runPy(code, stdin) {
-  return new Promise(function(res, rej) {
-    var id = ++_pyId;
-    var t = setTimeout(function(){
-      delete _pyCbs[id];
-      rej(new Error('Python timed out (60s)'));
-    }, 60000);
-    _pyCbs[id] = function(d) {
-      clearTimeout(t);
-      if (d.ok) res({stdout: d.stdout||'', stderr: d.stderr||'', ec: d.ec||0});
-      else rej(new Error(d.error||'Python error'));
-    };
-    _pyFrame.contentWindow.postMessage({t:'run', id:id, code:code, stdin:stdin||''}, '*');
-  });
 }
 const PISTON_LANGS = {
   python:     "pyodide",
@@ -2366,9 +2344,7 @@ function onAuthSuccess() {
     renderStuPage();
     showPage('stu');
     toast('Welcome! Your exam is ready. 🚀','ok');
-    // Start Pyodide loading for student
-    var ol = document.getElementById('py-loader');
-    if (ol) ol.classList.remove('hidden');
+    document.getElementById('py-loader').classList.remove('hidden');
     startPyodide();
     _animatePyLoader();
   }
@@ -3614,12 +3590,12 @@ function removeRunning() { document.getElementById('run-ind')?.remove(); }
    ═══════════════════════════════════════════════════════════════ */
 
 async function pistonExecute(code, lang, stdin) {
-  const engine = PISTON_LANGS[lang];
+  var engine = PISTON_LANGS[lang];
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
   if (!_pyFrame) startPyodide();
-  await waitPyReady();
-  const r = await runPy(code, stdin || '');
+  await waitPyReady(60000);
+  var r = await runPy(code, stdin || '');
   return { run: { stdout: r.stdout, stderr: r.stderr, code: r.ec, output: r.stdout }, compile: {} };
 }
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
