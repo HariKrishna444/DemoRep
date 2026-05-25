@@ -7,17 +7,6 @@ var py = null;
 
 loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(function(p) {
   py = p;
-  // Redirect stdout/stderr using Python's sys module — most reliable method
-  py.runPython([
-    "import sys, io",
-    "class _Cap:",
-    "    def __init__(self): self.buf=[]",
-    "    def write(self,s): self.buf.append(s)",
-    "    def flush(self): pass",
-    "    def getvalue(self): return ''.join(self.buf)",
-    "_stdout_cap = _Cap()",
-    "_stderr_cap = _Cap()"
-  ].join("\n"));
   parent.postMessage({ type: "py_ready" }, "*");
 });
 
@@ -29,43 +18,44 @@ window.addEventListener("message", async function(e) {
   }
 
   var ec = 0;
-
-  // Reset capture buffers and redirect sys.stdout/stderr
-  py.runPython([
-    "import sys",
-    "_stdout_cap.buf = []",
-    "_stderr_cap.buf = []",
-    "sys.stdout = _stdout_cap",
-    "sys.stderr = _stderr_cap"
-  ].join("\n"));
-
-  // Setup stdin
   var lines = (e.data.stdin || "").split("\n");
   py.globals.set("_sl", py.toPy(lines));
-  try {
-    py.runPython([
-      "import builtins",
-      "_sl = list(_sl)",
-      "_si = [0]",
-      "def _inp(p=''):",
-      "    i = _si[0]; _si[0] += 1",
-      "    return _sl[i] if i < len(_sl) else ''",
-      "builtins.input = _inp"
-    ].join("\n"));
-  } catch(x) {}
 
-  // Run user code
+  // Build full code with stdout capture and stdin setup wrapped around user code
+  var wrappedCode = [
+    "import sys, io, builtins",
+    "_out = io.StringIO()",
+    "_err = io.StringIO()",
+    "sys.stdout = _out",
+    "sys.stderr = _err",
+    "_sl = list(_sl)",
+    "_si = [0]",
+    "def _inp(p=''):",
+    "    i = _si[0]; _si[0] += 1",
+    "    return _sl[i] if i < len(_sl) else ''",
+    "builtins.input = _inp",
+    "try:",
+    "    exec(compile(_user_code, '<student>', 'exec'))",
+    "except Exception as _ex:",
+    "    sys.stderr.write(str(_ex))",
+    "    _ec = 1",
+    "else:",
+    "    _ec = 0",
+    "sys.stdout = sys.__stdout__",
+    "sys.stderr = sys.__stderr__"
+  ].join("\n");
+
+  py.globals.set("_user_code", e.data.code);
+
   try {
-    await py.runPythonAsync(e.data.code);
+    await py.runPythonAsync(wrappedCode);
+    ec = py.globals.get("_ec");
   } catch(x) {
-    py.runPython("sys.stderr.write(" + JSON.stringify(x.message || String(x)) + ")");
     ec = 1;
   }
 
-  // Restore sys and collect output
-  var o = py.runPython("_stdout_cap.getvalue()");
-  var er = py.runPython("_stderr_cap.getvalue()");
-  py.runPython("sys.stdout = sys.__stdout__; sys.stderr = sys.__stderr__");
+  var o  = py.runPython("_out.getvalue()");
+  var er = py.runPython("_err.getvalue()");
 
   parent.postMessage({ id: e.data.id, ok: true, stdout: o, stderr: er, ec: ec }, "*");
 });
