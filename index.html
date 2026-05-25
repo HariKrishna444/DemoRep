@@ -3605,11 +3605,31 @@ async function runCode() {
     const exitCode = run.code;
     const status  = exitCode === 0 ? 'Accepted' : `Exit Code ${exitCode}`;
 
-    outLine('info', `Status: ${status}`);
-    if (stdout) stdout.split('\n').forEach(l=>outLine('ok',l));
-    if (stderr) stderr.split('\n').forEach(l=>outLine('err',l));
+    // Show sample input from question
+    const sampleInput = (currentQ?.testcases?.[0]?.input || '').trim();
+    const sampleExpected = (currentQ?.testcases?.[0]?.expected || '').trim();
+    if (sampleInput) {
+      outLine('info', '── Input ──────────────────');
+      sampleInput.split('\n').forEach(l => outLine('info', l));
+    }
+
+    outLine('info', '── Output ─────────────────');
+    if (stdout) {
+      stdout.split('\n').forEach(l => outLine('ok', l));
+    } else if (stderr) {
+      // no stdout but has error
+    } else {
+      outLine('warn', '(no output)');
+    }
+
+    if (sampleExpected) {
+      outLine('info', '── Expected ───────────────');
+      sampleExpected.split('\n').forEach(l => outLine('info', l));
+    }
+
+    outLine('info', `── Status: ${status} ─────────────`);
+    if (stderr) { outLine('info', '── Errors ─────────────────'); stderr.split('\n').forEach(l=>outLine('err',l)); }
     if (ce)     ce.split('\n').forEach(l=>outLine('err','[CE] '+l));
-    if (!stdout&&!stderr&&!ce) outLine('warn','(no output)');
   } catch(e) {
     removeRunning();
     outLine('err', '⛔ Code execution failed: ' + e.message);
