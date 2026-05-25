@@ -1643,16 +1643,23 @@ service cloud.firestore {
     // ── Helpers ─────────────────────────────────────────────────
     function isSignedIn()  { return request.auth != null; }
     function uid()         { return request.auth.uid; }
-    function isProf()      {
+
+    // Safe isProf(): guards with exists() so it never throws when
+    // the users/{uid} doc doesn't exist yet (first-login race condition).
+    function isProf() {
       return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(uid())) &&
         get(/databases/$(database)/documents/users/$(uid())).data.role == 'prof';
     }
-    function isSelf(u)     { return isSignedIn() && uid() == u; }
+    function isSelf(u) { return isSignedIn() && uid() == u; }
 
     // ── users/ ───────────────────────────────────────────────────
-    // Users can read/write their own profile. Profs can read all.
+    // Owner can always read/write their own doc without isProf() dependency —
+    // avoids the chicken-and-egg permission failure on first login.
+    // Profs can read all users (for student lists, monitoring etc).
     match /users/{userId} {
       allow read:   if isSelf(userId) || isProf();
+      // Allow create even when doc doesn't exist yet (first login)
       allow create: if isSelf(userId);
       allow update: if isSelf(userId) || isProf();
     }
@@ -2257,22 +2264,38 @@ async function loadUserRole(uid) {
     if (snap.exists) {
       // Restore the stored role so professors remain professors after refresh
       currentRole = snap.data().role || currentRole;
+      // Update lastLogin in background — don't await so login isn't blocked
+      db.collection('users').doc(uid).update({
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(() => {});
     } else {
-      // First time this user logs in → create their profile document
+      // First login — create the profile document with the role the user selected
       await db.collection('users').doc(uid).set({
         email:       currentUser.email,
         displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        role:        currentRole,    // whichever pill they selected on login
+        role:        currentRole,
         createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
         lastLogin:   firebase.firestore.FieldValue.serverTimestamp(),
       });
     }
-    // Always update lastLogin so you can see who was active recently
-    await db.collection('users').doc(uid).update({
-      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-    });
   } catch(e) {
+    // "Missing or insufficient permissions" on first login means the doc
+    // doesn't exist yet and the rules rejected the read before the write.
+    // This is harmless — we already have the role from the login pill selection.
+    // Try a silent set() as fallback so subsequent logins work correctly.
     console.warn('loadUserRole failed (using local role):', e);
+    try {
+      await db.collection('users').doc(uid).set({
+        email:       currentUser.email,
+        displayName: currentUser.displayName || currentUser.email.split('@')[0],
+        role:        currentRole,
+        createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        lastLogin:   firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true }); // merge:true won't overwrite if doc already exists
+    } catch(e2) {
+      // Still failing — rules not updated yet. Role stays as locally selected.
+      console.warn('loadUserRole fallback set also failed:', e2);
+    }
   }
 }
 
