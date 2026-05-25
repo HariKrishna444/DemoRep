@@ -1865,8 +1865,8 @@ upgrade-insecure-requests;</pre>
       </div>
       <div class="field"><label>Problem Description</label><textarea class="inp" id="q-desc" rows="5" placeholder="Describe the problem clearly..."></textarea></div>
       <div class="modal-row">
-        <div class="field"><label>Example Input</label><textarea class="inp" id="q-ex" rows="3" placeholder="e.g. 2 7 11 15&#10;9"></textarea></div>
-        <div class="field"><label>Example Output</label><textarea class="inp" id="q-ex-out" rows="3" placeholder="e.g. 0 1"></textarea></div>
+        <div class="field"><label>Example Input</label><textarea class="inp" id="q-ex" rows="3" placeholder="Raw stdin value, e.g.&#10;hello"></textarea></div>
+        <div class="field"><label>Example Output</label><textarea class="inp" id="q-ex-out" rows="3" placeholder="Expected stdout, e.g.&#10;olleh"></textarea></div>
       </div>
       <div class="field"><label>Constraints</label><textarea class="inp" id="q-con" rows="2" placeholder="2 ≤ nums.length ≤ 10⁴"></textarea></div>
       <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:var(--ff-mono)">Test Cases</div>
@@ -3620,15 +3620,15 @@ async function runCode() {
   // Switch to output tab
   conTab('out', document.querySelector('.con-tab'));
 
-  // example fields are display-only labels (e.g. `Input: "hello"`) — never fed as stdin.
-  // stdin for Run comes from: custom input tab (if typed) → empty string.
+  // Determine stdin and display labels
   const customActive  = document.getElementById('custom-in').classList.contains('show');
   const customTyped   = document.getElementById('stdin-ta').value.trim();
-  const exampleInput  = (currentQ?.example       || '').trim();  // display label only
-  const exampleOutput = (currentQ?.exampleOutput || '').trim();  // display label only
+  const exampleInput  = (currentQ?.example       || '').trim();
+  const exampleOutput = (currentQ?.exampleOutput || '').trim();
 
-  const stdin        = (customActive && customTyped) ? customTyped : '';
+  // stdin priority: custom input (if tab open & typed) → example input from question
   const usingExample = !customActive || !customTyped;
+  const stdin        = usingExample ? exampleInput : customTyped;
 
   outLine('info',`▶ Running ${currentLang}...`);
   outRunning();
@@ -3646,7 +3646,6 @@ async function runCode() {
     const status  = exitCode === 0 ? 'Accepted' : `Exit Code ${exitCode}`;
 
     if (usingExample) {
-      // Show the question's example input/output as display labels
       if (exampleInput) {
         outLine('info', '── Example Input ──────────────────');
         exampleInput.split('\n').forEach(l => outLine('info', l));
@@ -3662,7 +3661,6 @@ async function runCode() {
         exampleOutput.split('\n').forEach(l => outLine('info', l));
       }
     } else {
-      // Custom input mode — show the typed stdin and the raw output
       outLine('info', '── Custom Input ───────────────────');
       stdin.split('\n').forEach(l => outLine('info', l));
       outLine('info', '── Your Output ────────────────────');
