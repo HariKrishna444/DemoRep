@@ -1875,7 +1875,6 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
 
 <script>
 
@@ -1888,24 +1887,85 @@ const FB_CONFIG = {
   appId:             "1:668902009818:web:0d11d663d85d376d96aee3"            // App ID
 };
 
-// ── Pyodide (in-browser Python) ──────────────────────────────
-let _pyodide = null;
-let _pyodideLoading = false;
-let _pyodideReady = false;
+// ── Pyodide iframe bridge ────────────────────────────────────
+// Run Pyodide in a hidden iframe to isolate it from Monaco AMD loader
+let _pyFrame = null;
+let _pyCallbacks = {};
+let _pyCallId = 0;
 
-async function getPyodide() {
-  if (_pyodideReady) return _pyodide;
-  if (_pyodideLoading) {
-    while (!_pyodideReady) await new Promise(r => setTimeout(r, 100));
-    return _pyodide;
-  }
-  _pyodideLoading = true;
-  _pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/' });
-  _pyodideReady = true;
-  return _pyodide;
+function getPyFrame() {
+  if (_pyFrame) return _pyFrame;
+  var frameHTML = [
+    '<!DOCTYPE html><html><body>',
+    '<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"><\/script>',
+    '<script>',
+    'var _py = null;',
+    'var ready = false;',
+    'loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(function(p) {',
+    '  _py = p; ready = true;',
+    '  window.parent.postMessage({ type: "pyodide_ready" }, "*");',
+    '});',
+    'window.addEventListener("message", async function(e) {',
+    '  if (!e.data || e.data.target !== "pyframe") return;',
+    '  var id = e.data.id, code = e.data.code, stdin = e.data.stdin || "";',
+    '  if (!ready) { e.source.postMessage({ id: id, ok: false, error: "Pyodide not ready" }, "*"); return; }',
+    '  var stdout = "", stderr = "";',
+    '  _py.setStdout({ batched: function(s){ stdout += s; } });',
+    '  _py.setStderr({ batched: function(s){ stderr += s; } });',
+    '  if (stdin.trim()) {',
+    '    var lines = stdin.split("\n");',
+    '    _py.globals.set("_stdin_lines", _py.toPy(lines));',
+    '    try { await _py.runPythonAsync(' +
+    '      "import builtins\n_stdin_lines=list(_stdin_lines)\n_stdin_idx=[0]\n" +',
+    '      "def _input(prompt=chr(0)[:0]):\n    i=_stdin_idx[0]\n    _stdin_idx[0]+=1\n    return _stdin_lines[i] if i<len(_stdin_lines) else chr(0)[:0]\n" +',
+    '      "builtins.input=_input"',
+    '    ); } catch(e2) {}',
+    '  }',
+    '  var exitCode = 0;',
+    '  try { await _py.runPythonAsync(code); }',
+    '  catch(err) { stderr += (err.message || String(err)); exitCode = 1; }',
+    '  e.source.postMessage({ id: id, ok: true, stdout: stdout, stderr: stderr, exitCode: exitCode }, "*");',
+    '});',
+    '<\/script></body></html>',
+  ].join("\n");
+
+  var iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.srcdoc = frameHTML;
+  document.body.appendChild(iframe);
+  _pyFrame = iframe;
+
+  window.addEventListener("message", function(e) {
+    if (e.data && e.data.type === "pyodide_ready") return;
+    if (!e.data || !e.data.id) return;
+    var cb = _pyCallbacks[e.data.id];
+    if (!cb) return;
+    delete _pyCallbacks[e.data.id];
+    if (e.data.ok) cb.resolve(e.data);
+    else cb.reject(new Error(e.data.error || "Pyodide error"));
+  });
+
+  return iframe;
 }
 
-setTimeout(() => getPyodide().catch(() => {}), 1000);
+function runInPyFrame(code, stdin) {
+  return new Promise(function(resolve, reject) {
+    var id = ++_pyCallId;
+    _pyCallbacks[id] = { resolve: resolve, reject: reject };
+    setTimeout(function() {
+      if (_pyCallbacks[id]) {
+        delete _pyCallbacks[id];
+        reject(new Error("Pyodide timeout"));
+      }
+    }, 30000);
+    getPyFrame().contentWindow.postMessage({ target: "pyframe", id: id, code: code, stdin: stdin || "" }, "*");
+  });
+}
+
+// Preload iframe on page load
+document.addEventListener("DOMContentLoaded", function() {
+  setTimeout(function() { try { getPyFrame(); } catch(e) {} }, 500);
+});
 const PISTON_LANGS = {
   python:     "pyodide",
   javascript: null,
@@ -3501,46 +3561,13 @@ async function pistonExecute(code, lang, stdin) {
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
 
-  const pyodide = await getPyodide();
-
-  let stdout = '';
-  let stderr = '';
-
-  pyodide.setStdout({ batched: (s) => { stdout += s; } });
-  pyodide.setStderr({ batched: (s) => { stderr += s; } });
-
-  if (stdin && stdin.trim()) {
-    const lines = stdin.split('\n');
-    pyodide.globals.set('_stdin_lines', pyodide.toPy(lines));
-    await pyodide.runPythonAsync(
-      'import builtins\n' +
-      '_stdin_lines = list(_stdin_lines)\n' +
-      '_stdin_idx = [0]\n' +
-      'def _input(prompt=""):\n' +
-      '    idx = _stdin_idx[0]\n' +
-      '    if idx < len(_stdin_lines):\n' +
-      '        val = _stdin_lines[idx]\n' +
-      '        _stdin_idx[0] += 1\n' +
-      '        return val\n' +
-      '    return ""\n' +
-      'builtins.input = _input'
-    );
-  }
-
-  let exitCode = 0;
-  try {
-    await pyodide.runPythonAsync(code);
-  } catch(e) {
-    stderr += (e.message || String(e));
-    exitCode = 1;
-  }
-
+  const result = await runInPyFrame(code, stdin || '');
   return {
     run: {
-      stdout: stdout,
-      stderr: stderr,
-      code:   exitCode,
-      output: stdout,
+      stdout: result.stdout || '',
+      stderr: result.stderr || '',
+      code:   result.exitCode || 0,
+      output: result.stdout || '',
     },
     compile: {}
   };
