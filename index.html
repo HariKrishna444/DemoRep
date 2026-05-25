@@ -1864,7 +1864,10 @@ upgrade-insecure-requests;</pre>
         <div class="field"><label>Tags (comma separated)</label><input class="inp" id="q-tags" placeholder="Array, Hash Map"></div>
       </div>
       <div class="field"><label>Problem Description</label><textarea class="inp" id="q-desc" rows="5" placeholder="Describe the problem clearly..."></textarea></div>
-      <div class="field"><label>Example (Input → Output)</label><textarea class="inp" id="q-ex" rows="3" placeholder="nums=[2,7,11,15], target=9 → [0,1]"></textarea></div>
+      <div class="modal-row">
+        <div class="field"><label>Example Input</label><textarea class="inp" id="q-ex" rows="3" placeholder="e.g. 2 7 11 15&#10;9"></textarea></div>
+        <div class="field"><label>Example Output</label><textarea class="inp" id="q-ex-out" rows="3" placeholder="e.g. 0 1"></textarea></div>
+      </div>
       <div class="field"><label>Constraints</label><textarea class="inp" id="q-con" rows="2" placeholder="2 ≤ nums.length ≤ 10⁴"></textarea></div>
       <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:var(--ff-mono)">Test Cases</div>
       <div id="tc-inputs">
@@ -2158,10 +2161,11 @@ async function loadQuestionsFromFirestore() {
       questions = allSnap.docs.map(doc => {
         const d = doc.data();
         return {
-          id:          doc.id,
-          title:       d.title        || '',
-          desc:        d.description  || d.desc    || '',
-          example:     d.exampleInput || d.example || '',
+          id:             doc.id,
+          title:          d.title        || '',
+          desc:           d.description  || d.desc    || '',
+          example:        d.exampleInput || d.example || '',
+          exampleOutput:  d.exampleOutput || '',
           constraints: Array.isArray(d.constraints) ? d.constraints : [],
           points:      d.marks        ?? d.points  ?? 0,
           diff:        d.difficulty   || d.diff    || 'easy',
@@ -2197,10 +2201,11 @@ async function loadQuestionsFromFirestore() {
     questions = docs.map(doc => {
       const d = doc.data();
       return {
-        id:          doc.id,
-        title:       d.title        || '',
-        desc:        d.description  || d.desc    || '',
-        example:     d.exampleInput || d.example || '',
+        id:             doc.id,
+        title:          d.title        || '',
+        desc:           d.description  || d.desc    || '',
+        example:        d.exampleInput || d.example || '',
+        exampleOutput:  d.exampleOutput || '',
         constraints: Array.isArray(d.constraints) ? d.constraints : [],
         points:      d.marks        ?? d.points  ?? 0,
         diff:        d.difficulty   || d.diff    || 'easy',
@@ -2680,7 +2685,8 @@ async function saveQuestion() {
   const pts   = parseInt(document.getElementById('q-pts').value) || 100;
   const tags  = document.getElementById('q-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
   const desc  = document.getElementById('q-desc').value.trim();
-  const ex    = document.getElementById('q-ex').value.trim();
+  const ex     = document.getElementById('q-ex').value.trim();
+  const exOut  = document.getElementById('q-ex-out').value.trim();
   const con   = document.getElementById('q-con').value.trim();
 
   if (!title || !desc) { toast('Title and description are required','warn'); return; }
@@ -2692,7 +2698,7 @@ async function saveQuestion() {
   const q = {
     id: 'q-'+Date.now(),
     title, diff, points:pts, tags: tags.length?tags:['Algorithm'],
-    desc, example:ex,
+    desc, example:ex, exampleOutput:exOut,
     constraints: con ? con.split('\n').map(c=>c.trim()).filter(Boolean) : ['1 ≤ n ≤ 10⁵'],
     testcases: tcs.length ? tcs : [{input:'1',expected:'1'}],
     templates: {
@@ -2717,7 +2723,8 @@ async function saveQuestion() {
     const publicData = {
       title:       q.title,
       description: q.desc,            // problem statement
-      exampleInput:  q.example,       // visible example (not a hidden TC)
+      exampleInput:  q.example,       // visible example input
+      exampleOutput: q.exampleOutput || '', // visible example output
       constraints: q.constraints,
       marks:       q.points,
       difficulty:  q.diff,
@@ -3499,6 +3506,16 @@ function resetCode() {
    ═══════════════════════════════════════════════════════════════ */
 function renderProbStmt() {
   const q = currentQ;
+  const exIn  = (q.example || '').trim();
+  const exOut = (q.exampleOutput || '').trim();
+  const exBlock = exIn
+    ? `<h4>Example</h4>
+       <div class="ex-block">
+         <strong>Input</strong>
+         <code>${escH(exIn)}</code>
+         ${exOut ? `<strong style="margin-top:8px;display:block">Output</strong><code style="color:var(--stu)">${escH(exOut)}</code>` : ''}
+       </div>`
+    : '';
   document.getElementById('stmt-html').innerHTML = `
     <h3>${q.title}</h3>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
@@ -3507,7 +3524,7 @@ function renderProbStmt() {
       <span style="margin-left:auto;color:var(--amber);font-family:var(--ff-mono);font-size:.75rem;font-weight:700">${q.points} pts</span>
     </div>
     <p>${(q.desc||'').replace(/\n/g,'<br>').replace(/<code>/g,'<code style="color:var(--green);background:var(--ink);padding:1px 5px;border-radius:3px">').replace(/<\/code>/g,'</code>')}</p>
-    ${q.example?`<h4>Example</h4><div class="ex-block"><strong>Example</strong><code>${escH(q.example)}</code></div>`:''}
+    ${exBlock}
     ${q.constraints?.length?`<h4 style="margin-top:14px">Constraints</h4><ul class="con-list">${q.constraints.map(c=>`<li>${c}</li>`).join('')}</ul>`:''}
   `;
 }
@@ -3603,8 +3620,23 @@ async function runCode() {
   // Switch to output tab
   conTab('out', document.querySelector('.con-tab'));
 
-  const customActive = document.getElementById('custom-in').classList.contains('show');
-  const stdin = customActive ? document.getElementById('stdin-ta').value : (currentQ?.testcases?.[0]?.input||'');
+  // Determine stdin:
+  // 1. If custom-input tab is active and has content → use that
+  // 2. Otherwise → fall back to the question's example input from Firestore
+  const customActive   = document.getElementById('custom-in').classList.contains('show');
+  const customTyped    = document.getElementById('stdin-ta').value.trim();
+  const exampleInput   = (currentQ?.example        || '').trim();
+  const exampleOutput  = (currentQ?.exampleOutput  || '').trim();
+
+  let stdin;
+  let usingExample = false;
+  if (customActive && customTyped) {
+    stdin = customTyped;
+  } else {
+    // Use example input from the question (Firestore)
+    stdin = exampleInput;
+    usingExample = true;
+  }
 
   outLine('info',`▶ Running ${currentLang}...`);
   outRunning();
@@ -3621,25 +3653,37 @@ async function runCode() {
     const exitCode = run.code;
     const status  = exitCode === 0 ? 'Accepted' : `Exit Code ${exitCode}`;
 
-    // Show sample input from question testcase
-    const sampleInput    = (currentQ?.testcases?.[0]?.input    || '').trim();
-    const sampleExpected = (currentQ?.testcases?.[0]?.expected || '').trim();
-
-    if (sampleInput) {
-      outLine('info', '── Input ──────────────');
-      sampleInput.split('\n').forEach(l => outLine('info', l));
+    // Show which input was used
+    if (usingExample) {
+      outLine('info', '── Example Input (from question) ──');
+    } else {
+      outLine('info', '── Custom Input ──────────────────');
+    }
+    if (stdin) {
+      stdin.split('\n').forEach(l => outLine('info', l));
+    } else {
+      outLine('info', '(no input)');
     }
 
-    outLine('info', '── Your Output ────────');
+    outLine('info', '── Your Output ────────────────────');
     if (stdout) {
       stdout.split('\n').forEach(l => outLine('ok', l));
     } else {
       outLine('warn', '(no output)');
     }
 
-    if (sampleExpected) {
-      outLine('info', '── Expected Output ────');
-      sampleExpected.split('\n').forEach(l => outLine('info', l));
+    // Show expected output: example output if using example, else TC[0].expected
+    const shownExpected = usingExample
+      ? exampleOutput
+      : (currentQ?.testcases?.[0]?.expected || '').trim();
+
+    if (shownExpected) {
+      outLine('info', '── Expected Output ────────────────');
+      shownExpected.split('\n').forEach(l => outLine('info', l));
+
+      // Quick match check (only when we have a definitive expected value)
+      const match = stdout === shownExpected;
+      outLine(match ? 'ok' : 'warn', match ? '✔ Output matches expected!' : '✘ Output does not match expected.');
     }
 
     outLine('info', `── Status: ${status} ──`);
