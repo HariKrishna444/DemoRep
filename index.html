@@ -1891,8 +1891,7 @@ const FB_CONFIG = {
 // Piston configuration — completely free, no API key required
 // Default: public Piston API at emkc.org
 // ── Pyodide (in-browser Python) ──────────────────────────────
-// Pyodide runs in an isolated blob Worker to avoid AMD conflicts with Monaco.
-// Using array-join construction avoids quote escaping issues in the blob src.
+// ── Pyodide blob Worker — isolated from Monaco AMD ──────────────
 const _workerLines = [
   'importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");',
   'var _py = null;',
@@ -1901,10 +1900,10 @@ const _workerLines = [
   '  try {',
   '    if (!_py) _py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });',
   '    var stdout = "", stderr = "";',
-  '    _py.setStdout({ batched: function(s){ stdout += s + "\\n"; } });',
-  '    _py.setStderr({ batched: function(s){ stderr += s + "\\n"; } });',
+  '    _py.setStdout({ batched: function(s){ stdout += s; } });',
+  '    _py.setStderr({ batched: function(s){ stderr += s; } });',
   '    if (stdin) {',
-  '      var lines = stdin.split("\\n");',
+  '      var lines = stdin.split("\n");',
   '      _py.globals.set("_stdin_lines", _py.toPy(lines));',
   '      await _py.runPythonAsync([',
   '        "import builtins",',
@@ -1918,7 +1917,7 @@ const _workerLines = [
   '        "        return val",',
   '        "    return \'\'",',
   '        "builtins.input = _input"',
-  '      ].join("\\n"));',
+  '      ].join("\n"));',
   '    }',
   '    var exitCode = 0;',
   '    try { await _py.runPythonAsync(code); }',
@@ -1929,11 +1928,9 @@ const _workerLines = [
   '  }',
   '};',
 ];
-
 let _pyWorker = null;
 let _pyCallbacks = {};
 let _pyCallId = 0;
-
 function getPyWorker() {
   if (_pyWorker) return _pyWorker;
   var blob = new Blob([_workerLines.join('\n')], { type: 'application/javascript' });
@@ -1950,11 +1947,8 @@ function getPyWorker() {
     _pyCallbacks = {};
     _pyWorker = null;
   };
-  console.log('Worker Created');
   return _pyWorker;
 }
-
-// Warm up worker in background
 setTimeout(function() {
   try {
     var id = ++_pyCallId;
@@ -3557,7 +3551,6 @@ async function pistonExecute(code, lang, stdin) {
   const engine = PISTON_LANGS[lang];
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
-
   return new Promise(function(resolve, reject) {
     var id = ++_pyCallId;
     var timer = setTimeout(function() {
@@ -3571,13 +3564,8 @@ async function pistonExecute(code, lang, stdin) {
       },
       reject: function(e) { clearTimeout(timer); reject(e); }
     };
-    try {
-      getPyWorker().postMessage({ id: id, code: code, stdin: stdin || '' });
-    } catch(e) {
-      clearTimeout(timer);
-      delete _pyCallbacks[id];
-      reject(e);
-    }
+    try { getPyWorker().postMessage({ id: id, code: code, stdin: stdin || '' }); }
+    catch(e) { clearTimeout(timer); delete _pyCallbacks[id]; reject(e); }
   });
 }
 
@@ -3804,7 +3792,7 @@ console.log(`TC${i+1} OUT:`, JSON.stringify(out), 'EXP:', JSON.stringify(exp), '
   // Exit fullscreen
   if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
 
-  showResults(results, passed, currentQ.testcases.length, totalMs, score, allOk);
+  showResults(results, passed, totalTC, totalMs, score, allOk);
   btn.disabled=false; btn.textContent='✓ Submit';
 }
 
@@ -3838,10 +3826,22 @@ function showResults(results, passed, total, totalMs, score, allOk) {
 
 function renderLB(myScore) {
   const name = currentUser?.displayName||currentUser?.email?.split('@')[0]||'You';
-  // Build leaderboard from real submissions only — no mock data
-  const realEntries = submissions.map(s => ({name: s.student, score: s.score, time: s.time}));
-  const myEntry = {name: name+' (You)', score: myScore, time: elapsed()};
-  const all = [...realEntries, myEntry].sort((a,b)=>b.score-a.score);
+  // Deduplicate: keep only best score per student name
+  const bestMap = {};
+  submissions.forEach(s => {
+    const key = s.student;
+    if (!bestMap[key] || s.score > bestMap[key].score) {
+      bestMap[key] = { name: s.student, score: s.score, time: s.time };
+    }
+  });
+  const realEntries = Object.values(bestMap);
+  // Current student: replace their entry with latest score if better, else keep best
+  const myKey = name;
+  const myBest = bestMap[myKey] ? Math.max(bestMap[myKey].score, myScore) : myScore;
+  // Remove current student from realEntries to avoid duplication
+  const others = realEntries.filter(e => e.name !== myKey);
+  const myEntry = { name: name + ' (You)', score: myBest, time: elapsed() };
+  const all = [...others, myEntry].sort((a,b) => b.score - a.score);
   const rc = ['g','s','b'];
   document.getElementById('lb-body').innerHTML = all.slice(0,8).map((e,i)=>`
     <div class="lb-r ${e.name.includes('(You)')?'me':''}">
