@@ -10,53 +10,22 @@ loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then
   parent.postMessage({ type: "py_ready" }, "*");
 });
 
+var STDIN_SETUP = "import builtins\n_sl=list(_sl)\n_si=[0]\ndef _inp(p=''):\n  i=_si[0];_si[0]+=1\n  return _sl[i] if i<len(_sl) else ''\nbuiltins.input=_inp";
+
 window.addEventListener("message", async function(e) {
   if (!e.data || e.data.t !== "run") return;
   if (!py) {
     parent.postMessage({ id: e.data.id, ok: false, error: "Pyodide not ready" }, "*");
     return;
   }
-
-  var ec = 0;
+  var o = "", er = "", ec = 0;
+  py.setStdout({ batched: function(s) { o += s; } });
+  py.setStderr({ batched: function(s) { er += s; } });
   var lines = (e.data.stdin || "").split("\n");
   py.globals.set("_sl", py.toPy(lines));
-
-  // Build full code with stdout capture and stdin setup wrapped around user code
-  var wrappedCode = [
-    "import sys, io, builtins",
-    "_out = io.StringIO()",
-    "_err = io.StringIO()",
-    "sys.stdout = _out",
-    "sys.stderr = _err",
-    "_sl = list(_sl)",
-    "_si = [0]",
-    "def _inp(p=''):",
-    "    i = _si[0]; _si[0] += 1",
-    "    return _sl[i] if i < len(_sl) else ''",
-    "builtins.input = _inp",
-    "try:",
-    "    exec(compile(_user_code, '<student>', 'exec'))",
-    "except Exception as _ex:",
-    "    sys.stderr.write(str(_ex))",
-    "    _ec = 1",
-    "else:",
-    "    _ec = 0",
-    "sys.stdout = sys.__stdout__",
-    "sys.stderr = sys.__stderr__"
-  ].join("\n");
-
-  py.globals.set("_user_code", e.data.code);
-
-  try {
-    await py.runPythonAsync(wrappedCode);
-    ec = py.globals.get("_ec");
-  } catch(x) {
-    ec = 1;
-  }
-
-  var o  = py.runPython("_out.getvalue()");
-  var er = py.runPython("_err.getvalue()");
-
+  try { await py.runPythonAsync(STDIN_SETUP); } catch(x) {}
+  try { await py.runPythonAsync(e.data.code); }
+  catch(x) { er += (x.message || String(x)); ec = 1; }
   parent.postMessage({ id: e.data.id, ok: true, stdout: o, stderr: er, ec: ec }, "*");
 });
 </script>
