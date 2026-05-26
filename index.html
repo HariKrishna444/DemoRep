@@ -962,102 +962,334 @@ select.inp option{background:var(--ink3)}
 #py-loader-bar{height:100%;width:0%;background:linear-gradient(90deg,#6c63ff,#a78bfa);border-radius:99px;transition:width 0.3s;}
 #py-loader-text{color:#e2e8f0;font-size:1rem;font-weight:600;}
 #py-loader-sub{color:#64748b;font-size:0.78rem;}
+</style>
+<style>
 
 /* ═══════════════════════════════════════════════════
-   PHASE 1 — EXAM STATUS BANNER (student page)
+   PHASE 1-3: COURSE PLATFORM STYLES
    ═══════════════════════════════════════════════════ */
-#exam-status-banner{
-  display:none;align-items:center;gap:12px;
-  padding:10px 24px;font-size:.8rem;font-family:var(--ff-mono);
-  position:sticky;top:0;z-index:190;
-  border-bottom:1px solid var(--line);
-  backdrop-filter:blur(14px);
-}
-#exam-status-banner.show{display:flex}
-#exam-status-banner.phase-waiting{background:rgba(59,130,246,.08);border-bottom-color:rgba(59,130,246,.2)}
-#exam-status-banner.phase-active{background:rgba(0,229,160,.06);border-bottom-color:rgba(0,229,160,.18)}
-#exam-status-banner.phase-ended{background:rgba(255,59,92,.06);border-bottom-color:rgba(255,59,92,.2)}
-.esb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.phase-waiting .esb-dot{background:var(--blue);animation:blink 1.4s ease infinite}
-.phase-active  .esb-dot{background:var(--stu);animation:blink .9s ease infinite}
-.phase-ended   .esb-dot{background:var(--danger)}
-.esb-label{font-weight:700}
-.phase-waiting .esb-label{color:var(--blue)}
-.phase-active  .esb-label{color:var(--stu)}
-.phase-ended   .esb-label{color:var(--danger)}
-.esb-countdown{margin-left:auto;color:var(--muted);letter-spacing:1px}
-.esb-countdown strong{color:var(--head)}
 
-/* Phase 1 — "no active exam" hero improvements */
-.no-exam-hero{
-  grid-column:1/-1;display:flex;flex-direction:column;align-items:center;
-  padding:80px 20px;text-align:center;gap:16px;
-}
-.no-exam-icon{font-size:3.5rem;line-height:1}
-.no-exam-title{font-size:1.2rem;font-weight:800;color:var(--head)}
-.no-exam-sub{font-size:.85rem;color:var(--soft);line-height:1.7;max-width:360px}
-.no-exam-meta{font-family:var(--ff-mono);font-size:.72rem;color:var(--muted);
+/* Course Catalog & Cards */
+.course-catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-top:16px}
+.course-card{
   background:var(--ink2);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:8px 14px;margin-top:4px}
+  border-radius:var(--r-lg);overflow:hidden;cursor:pointer;
+  transition:all .22s;position:relative;
+}
+.course-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-3px);box-shadow:var(--sh),var(--glow-g)}
+.course-thumb{
+  width:100%;height:140px;object-fit:cover;
+  background:linear-gradient(135deg,var(--ink3),var(--ink4));
+  display:flex;align-items:center;justify-content:center;
+  font-size:3rem;
+}
+.course-body{padding:18px}
+.course-lang-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(59,130,246,.12);color:var(--blue);
+  border:1px solid rgba(59,130,246,.25);
+  border-radius:99px;padding:2px 10px;
+  font-size:.65rem;font-weight:700;font-family:var(--ff-mono);
+  margin-bottom:10px;
+}
+.course-title{font-size:.95rem;font-weight:800;color:var(--head);margin-bottom:6px;line-height:1.3}
+.course-desc{font-size:.77rem;color:var(--soft);line-height:1.6;margin-bottom:12px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.course-meta{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);font-family:var(--ff-mono)}
+.course-price{
+  margin-left:auto;font-family:var(--ff-head);font-size:.85rem;font-weight:800;
+}
+.course-price.free{color:var(--stu)}
+.course-price.paid{color:var(--amber)}
+.course-progress-bar{height:3px;background:var(--line);border-radius:99px;margin-top:10px;overflow:hidden}
+.course-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));border-radius:99px;transition:width .5s}
+.enrolled-tag{
+  position:absolute;top:12px;right:12px;
+  background:rgba(0,229,160,.15);color:var(--stu);
+  border:1px solid rgba(0,229,160,.3);
+  border-radius:99px;padding:2px 10px;font-size:.65rem;font-weight:700;
+}
 
-/* ═══════════════════════════════════════════════════
-   PHASE 2 — EXAM MANAGEMENT PANEL (professor)
-   ═══════════════════════════════════════════════════ */
-.exam-mgmt-card{
+/* Catalog filters */
+.catalog-filters{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.filter-chip{
+  padding:6px 14px;border-radius:99px;font-size:.75rem;font-weight:600;
+  background:var(--ink3);border:1px solid var(--line);color:var(--soft);
+  cursor:pointer;transition:all .18s;
+}
+.filter-chip.active,.filter-chip:hover{background:rgba(0,229,160,.1);color:var(--stu);border-color:rgba(0,229,160,.3)}
+
+/* Course Detail Page */
+#page-course-detail{flex-direction:column}
+.cd-hero{
+  background:linear-gradient(135deg,var(--ink2),var(--ink3));
+  border-bottom:1px solid var(--line);padding:40px 48px;
+}
+.cd-hero-inner{max-width:860px}
+.cd-breadcrumb{font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:16px}
+.cd-breadcrumb span{color:var(--stu)}
+.cd-title{font-size:1.8rem;font-weight:900;color:var(--head);margin-bottom:10px;letter-spacing:-.5px}
+.cd-desc{font-size:.88rem;color:var(--soft);line-height:1.8;margin-bottom:20px;max-width:600px}
+.cd-meta-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.cd-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:99px;padding:4px 12px;font-size:.72rem;color:var(--soft);
+}
+.cd-body{display:grid;grid-template-columns:1fr 340px;gap:24px;padding:32px 48px;align-items:start}
+.cd-main{}
+.cd-sidebar-wrap{
   background:var(--ink2);border:1px solid var(--line);
-  border-radius:var(--r-lg);overflow:hidden;margin-bottom:12px;
-  transition:border-color .18s;
+  border-radius:var(--r-xl);padding:24px;
+  position:sticky;top:80px;
 }
-.exam-mgmt-card:hover{border-color:var(--line2)}
-.exam-mgmt-header{
-  display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;
-  padding:16px 20px;
+.cd-price-big{font-size:2rem;font-weight:900;margin-bottom:16px}
+.cd-price-big.free{color:var(--stu)}
+.cd-price-big.paid{color:var(--amber)}
+.syllabus-list{display:flex;flex-direction:column;gap:8px}
+.module-row{
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;
 }
-.exam-mgmt-name{font-size:.92rem;font-weight:700;color:var(--head)}
-.exam-mgmt-meta{font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);margin-top:2px}
-.exam-mgmt-body{
-  border-top:1px solid var(--line);padding:14px 20px;
-  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
-  background:rgba(255,255,255,.01);
+.module-head{
+  display:flex;align-items:center;gap:10px;padding:12px 16px;
+  cursor:pointer;transition:background .18s;font-size:.85rem;
 }
-.exam-mgmt-stat{text-align:center}
-.exam-mgmt-stat .v{font-size:1.2rem;font-weight:900;color:var(--head);font-family:var(--ff-head)}
-.exam-mgmt-stat .l{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:2px}
-.exam-mgmt-footer{
-  border-top:1px solid var(--line);padding:10px 20px;
-  display:flex;align-items:center;gap:8px;
+.module-head:hover{background:var(--ink4)}
+.module-icon{font-size:1rem;width:20px;text-align:center}
+.module-title{font-weight:700;color:var(--head);flex:1}
+.module-count{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)}
+.module-lessons{padding:0 16px 12px;display:flex;flex-direction:column;gap:6px;display:none}
+.module-lessons.open{display:flex}
+.lesson-row{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;
+  border-radius:var(--r-sm);font-size:.8rem;cursor:pointer;
+  transition:background .18s;
 }
-.status-pill{
-  padding:3px 10px;border-radius:99px;font-size:.68rem;font-weight:700;
-  font-family:var(--ff-mono);letter-spacing:.5px;
-}
-.status-pill.scheduled{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.25)}
-.status-pill.active   {background:rgba(0,229,160,.12);color:var(--stu);border:1px solid rgba(0,229,160,.25);animation:blink 1.2s ease infinite}
-.status-pill.ended    {background:var(--ink3);color:var(--muted);border:1px solid var(--line)}
+.lesson-row:hover{background:var(--ink4)}
+.lesson-icon{font-size:.8rem;width:16px;text-align:center}
+.lesson-title{flex:1;color:var(--body)}
+.lesson-dur{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)}
+.lesson-done{color:var(--stu);font-size:.75rem}
 
-/* ═══════════════════════════════════════════════════
-   PHASE 3 — LIFECYCLE CONTROLS  (professor)
-   ═══════════════════════════════════════════════════ */
-.lifecycle-bar{
-  display:flex;align-items:center;gap:0;
+/* Learn View */
+#page-learn{flex-direction:column}
+.learn-layout{flex:1;display:grid;grid-template-columns:280px 1fr;min-height:0}
+.learn-sidebar{
+  background:var(--ink2);border-right:1px solid var(--line);
+  overflow-y:auto;padding:16px 0;
+}
+.learn-sidebar::-webkit-scrollbar{width:3px}
+.learn-sidebar::-webkit-scrollbar-thumb{background:var(--line)}
+.learn-content{overflow-y:auto;flex:1}
+.learn-content::-webkit-scrollbar{width:5px}
+.learn-content::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+.learn-progress-bar{height:2px;background:var(--line);flex-shrink:0}
+.learn-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));transition:width .5s}
+
+/* Video / Article content area */
+.lesson-content-area{padding:32px 40px;max-width:900px}
+.video-wrap{
+  background:var(--ink);border:1px solid var(--line);
+  border-radius:var(--r-lg);overflow:hidden;
+  aspect-ratio:16/9;margin-bottom:24px;
+  display:flex;align-items:center;justify-content:center;
+}
+.video-wrap iframe{width:100%;height:100%;border:none}
+.article-content{
+  font-size:.88rem;line-height:1.9;color:var(--soft);
+}
+.article-content h1,.article-content h2,.article-content h3{
+  color:var(--head);font-family:var(--ff-head);margin:24px 0 12px;
+}
+.article-content h2{font-size:1.1rem;border-bottom:1px solid var(--line);padding-bottom:8px}
+.article-content code{
+  font-family:var(--ff-mono);font-size:.82rem;
+  background:var(--ink);border:1px solid var(--line);
+  border-radius:4px;padding:1px 6px;color:var(--green);
+}
+.article-content pre{
+  background:var(--ink);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:16px;margin:16px 0;
+  overflow-x:auto;font-family:var(--ff-mono);font-size:.78rem;
+  color:var(--green);line-height:1.7;
+}
+.article-content blockquote{
+  border-left:3px solid var(--stu);padding:10px 16px;
+  background:rgba(0,229,160,.04);margin:16px 0;border-radius:0 var(--r-sm) var(--r-sm) 0;
+  font-style:italic;
+}
+.learn-nav-btns{display:flex;gap:10px;margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
+
+/* Quiz View */
+#page-quiz{flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px}
+.quiz-wrap{width:100%;max-width:700px;animation:fadeup .4s ease}
+.quiz-header{
   background:var(--ink2);border:1px solid var(--line);
-  border-radius:var(--r);overflow:hidden;margin-bottom:20px;
+  border-radius:var(--r-lg);padding:24px;margin-bottom:20px;
 }
-.lc-step{
-  flex:1;display:flex;flex-direction:column;align-items:center;
-  padding:14px 10px;gap:5px;position:relative;
-  border-right:1px solid var(--line);font-size:.73rem;
-  color:var(--muted);transition:all .2s;
+.quiz-progress{display:flex;gap:8px;margin-bottom:16px}
+.quiz-dot{
+  flex:1;height:4px;border-radius:99px;
+  background:var(--line);transition:background .3s;
 }
-.lc-step:last-child{border-right:none}
-.lc-step.done{color:var(--stu)}
-.lc-step.current{color:var(--amber);background:rgba(245,166,35,.05)}
-.lc-step .lc-icon{font-size:1.2rem}
-.lc-step .lc-label{font-family:var(--ff-mono);font-size:.65rem;text-transform:uppercase;letter-spacing:1px}
-.lc-step.done .lc-icon::after{content:'✓';font-size:.55rem;color:var(--stu);vertical-align:super}
+.quiz-dot.done{background:var(--stu)}
+.quiz-dot.current{background:var(--amber)}
+.quiz-question-num{font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.quiz-question-text{font-size:1.05rem;font-weight:700;color:var(--head);line-height:1.5}
+.quiz-options{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.quiz-opt{
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r);padding:14px 18px;
+  cursor:pointer;transition:all .18s;
+  display:flex;align-items:center;gap:12px;
+  font-size:.88rem;color:var(--body);
+}
+.quiz-opt:hover{border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.04)}
+.quiz-opt.selected{border-color:var(--blue);background:rgba(59,130,246,.08);color:var(--head)}
+.quiz-opt.correct{border-color:var(--stu);background:rgba(0,229,160,.08);color:var(--stu)}
+.quiz-opt.wrong{border-color:var(--danger);background:rgba(255,59,92,.08);color:var(--danger)}
+.quiz-opt-letter{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:700;font-family:var(--ff-mono);
+  background:var(--ink);border:1px solid var(--line);
+  flex-shrink:0;
+}
+.quiz-opt.selected .quiz-opt-letter{background:var(--blue);color:#fff;border-color:var(--blue)}
+.quiz-opt.correct .quiz-opt-letter{background:var(--stu);color:var(--ink);border-color:var(--stu)}
+.quiz-opt.wrong .quiz-opt-letter{background:var(--danger);color:#fff;border-color:var(--danger)}
+.quiz-result-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-xl);padding:40px;text-align:center;
+  animation:fadeup .4s ease;
+}
+.quiz-score-ring{
+  width:100px;height:100px;border-radius:50%;
+  background:conic-gradient(var(--stu) var(--pct,0%),var(--line) 0);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;
+  font-size:1.4rem;font-weight:900;color:var(--stu);
+}
 
-/* Edit exam modal */
-#edit-exam-modal .modal{box-shadow:var(--sh),var(--glow-a);max-width:580px}
+/* My Learning page */
+#page-my-learning{flex-direction:column}
+.my-learning-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:24px 0}
+.my-course-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:20px;cursor:pointer;
+  transition:all .2s;
+}
+.my-course-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-2px)}
+.my-course-title{font-size:.92rem;font-weight:800;color:var(--head);margin-bottom:6px}
+.my-course-meta{font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:14px}
+.my-course-pct{font-size:.82rem;font-weight:700;color:var(--stu);margin-bottom:6px}
+.my-course-actions{display:flex;gap:8px;margin-top:14px}
+
+/* Certificate View */
+#page-certificate{flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent)}
+.cert-wrap{width:100%;max-width:760px;animation:fadeup .5s ease}
+.cert-card{
+  background:var(--ink2);
+  border:2px solid transparent;
+  background-clip:padding-box;
+  border-radius:var(--r-xl);
+  overflow:hidden;position:relative;
+  box-shadow:var(--sh),0 0 60px rgba(0,229,160,.15);
+}
+.cert-card::before{
+  content:'';position:absolute;inset:-2px;
+  background:linear-gradient(135deg,var(--stu),var(--cyan),var(--blue),var(--stu));
+  border-radius:inherit;z-index:-1;
+  animation:certshine 4s linear infinite;
+  background-size:300% 300%;
+}
+@keyframes certshine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.cert-inner{
+  background:var(--ink2);border-radius:calc(var(--r-xl) - 2px);
+  padding:50px;position:relative;overflow:hidden;
+}
+.cert-inner::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(0,229,160,.06),transparent);
+}
+.cert-logo{font-size:.75rem;font-family:var(--ff-mono);color:var(--muted);text-transform:uppercase;letter-spacing:3px;margin-bottom:28px}
+.cert-logo strong{color:var(--stu);font-family:var(--ff-head);font-size:1.1rem;letter-spacing:-0.5px;font-weight:900}
+.cert-title{font-size:.7rem;text-transform:uppercase;letter-spacing:3px;color:var(--muted);font-family:var(--ff-mono);margin-bottom:8px}
+.cert-student-name{font-size:2.4rem;font-weight:900;color:var(--head);margin-bottom:6px;letter-spacing:-1px;line-height:1.1}
+.cert-subtitle{font-size:.85rem;color:var(--soft);margin-bottom:28px}
+.cert-course-name{
+  font-size:1.2rem;font-weight:800;color:var(--stu);
+  background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);
+  border-radius:var(--r);padding:14px 20px;margin-bottom:28px;
+}
+.cert-meta-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+.cert-meta-item{background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:center}
+.cert-meta-val{font-size:1.2rem;font-weight:900;color:var(--head);margin-bottom:2px}
+.cert-meta-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)}
+.cert-footer{display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid var(--line)}
+.cert-verify-id{font-family:var(--ff-mono);font-size:.62rem;color:var(--muted)}
+.cert-badge{
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--stu),var(--cyan));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;
+}
+.cert-actions{display:flex;gap:10px;justify-content:center;margin-top:20px}
+
+/* Verify Page */
+#page-verify{flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
+.verify-card{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-xl);padding:40px;max-width:580px;width:100%;
+  text-align:center;animation:fadeup .4s ease;
+}
+.verify-icon{font-size:3.5rem;margin-bottom:16px}
+.verify-valid{border-color:rgba(0,229,160,.3);box-shadow:var(--sh),var(--glow-g)}
+.verify-invalid{border-color:rgba(255,59,92,.3);box-shadow:var(--sh),var(--glow-r)}
+
+/* Admin Course Builder */
+.builder-step{
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:24px;margin-bottom:16px;
+}
+.builder-step-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.step-num{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--amber);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.78rem;font-weight:900;flex-shrink:0;
+}
+.step-title{font-size:.95rem;font-weight:700;color:var(--head)}
+.lesson-builder-item{
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:12px 16px;
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:8px;
+}
+.quiz-builder-item{
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:12px 16px;margin-bottom:8px;
+}
+.quiz-builder-item .q-text{font-size:.85rem;font-weight:600;color:var(--head);margin-bottom:8px}
+.quiz-opt-input{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.quiz-opt-input input[type="radio"]{accent-color:var(--stu)}
+
+/* Course Analytics */
+.course-analytic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+
+/* Student topbar nav tabs */
+.stu-nav-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);padding:0 24px;background:var(--ink2)}
+.stu-nav-tab{
+  padding:13px 20px;font-size:.8rem;font-weight:600;
+  color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .18s;
+}
+.stu-nav-tab.active{color:var(--stu);border-bottom-color:var(--stu)}
+.stu-nav-tab:hover:not(.active){color:var(--body)}
+
+
 </style>
 </head>
 <body>
@@ -1178,7 +1410,6 @@ select.inp option{background:var(--ink3)}
       <div class="sbar-section">Exam Management</div>
       <div class="sbar-item" id="sb-questions"  onclick="profNav('questions')"><span class="sbar-icon">📝</span>Questions</div>
       <div class="sbar-item" id="sb-createexam" onclick="profNav('createexam')"><span class="sbar-icon">🗂️</span>Create Exam</div>
-      <div class="sbar-item" id="sb-exammanage" onclick="profNav('exammanage')"><span class="sbar-icon">📋</span>Manage Exams<span class="sbar-badge" id="active-exam-badge" style="display:none;background:var(--stu)">1</span></div>
       <div class="sbar-item" id="sb-violations" onclick="profNav('violations')"><span class="sbar-icon">🚨</span>Violations<span class="sbar-badge" id="vio-count-badge">0</span></div>
       <div class="sbar-item" id="sb-results"    onclick="profNav('presults')"><span class="sbar-icon">📈</span>Results</div>
 
@@ -1193,6 +1424,7 @@ select.inp option{background:var(--ink3)}
       <div class="sbar-item" id="sb-grades"      onclick="profNav('grades')"><span class="sbar-icon">🎓</span>Grades & Export</div>
       <div class="sbar-item" id="sb-analytics"   onclick="profNav('analytics')"><span class="sbar-icon">📊</span>Analytics</div>
       <div class="sbar-item" id="sb-security"    onclick="profNav('security')"><span class="sbar-icon">🔒</span>Security</div>
+      <div class="sbar-item" id="sb-course-analytics" onclick="profNav('course-analytics')"><span class="sbar-icon">🎓</span>Course Platform</div>
 
       <div style="margin-top:auto;padding-top:20px">
         <div style="background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.15);border-radius:var(--r);padding:14px;font-size:.75rem;color:var(--soft)">
@@ -1643,23 +1875,16 @@ service cloud.firestore {
     // ── Helpers ─────────────────────────────────────────────────
     function isSignedIn()  { return request.auth != null; }
     function uid()         { return request.auth.uid; }
-
-    // Safe isProf(): guards with exists() so it never throws when
-    // the users/{uid} doc doesn't exist yet (first-login race condition).
-    function isProf() {
+    function isProf()      {
       return isSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(uid())) &&
         get(/databases/$(database)/documents/users/$(uid())).data.role == 'prof';
     }
-    function isSelf(u) { return isSignedIn() && uid() == u; }
+    function isSelf(u)     { return isSignedIn() && uid() == u; }
 
     // ── users/ ───────────────────────────────────────────────────
-    // Owner can always read/write their own doc without isProf() dependency —
-    // avoids the chicken-and-egg permission failure on first login.
-    // Profs can read all users (for student lists, monitoring etc).
+    // Users can read/write their own profile. Profs can read all.
     match /users/{userId} {
       allow read:   if isSelf(userId) || isProf();
-      // Allow create even when doc doesn't exist yet (first login)
       allow create: if isSelf(userId);
       allow update: if isSelf(userId) || isProf();
     }
@@ -1750,6 +1975,38 @@ service cloud.firestore {
       allow read:   if isProf();
       allow write:  if isSelf(userId);
     }
+
+    // ── courses/ — course catalog ─────────────────────────────────
+    match /courses/{courseId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+    match /courses/{courseId}/modules/{moduleId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+    match /courses/{courseId}/modules/{moduleId}/lessons/{lessonId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+    match /courses/{courseId}/quizzes/{quizId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── enrollments/ — student progress ──────────────────────────
+    match /enrollments/{docId} {
+      allow read:  if isSignedIn() && (isProf() || resource.data.userId == uid());
+      allow create: if isSignedIn() && request.resource.data.userId == uid();
+      allow update: if isSignedIn() && resource.data.userId == uid();
+    }
+
+    // ── certificates/ — issued certificates ───────────────────────
+    match /certificates/{docId} {
+      allow read:  if true;  // public — needed for verify page
+      allow create: if isSignedIn() && request.resource.data.userId == uid();
+      allow update: if isProf();
+    }
   }
 }</pre>
           </div>
@@ -1786,6 +2043,27 @@ frame-src 'none';
 object-src 'none';
 upgrade-insecure-requests;</pre>
           </div>
+        </div>
+      </div>
+
+
+      <!-- ═══ COURSE ANALYTICS PANEL (Professor) ═══ -->
+      <div class="prof-panel" id="pp-course-analytics">
+        <div class="sec-hd">
+          <div><h2>Course Platform</h2><p>Manage courses, quizzes, and learner analytics</p></div>
+          <button class="btn btn-a btn-sm" onclick="openCourseBuilder()">+ New Course</button>
+        </div>
+        <div class="course-analytic-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+          <div class="stat-card c-blue"><div class="stat-val blue">0</div><div class="stat-label">Total Courses</div></div>
+          <div class="stat-card c-green"><div class="stat-val green">0</div><div class="stat-label">Enrollments</div></div>
+          <div class="stat-card c-amber"><div class="stat-val amber">0</div><div class="stat-label">Certificates</div></div>
+        </div>
+        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--line);font-size:.85rem;font-weight:700;color:var(--head)">All Courses</div>
+          <table class="data-table">
+            <thead><tr><th>Title</th><th>Language</th><th>Difficulty</th><th>Lessons</th><th>Price</th><th>Actions</th></tr></thead>
+            <tbody id="course-list-table"><tr><td colspan="6" style="color:var(--muted)">Loading courses…</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -1948,37 +2226,6 @@ upgrade-insecure-requests;</pre>
   </div>
 </div>
 
-      <!-- ═══ PHASE 2: EXAM MANAGEMENT ═══ -->
-      <div class="prof-panel" id="pp-exammanage">
-        <div class="sec-hd">
-          <div><h2>Manage Exams</h2><p>View, control, and track all exam sessions</p></div>
-          <button class="btn btn-a btn-sm" onclick="profNav('createexam')">+ New Exam</button>
-        </div>
-
-        <!-- Phase 3: Lifecycle bar -->
-        <div class="lifecycle-bar" id="lc-bar">
-          <div class="lc-step" id="lc-draft"><div class="lc-icon">📝</div><div class="lc-label">Draft</div></div>
-          <div class="lc-step" id="lc-scheduled"><div class="lc-icon">📅</div><div class="lc-label">Scheduled</div></div>
-          <div class="lc-step" id="lc-active"><div class="lc-icon">🟢</div><div class="lc-label">Active</div></div>
-          <div class="lc-step" id="lc-ended"><div class="lc-icon">🏁</div><div class="lc-label">Ended</div></div>
-        </div>
-
-        <!-- Filter bar -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-          <div style="display:flex;gap:4px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:3px">
-            <button class="btn btn-ghost btn-sm" id="ef-all"       onclick="filterExams('all')"       style="padding:5px 12px">All</button>
-            <button class="btn btn-ghost btn-sm" id="ef-scheduled" onclick="filterExams('scheduled')" style="padding:5px 12px">Scheduled</button>
-            <button class="btn btn-ghost btn-sm" id="ef-active"    onclick="filterExams('active')"    style="padding:5px 12px">Active</button>
-            <button class="btn btn-ghost btn-sm" id="ef-ended"     onclick="filterExams('ended')"     style="padding:5px 12px">Ended</button>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="renderExamManage()">↻ Refresh</button>
-        </div>
-
-        <div id="exam-mgmt-list">
-          <div style="color:var(--muted);font-size:.82rem">Loading exams…</div>
-        </div>
-      </div>
-
 <!-- ══════════════════════════════════════════════════
      ADD QUESTION MODAL
      ══════════════════════════════════════════════════ -->
@@ -2020,26 +2267,216 @@ upgrade-insecure-requests;</pre>
   </div>
 </div>
 
-<!-- ═══ PHASE 3: EDIT EXAM MODAL ═══ -->
-<div class="modal-bg" id="edit-exam-modal">
-  <div class="modal" style="max-width:580px;box-shadow:var(--sh),var(--glow-a)">
-    <h3>Edit Exam</h3>
-    <p class="sub">Update exam settings. Changes apply immediately.</p>
-    <input type="hidden" id="edit-exam-id">
+
+<!-- ══════════════════════════════════════════════════
+     COURSE PLATFORM MODALS
+     ══════════════════════════════════════════════════ -->
+
+<!-- Course Builder Modal -->
+<div class="modal-bg" id="course-builder-modal">
+  <div class="modal" style="max-width:780px">
+    <h3>📚 Course Builder</h3>
+    <p class="sub">Create a new course with modules and lessons.</p>
     <div class="modal-fields">
-      <div class="field"><label>Exam Name</label><input class="inp" id="edit-ex-name" placeholder="Exam name"></div>
       <div class="modal-row">
-        <div class="field"><label>Start Time</label><input class="inp" id="edit-ex-start" type="datetime-local"></div>
-        <div class="field"><label>End Time</label><input class="inp" id="edit-ex-end" type="datetime-local"></div>
+        <div class="field"><label>Course Title</label><input class="inp" id="cb-title" placeholder="Introduction to Python"></div>
+        <div class="field"><label>Language / Topic</label><input class="inp" id="cb-lang" placeholder="Python, JavaScript, DSA…"></div>
       </div>
-      <div class="field"><label>Duration (minutes)</label><input class="inp" id="edit-ex-duration" type="number" min="10" max="300"></div>
+      <div class="modal-row">
+        <div class="field">
+          <label>Difficulty</label>
+          <select class="inp" id="cb-diff">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Price</label>
+          <select class="inp" id="cb-price">
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Description</label><textarea class="inp" id="cb-desc" rows="3" placeholder="What will students learn?"></textarea></div>
+      <div class="field"><label>Thumbnail Emoji</label><input class="inp" id="cb-thumb" placeholder="🐍" style="font-size:1.4rem;text-align:center"></div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:4px">Modules</div>
+      <div id="cb-modules-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addCourseModule()" style="align-self:flex-start">+ Add Module</button>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="document.getElementById('edit-exam-modal').classList.remove('open')">Cancel</button>
-      <button class="btn btn-a" onclick="saveEditedExam()">💾 Save Changes</button>
+      <button class="btn btn-ghost" onclick="closeCourseBuilder()">Cancel</button>
+      <button class="btn btn-a" onclick="saveCourse()">Create Course</button>
     </div>
   </div>
 </div>
+
+<!-- Quiz Builder Modal -->
+<div class="modal-bg" id="quiz-builder-modal">
+  <div class="modal" style="max-width:680px">
+    <h3>🧪 Quiz Builder</h3>
+    <p class="sub" id="qb-module-name">Add MCQ questions for this module.</p>
+    <div class="modal-fields">
+      <div id="qb-questions-list" style="display:flex;flex-direction:column;gap:12px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addQuizQuestion()" style="align-self:flex-start">+ Add Question</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeQuizBuilder()">Cancel</button>
+      <button class="btn btn-a" onclick="saveQuiz()">Save Quiz</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: COURSE CATALOG (Student)
+     ══════════════════════════════════════════════════ -->
+<div id="page-catalog" class="page">
+  <div class="topbar">
+    <div class="tb-brand">Exam<em>Shield</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
+    <div class="tb-right">
+      <div class="user-chip"><div class="avatar" id="cat-av">S</div><span id="cat-name">Student</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="stu-nav-tabs">
+    <div class="stu-nav-tab active" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
+    <div class="stu-nav-tab" onclick="showStuSection('my-learning')">📖 My Learning</div>
+    <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+  </div>
+  <div style="padding:28px 32px">
+    <div class="sec-hd">
+      <div><h2>Course Catalog</h2><p>Browse and enroll in courses to enhance your skills</p></div>
+    </div>
+    <div class="catalog-filters" id="catalog-filters">
+      <span class="filter-chip active" onclick="filterCatalog('all',this)">All</span>
+      <span class="filter-chip" onclick="filterCatalog('free',this)">Free</span>
+      <span class="filter-chip" onclick="filterCatalog('beginner',this)">Beginner</span>
+      <span class="filter-chip" onclick="filterCatalog('intermediate',this)">Intermediate</span>
+      <span class="filter-chip" onclick="filterCatalog('advanced',this)">Advanced</span>
+      <input class="inp" id="catalog-search" placeholder="Search courses…" style="width:220px;padding:7px 12px;margin-left:auto" oninput="renderCatalog()">
+    </div>
+    <div class="course-catalog-grid" id="catalog-grid">
+      <div style="color:var(--muted);font-size:.85rem">Loading courses…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: COURSE DETAIL
+     ══════════════════════════════════════════════════ -->
+<div id="page-course-detail" class="page">
+  <div class="topbar">
+    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div class="tb-right">
+      <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()">← Back to Catalog</button>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div style="overflow-y:auto;flex:1">
+    <div id="cd-content">Loading…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: LEARN VIEW
+     ══════════════════════════════════════════════════ -->
+<div id="page-learn" class="page">
+  <div class="topbar">
+    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div class="tb-right" style="gap:10px">
+      <div id="learn-course-title" style="font-size:.82rem;color:var(--soft);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+      <div id="learn-progress-chip" style="display:flex;align-items:center;gap:6px;background:var(--ink3);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.72rem;font-family:var(--ff-mono);color:var(--stu)">
+        <span id="learn-pct">0%</span> Complete
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()">← Exit</button>
+    </div>
+  </div>
+  <div class="learn-progress-bar"><div class="learn-progress-fill" id="learn-progress-fill" style="width:0%"></div></div>
+  <div class="learn-layout" style="flex:1;overflow:hidden">
+    <!-- Sidebar -->
+    <div class="learn-sidebar">
+      <div style="padding:16px;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:var(--ff-mono)">Course Content</div>
+      <div id="learn-sidebar-content"></div>
+    </div>
+    <!-- Main content -->
+    <div class="learn-content">
+      <div class="lesson-content-area" id="lesson-content-area">
+        <div style="color:var(--muted);text-align:center;padding:60px">Select a lesson to begin</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: QUIZ VIEW
+     ══════════════════════════════════════════════════ -->
+<div id="page-quiz" class="page">
+  <div style="width:100%;padding:16px 20px;background:var(--ink2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div style="font-size:.9rem;font-weight:700;color:var(--head)" id="quiz-course-name">Quiz</div>
+    <button class="btn btn-ghost btn-sm" onclick="exitQuiz()">✕ Exit Quiz</button>
+  </div>
+  <div class="quiz-wrap" style="margin-top:28px">
+    <div id="quiz-content">Loading quiz…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: MY LEARNING
+     ══════════════════════════════════════════════════ -->
+<div id="page-my-learning" class="page">
+  <div class="topbar">
+    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div class="tb-right">
+      <div class="user-chip"><div class="avatar" id="ml-av">S</div><span id="ml-name">Student</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="stu-nav-tabs">
+    <div class="stu-nav-tab" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
+    <div class="stu-nav-tab active" onclick="showStuSection('my-learning')">📖 My Learning</div>
+    <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+  </div>
+  <div style="padding:28px 32px">
+    <div class="sec-hd">
+      <div><h2>My Learning</h2><p>Continue where you left off</p></div>
+    </div>
+    <div id="my-learning-content">
+      <div style="color:var(--muted)">No enrolled courses yet. <span onclick="showStuSection('catalog')" style="color:var(--stu);cursor:pointer">Browse the catalog →</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: CERTIFICATE
+     ══════════════════════════════════════════════════ -->
+<div id="page-certificate" class="page">
+  <div style="width:100%;padding:16px 24px;background:var(--ink2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+    <div class="tb-brand">Exam<em>Shield</em></div>
+    <button class="btn btn-ghost btn-sm" onclick="showStuSection('my-learning')">← My Learning</button>
+  </div>
+  <div class="cert-wrap" style="margin-top:32px">
+    <div id="cert-content">Loading certificate…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: VERIFY CERTIFICATE (Public)
+     ══════════════════════════════════════════════════ -->
+<div id="page-verify" class="page">
+  <div class="tb-brand" style="margin-bottom:24px;font-size:1.5rem">Exam<em style="color:var(--muted);font-style:normal">Shield</em></div>
+  <div class="verify-card" id="verify-card">
+    <div class="verify-icon">🔍</div>
+    <h2 style="color:var(--head);margin-bottom:8px">Certificate Verification</h2>
+    <p style="color:var(--soft);font-size:.85rem;margin-bottom:20px">Enter a certificate verification ID to check its authenticity.</p>
+    <div style="display:flex;gap:8px;max-width:420px;margin:0 auto">
+      <input class="inp" id="verify-input" placeholder="Enter verify ID…" style="flex:1">
+      <button class="btn btn-g" onclick="verifyCert()">Verify</button>
+    </div>
+    <div id="verify-result" style="margin-top:20px"></div>
+  </div>
+</div>
+
 
 <!-- ══════════════════════════════════════════════════
      SCRIPTS
@@ -2264,38 +2701,22 @@ async function loadUserRole(uid) {
     if (snap.exists) {
       // Restore the stored role so professors remain professors after refresh
       currentRole = snap.data().role || currentRole;
-      // Update lastLogin in background — don't await so login isn't blocked
-      db.collection('users').doc(uid).update({
-        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-      }).catch(() => {});
     } else {
-      // First login — create the profile document with the role the user selected
+      // First time this user logs in → create their profile document
       await db.collection('users').doc(uid).set({
         email:       currentUser.email,
         displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        role:        currentRole,
+        role:        currentRole,    // whichever pill they selected on login
         createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
         lastLogin:   firebase.firestore.FieldValue.serverTimestamp(),
       });
     }
+    // Always update lastLogin so you can see who was active recently
+    await db.collection('users').doc(uid).update({
+      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+    });
   } catch(e) {
-    // "Missing or insufficient permissions" on first login means the doc
-    // doesn't exist yet and the rules rejected the read before the write.
-    // This is harmless — we already have the role from the login pill selection.
-    // Try a silent set() as fallback so subsequent logins work correctly.
     console.warn('loadUserRole failed (using local role):', e);
-    try {
-      await db.collection('users').doc(uid).set({
-        email:       currentUser.email,
-        displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        role:        currentRole,
-        createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
-        lastLogin:   firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true }); // merge:true won't overwrite if doc already exists
-    } catch(e2) {
-      // Still failing — rules not updated yet. Role stays as locally selected.
-      console.warn('loadUserRole fallback set also failed:', e2);
-    }
   }
 }
 
@@ -5480,388 +5901,1152 @@ window.handleLogin=async function(){
 };
 
 
-/* ╔══════════════════════════════════════════════════════════════════╗
-   ║  PHASE 1 — STUDENT UX ENHANCEMENTS                             ║
-   ║  • Exam status banner with live countdown                       ║
-   ║  • Improved "no exam" states (waiting/ended/soon)               ║
-   ║  • Banner auto-updates every second                             ║
-   ╚══════════════════════════════════════════════════════════════════╝ */
 
-let _examBannerInterval = null;
 
-function updateExamStatusBanner() {
-  const banner = document.getElementById('exam-status-banner');
-  if (!banner) return;
-  const exam = window._activeExam || null;
-  const now  = new Date();
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 1-3: COURSE PLATFORM ENGINE
+   ═══════════════════════════════════════════════════════════════ */
 
-  if (!exam) { banner.classList.remove('show'); return; }
+/* ── State ────────────────────────────────────────────────────── */
+let coursesCatalog   = [];   // all courses from Firestore
+let myEnrollments    = {};   // courseId → enrollmentData
+let currentCourseId  = null;
+let currentLessonId  = null;
+let currentModuleId  = null;
+let quizState        = null; // active quiz state
+let courseBuilderModules = []; // temp state for builder
 
-  const start = exam.startTime ? new Date(exam.startTime) : null;
-  const end   = exam.endTime   ? new Date(exam.endTime)   : null;
+/* ── Helpers ────────────────────────────────────────────────────── */
+function fsReady() { return firebaseReady && !!db; }
+function fsDb()    { return db; }
+function genId()   { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function sanitize(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  // Determine phase
-  let phase = 'waiting';
-  if (start && end) {
-    if (now < start) phase = 'waiting';
-    else if (now >= start && now <= end) phase = 'active';
-    else phase = 'ended';
-  }
+/* ──────────────────────────────────────────────────────────────────
+   ROUTING — updated to handle catalog/learn/quiz/cert
+   ────────────────────────────────────────────────────────────────── */
 
-  banner.className = 'show exam-status-banner phase-' + phase;
-  const label   = document.getElementById('esb-label');
-  const detail  = document.getElementById('esb-detail');
-  const cdEl    = document.getElementById('esb-countdown');
-  banner.classList.add('show');
-
-  if (phase === 'waiting') {
-    label.textContent  = '⏳ Exam Starts Soon';
-    detail.textContent = exam.name || '';
-    if (start) {
-      const diff = Math.max(0, Math.floor((start - now) / 1000));
-      const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
-      cdEl.innerHTML = `Starts in <strong>${h > 0 ? h + 'h ' : ''}${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s</strong>`;
-    }
-  } else if (phase === 'active') {
-    label.textContent  = '🟢 Exam In Progress';
-    detail.textContent = exam.name || '';
-    if (end) {
-      const diff = Math.max(0, Math.floor((end - now) / 1000));
-      const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
-      const low = diff < 300; // last 5 min
-      cdEl.innerHTML = `Ends in <strong style="color:${low ? 'var(--danger)' : 'var(--stu)'}">${h > 0 ? h + 'h ' : ''}${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s</strong>`;
-    }
-  } else {
-    label.textContent  = '🏁 Exam Ended';
-    detail.textContent = exam.name || '';
-    cdEl.innerHTML = end ? `Closed at <strong>${end.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</strong>` : '';
-    clearInterval(_examBannerInterval);
+function showStuSection(section) {
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+  if (section === 'catalog') {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-catalog').classList.add('active');
+    document.getElementById('cat-av').textContent  = name[0].toUpperCase();
+    document.getElementById('cat-name').textContent = name;
+    renderCatalog();
+  } else if (section === 'my-learning') {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-my-learning').classList.add('active');
+    document.getElementById('ml-av').textContent  = name[0].toUpperCase();
+    document.getElementById('ml-name').textContent = name;
+    renderMyLearning();
   }
 }
 
-function startExamBanner() {
-  clearInterval(_examBannerInterval);
-  updateExamStatusBanner();
-  _examBannerInterval = setInterval(updateExamStatusBanner, 1000);
-}
-
-// Override renderStuPage to also start banner
-const _origRenderStuPage = window.renderStuPage;
-window.renderStuPage = function() {
-  _origRenderStuPage.apply(this, arguments);
-  startExamBanner();
-};
-
-/* ╔══════════════════════════════════════════════════════════════════╗
-   ║  PHASE 2 — EXAM MANAGEMENT PANEL                               ║
-   ║  • List all exams from Firestore with stats                     ║
-   ║  • Per-exam card with questions, time window, language list     ║
-   ║  • Edit exam settings inline                                    ║
-   ║  • Delete exam with confirmation                                ║
-   ╚══════════════════════════════════════════════════════════════════╝ */
-
-let _allExams        = [];
-let _examMgmtFilter  = 'all';
-let _examSubmissions = {}; // examId → submission count
-let _examStudents    = {}; // examId → unique student count
-
-// Hook into profNav to render exam management panel
-const _origProfNavP2 = window.profNav;
-window.profNav = function(panel) {
-  _origProfNavP2(panel);
-  if (panel === 'exammanage') renderExamManage();
-};
-
-async function renderExamManage() {
-  const list = document.getElementById('exam-mgmt-list');
-  if (!list) return;
-  list.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:20px 0">Loading exams…</div>';
-
+/* ──────────────────────────────────────────────────────────────────
+   PHASE 1: FIRESTORE HELPERS
+   ────────────────────────────────────────────────────────────────── */
+async function loadCourses() {
   if (!fsReady()) {
-    list.innerHTML = `<div style="color:var(--muted);font-size:.82rem">
-      Connect Firebase to manage exams. <span style="color:var(--amber)">Configure Firebase in the FB_CONFIG at the top of this file.</span>
-    </div>`;
+    // Demo courses for offline mode
+    coursesCatalog = getDemoCourses();
     return;
   }
-
   try {
-    const now = new Date();
-    const snap = await fsDb().collection('exams').orderBy('createdAt', 'desc').get();
-    _allExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    // Enrich with submission counts (batch read)
-    const subSnap = await fsDb().collection('submissions').get();
-    _examSubmissions = {};
-    _examStudents    = {};
-    subSnap.docs.forEach(d => {
-      const s = d.data();
-      const eid = s.examId || '__none__';
-      _examSubmissions[eid] = (_examSubmissions[eid] || 0) + 1;
-      if (!_examStudents[eid]) _examStudents[eid] = new Set();
-      if (s.userId) _examStudents[eid].add(s.userId);
-    });
-
-    // Auto-update status based on time
-    _allExams = _allExams.map(e => {
-      const start = e.startTime ? new Date(e.startTime) : null;
-      const end   = e.endTime   ? new Date(e.endTime)   : null;
-      let status = e.status || 'scheduled';
-      if (start && end) {
-        if (now < start) status = 'scheduled';
-        else if (now >= start && now <= end) status = 'active';
-        else if (now > end) status = 'ended';
-      }
-      return { ...e, status };
-    });
-
-    // Update active exam badge
-    const activeCount = _allExams.filter(e => e.status === 'active').length;
-    const badge = document.getElementById('active-exam-badge');
-    if (badge) {
-      if (activeCount > 0) { badge.textContent = activeCount; badge.style.display = ''; }
-      else badge.style.display = 'none';
-    }
-
-    // Update lifecycle bar (based on most recent active exam state)
-    _updateLifecycleBar(_allExams);
-
-    renderExamMgmtList();
+    const snap = await db.collection('courses').orderBy('createdAt','desc').get();
+    coursesCatalog = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (!coursesCatalog.length) coursesCatalog = getDemoCourses();
   } catch(e) {
-    list.innerHTML = `<div style="color:var(--danger);font-size:.82rem">Error: ${sanitize(e.message)}</div>`;
+    console.warn('loadCourses error:', e);
+    coursesCatalog = getDemoCourses();
   }
 }
 
-function _updateLifecycleBar(exams) {
-  const hasScheduled = exams.some(e => e.status === 'scheduled');
-  const hasActive    = exams.some(e => e.status === 'active');
-  const hasEnded     = exams.some(e => e.status === 'ended');
-
-  const steps = ['draft','scheduled','active','ended'];
-  steps.forEach(s => {
-    const el = document.getElementById('lc-' + s);
-    if (el) el.className = 'lc-step';
-  });
-
-  // Mark progression
-  if (hasEnded) {
-    ['draft','scheduled','active'].forEach(s => {
-      const el = document.getElementById('lc-' + s);
-      if (el) el.classList.add('done');
+async function loadMyEnrollments() {
+  if (!currentUser) return;
+  myEnrollments = {};
+  if (!fsReady()) return;
+  try {
+    const snap = await db.collection('enrollments')
+      .where('userId', '==', currentUser.uid).get();
+    snap.docs.forEach(doc => {
+      const d = doc.data();
+      myEnrollments[d.courseId] = { id: doc.id, ...d };
     });
-    const el = document.getElementById('lc-ended');
-    if (el) el.classList.add('current');
-  } else if (hasActive) {
-    ['draft','scheduled'].forEach(s => {
-      const el = document.getElementById('lc-' + s);
-      if (el) el.classList.add('done');
-    });
-    const el = document.getElementById('lc-active');
-    if (el) el.classList.add('current');
-  } else if (hasScheduled) {
-    const el = document.getElementById('lc-draft');
-    if (el) el.classList.add('done');
-    const el2 = document.getElementById('lc-scheduled');
-    if (el2) el2.classList.add('current');
-  } else {
-    const el = document.getElementById('lc-draft');
-    if (el) el.classList.add('current');
+  } catch(e) { console.warn('loadMyEnrollments error:', e); }
+}
+
+async function enrollInCourse(courseId) {
+  if (!currentUser) { toast('Please log in first','warn'); return; }
+  const docId = currentUser.uid + '_' + courseId;
+  if (myEnrollments[courseId]) {
+    // Already enrolled → go to learn view
+    openLearnView(courseId); return;
+  }
+  const enrollment = {
+    userId:           currentUser.uid,
+    courseId,
+    enrolledAt:       fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
+    completedLessons: [],
+    quizScores:       {},
+    progress:         0,
+  };
+  if (fsReady()) {
+    try {
+      await db.collection('enrollments').doc(docId).set(enrollment);
+    } catch(e) { console.warn('enroll error:', e); }
+  }
+  myEnrollments[courseId] = { id: docId, ...enrollment };
+  toast('Enrolled successfully! 🎉','ok');
+  openLearnView(courseId);
+}
+
+async function markLessonComplete(courseId, moduleId, lessonId) {
+  if (!currentUser) return;
+  const enrollment = myEnrollments[courseId];
+  if (!enrollment) return;
+  const completed = enrollment.completedLessons || [];
+  if (!completed.includes(lessonId)) completed.push(lessonId);
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  let total = 0;
+  if (course?.modules) course.modules.forEach(m=>{total+=((m.lessons||[]).length)});
+  const progress = total > 0 ? Math.round((completed.length/total)*100) : 0;
+  enrollment.completedLessons = completed;
+  enrollment.progress = progress;
+  if (fsReady()) {
+    try {
+      const docId = currentUser.uid + '_' + courseId;
+      await db.collection('enrollments').doc(docId).update({ completedLessons: completed, progress });
+    } catch(e) { console.warn('markComplete error:', e); }
+  }
+  updateLearnProgress(courseId);
+  // Check if all lessons done → issue certificate
+  if (progress >= 100) {
+    await issueCertificate(courseId);
   }
 }
 
-function filterExams(f) {
-  _examMgmtFilter = f;
-  // Highlight active filter button
-  ['all','scheduled','active','ended'].forEach(id => {
-    const btn = document.getElementById('ef-' + id);
-    if (btn) btn.className = 'btn btn-sm ' + (id === f ? 'btn-a' : 'btn-ghost');
-  });
-  renderExamMgmtList();
+async function issueCertificate(courseId) {
+  if (!currentUser) return;
+  const docId = currentUser.uid + '_' + courseId;
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  const enrollment = myEnrollments[courseId];
+  const scores = enrollment?.quizScores || {};
+  const scoreVals = Object.values(scores).map(Number).filter(n=>!isNaN(n));
+  const avgScore = scoreVals.length ? Math.round(scoreVals.reduce((a,b)=>a+b,0)/scoreVals.length) : 100;
+  const verifyId = genId() + genId();
+  const cert = {
+    userId:      currentUser.uid,
+    courseId,
+    studentName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Student',
+    courseName:  course?.title || 'Course',
+    score:       avgScore,
+    issuedAt:    fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
+    verifyId,
+  };
+  if (fsReady()) {
+    try {
+      await db.collection('certificates').doc(docId).set(cert);
+    } catch(e) { console.warn('issueCertificate error:', e); }
+  }
+  toast('🎓 Certificate issued! Check My Learning.','ok',5000);
 }
 
-function renderExamMgmtList() {
-  const list = document.getElementById('exam-mgmt-list');
-  if (!list) return;
+async function saveQuizScore(courseId, moduleId, score) {
+  if (!currentUser || !myEnrollments[courseId]) return;
+  const enrollment = myEnrollments[courseId];
+  if (!enrollment.quizScores) enrollment.quizScores = {};
+  enrollment.quizScores[moduleId] = score;
+  if (fsReady()) {
+    try {
+      const docId = currentUser.uid + '_' + courseId;
+      await db.collection('enrollments').doc(docId).update({
+        [`quizScores.${moduleId}`]: score
+      });
+    } catch(e) { console.warn('saveQuizScore error:', e); }
+  }
+}
 
-  const filtered = _examMgmtFilter === 'all'
-    ? _allExams
-    : _allExams.filter(e => e.status === _examMgmtFilter);
+async function getCertificate(courseId) {
+  if (!currentUser) return null;
+  const docId = currentUser.uid + '_' + courseId;
+  if (fsReady()) {
+    try {
+      const snap = await db.collection('certificates').doc(docId).get();
+      if (snap.exists) return { id: snap.id, ...snap.data() };
+    } catch(e) {}
+  }
+  return null;
+}
 
+/* ──────────────────────────────────────────────────────────────────
+   PHASE 2: CATALOG VIEW
+   ────────────────────────────────────────────────────────────────── */
+let catalogFilter = 'all';
+
+async function renderCatalog() {
+  const grid = document.getElementById('catalog-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:var(--muted)">Loading courses…</div>';
+  await loadCourses();
+  await loadMyEnrollments();
+  grid.innerHTML = '';
+  const search = (document.getElementById('catalog-search')?.value || '').toLowerCase();
+  const filtered = coursesCatalog.filter(c => {
+    const matchSearch = !search || c.title?.toLowerCase().includes(search) || c.language?.toLowerCase().includes(search);
+    const matchFilter = catalogFilter === 'all'
+      || (catalogFilter === 'free' && c.price === 'free')
+      || c.difficulty === catalogFilter;
+    return matchSearch && matchFilter;
+  });
   if (!filtered.length) {
-    list.innerHTML = `<div style="color:var(--muted);font-size:.82rem;padding:20px 0">
-      No ${_examMgmtFilter === 'all' ? '' : _examMgmtFilter + ' '}exams found. 
-      <span onclick="profNav('createexam')" style="color:var(--amber);cursor:pointer">Create one →</span>
-    </div>`;
+    grid.innerHTML = '<div style="color:var(--muted);font-size:.85rem;grid-column:1/-1">No courses found.</div>';
     return;
   }
-
-  list.innerHTML = filtered.map(e => {
-    const start    = e.startTime ? new Date(e.startTime) : null;
-    const end      = e.endTime   ? new Date(e.endTime)   : null;
-    const subs     = _examSubmissions[e.id] || 0;
-    const stuCount = _examStudents[e.id]   ? _examStudents[e.id].size : 0;
-    const qCount   = (e.questionIds || []).length;
-    const langs    = (e.allowedLanguages || ['python']).join(', ');
-    const fmtDt    = dt => dt ? dt.toLocaleDateString([], {month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
-
-    const statusActions = {
-      scheduled: `<button class="btn btn-g btn-sm" onclick="activateExam('${e.id}')">▶ Activate Now</button>
-                  <button class="btn btn-ghost btn-sm" onclick="openEditExam('${e.id}')">✏ Edit</button>
-                  <button class="btn btn-r btn-sm" onclick="deleteExam('${e.id}', '${sanitize(e.name||'')}')">🗑</button>`,
-      active:    `<button class="btn btn-r btn-sm" onclick="endExam('${e.id}', '${sanitize(e.name||'')}')">⏹ End Exam</button>
-                  <button class="btn btn-ghost btn-sm" onclick="openEditExam('${e.id}')">✏ Edit</button>`,
-      ended:     `<button class="btn btn-blue btn-sm" onclick="profNav('presults')">📈 View Results</button>
-                  <button class="btn btn-ghost btn-sm" onclick="openEditExam('${e.id}')">📋 Duplicate</button>
-                  <button class="btn btn-r btn-sm" onclick="deleteExam('${e.id}', '${sanitize(e.name||'')}')">🗑</button>`,
-    };
-
-    return `
-    <div class="exam-mgmt-card" id="ecard-${e.id}">
-      <div class="exam-mgmt-header">
-        <div>
-          <div class="exam-mgmt-name">${sanitize(e.name || 'Untitled Exam')}</div>
-          <div class="exam-mgmt-meta">${fmtDt(start)} → ${fmtDt(end)} · ${e.durationMins || 90} min · ${sanitize(langs)}</div>
+  filtered.forEach(course => {
+    const enrolled = myEnrollments[course.id];
+    const pct = enrolled?.progress || 0;
+    const card = document.createElement('div');
+    card.className = 'course-card';
+    card.innerHTML = `
+      ${enrolled ? '<div class="enrolled-tag">✓ Enrolled</div>' : ''}
+      <div class="course-thumb">${course.thumbnail || '📚'}</div>
+      <div class="course-body">
+        <div class="course-lang-badge">📌 ${sanitize(course.language||'General')}</div>
+        <div class="course-title">${sanitize(course.title)}</div>
+        <div class="course-desc">${sanitize(course.description||'')}</div>
+        <div class="course-meta">
+          <span>${course.difficulty||'beginner'}</span>
+          <span>·</span>
+          <span>${course.totalLessons||0} lessons</span>
+          <span class="course-price ${course.price==='free'?'free':'paid'}">${course.price==='free'?'Free':'Paid'}</span>
         </div>
-        <span class="status-pill ${e.status}">${e.status.toUpperCase()}</span>
-        <span style="font-family:var(--ff-mono);font-size:.7rem;color:var(--muted)">#${e.id.slice(-6)}</span>
+        ${enrolled ? `<div class="course-progress-bar"><div class="course-progress-fill" style="width:${pct}%"></div></div>` : ''}
+      </div>`;
+    card.onclick = () => openCourseDetail(course.id);
+    grid.appendChild(card);
+  });
+}
+
+function filterCatalog(filter, el) {
+  catalogFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderCatalog();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   COURSE DETAIL PAGE
+   ────────────────────────────────────────────────────────────────── */
+async function openCourseDetail(courseId) {
+  currentCourseId = courseId;
+  showPage('course-detail');
+  const content = document.getElementById('cd-content');
+  content.innerHTML = '<div style="padding:40px;color:var(--muted)">Loading…</div>';
+  await loadCourses();
+  await loadMyEnrollments();
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  if (!course) { content.innerHTML='<div style="padding:40px;color:var(--danger)">Course not found.</div>'; return; }
+  const enrolled = myEnrollments[courseId];
+  const modules = course.modules || [];
+  const syllabus = modules.map((m,mi) => {
+    const lessons = (m.lessons||[]).map((l,li) => `
+      <div class="lesson-row">
+        <span class="lesson-icon">${l.type==='video'?'▶':'📄'}</span>
+        <span class="lesson-title">${sanitize(l.title||`Lesson ${li+1}`)}</span>
+        <span class="lesson-dur">${l.duration||''}</span>
+      </div>`).join('');
+    return `
+      <div class="module-row">
+        <div class="module-head" onclick="toggleModule('cdmod-${mi}')">
+          <span class="module-icon">📦</span>
+          <span class="module-title">${sanitize(m.title||`Module ${mi+1}`)}</span>
+          <span class="module-count">${(m.lessons||[]).length} lessons</span>
+          <span style="color:var(--muted);font-size:.75rem">▼</span>
+        </div>
+        <div class="module-lessons" id="cdmod-${mi}">${lessons}</div>
+      </div>`;
+  }).join('');
+  content.innerHTML = `
+    <div class="cd-hero">
+      <div class="cd-hero-inner">
+        <div class="cd-breadcrumb">Catalog <span>›</span> ${sanitize(course.language||'General')} <span>›</span> ${sanitize(course.title)}</div>
+        <div class="cd-title">${sanitize(course.title)}</div>
+        <div class="cd-desc">${sanitize(course.description||'')}</div>
+        <div class="cd-meta-row">
+          <div class="cd-badge">📌 ${sanitize(course.language||'General')}</div>
+          <div class="cd-badge">🎯 ${course.difficulty||'Beginner'}</div>
+          <div class="cd-badge">📚 ${course.totalLessons||0} Lessons</div>
+          <div class="cd-badge">${course.price==='free'?'🆓 Free':'💰 Paid'}</div>
+        </div>
       </div>
-      <div class="exam-mgmt-body">
-        <div class="exam-mgmt-stat"><div class="v">${qCount}</div><div class="l">Questions</div></div>
-        <div class="exam-mgmt-stat"><div class="v" style="color:var(--stu)">${stuCount}</div><div class="l">Students</div></div>
-        <div class="exam-mgmt-stat"><div class="v" style="color:var(--amber)">${subs}</div><div class="l">Submissions</div></div>
-        <div class="exam-mgmt-stat"><div class="v" style="color:var(--blue)">${e.durationMins||90}m</div><div class="l">Duration</div></div>
+    </div>
+    <div class="cd-body">
+      <div class="cd-main">
+        <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">📋 Course Syllabus</div>
+        <div class="syllabus-list">${syllabus||'<div style="color:var(--muted)">No modules yet.</div>'}</div>
+        ${course.instructorName?`
+        <div style="margin-top:24px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;display:flex;align-items:center;gap:16px">
+          <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--amber),#ff8c00);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;color:var(--ink)">
+            ${(course.instructorName||'I')[0]}
+          </div>
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:var(--head)">${sanitize(course.instructorName)}</div>
+            <div style="font-size:.72rem;color:var(--muted)">Course Instructor</div>
+          </div>
+        </div>`:''
+        }
       </div>
-      <div class="exam-mgmt-footer">
-        ${statusActions[e.status] || ''}
+      <div class="cd-sidebar-wrap">
+        <div class="cd-price-big ${course.price==='free'?'free':'paid'}">${course.price==='free'?'Free':'Paid'}</div>
+        ${enrolled
+          ? `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="openLearnView('${courseId}')">
+               ▶ Continue Learning (${enrolled.progress||0}%)
+             </button>`
+          : `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="enrollInCourse('${courseId}')">
+               🎓 Enroll Now
+             </button>`
+        }
+        <div style="margin-top:16px;font-size:.75rem;color:var(--muted);line-height:1.6">
+          ✓ Full lifetime access<br>
+          ✓ Certificate on completion<br>
+          ✓ ${course.totalLessons||0} video/article lessons
+        </div>
       </div>
     </div>`;
+}
+
+function toggleModule(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('open');
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   LEARN VIEW
+   ────────────────────────────────────────────────────────────────── */
+async function openLearnView(courseId) {
+  currentCourseId = courseId;
+  showPage('learn');
+  await loadCourses();
+  await loadMyEnrollments();
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  if (!course) { toast('Course not found','err'); return; }
+  document.getElementById('learn-course-title').textContent = course.title||'';
+  updateLearnProgress(courseId);
+  renderLearnSidebar(course);
+  // Auto-open first incomplete lesson
+  const enrollment = myEnrollments[courseId];
+  const completed = enrollment?.completedLessons || [];
+  let opened = false;
+  for (const mod of (course.modules||[])) {
+    for (const lesson of (mod.lessons||[])) {
+      if (!completed.includes(lesson.id)) {
+        openLesson(courseId, mod.id, lesson.id);
+        opened = true; break;
+      }
+    }
+    if (opened) break;
+  }
+  if (!opened && course.modules?.[0]?.lessons?.[0]) {
+    openLesson(courseId, course.modules[0].id, course.modules[0].lessons[0].id);
+  }
+}
+
+function renderLearnSidebar(course) {
+  const sidebar = document.getElementById('learn-sidebar-content');
+  if (!sidebar) return;
+  const enrollment = myEnrollments[currentCourseId];
+  const completed = enrollment?.completedLessons || [];
+  sidebar.innerHTML = (course.modules||[]).map((mod,mi) => {
+    const lessons = (mod.lessons||[]).map(lesson => {
+      const isDone = completed.includes(lesson.id);
+      const isCurrent = lesson.id === currentLessonId;
+      return `
+        <div class="lesson-row ${isCurrent?'active':''}"
+             style="${isCurrent?'background:rgba(0,229,160,.08);color:var(--stu)':''}"
+             onclick="openLesson('${currentCourseId}','${mod.id}','${lesson.id}')">
+          <span class="lesson-icon">${isDone?'✅':lesson.type==='video'?'▶':'📄'}</span>
+          <span class="lesson-title" style="font-size:.78rem">${sanitize(lesson.title||'Lesson')}</span>
+          <span class="lesson-dur">${lesson.duration||''}</span>
+        </div>`;
+    }).join('');
+    return `
+      <div style="margin-bottom:4px">
+        <div style="padding:8px 16px;font-size:.7rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)">
+          ${sanitize(mod.title||`Module ${mi+1}`)}
+        </div>
+        ${lessons}
+        ${mod.hasQuiz?`
+          <div class="lesson-row" onclick="openQuiz('${currentCourseId}','${mod.id}')" style="border-top:1px solid var(--line);margin-top:4px">
+            <span class="lesson-icon">🧪</span>
+            <span class="lesson-title" style="font-size:.78rem;color:var(--amber)">Module Quiz</span>
+          </div>`:''
+        }
+      </div>`;
   }).join('');
 }
 
-/* ╔══════════════════════════════════════════════════════════════════╗
-   ║  PHASE 3 — EXAM LIFECYCLE CONTROLS                             ║
-   ║  • Activate / End / Delete exam                                 ║
-   ║  • Edit exam settings (name, times, duration)                   ║
-   ║  • Status synced to Firestore exams/ collection                 ║
-   ║  • Student page polls for status every 30s                      ║
-   ╚══════════════════════════════════════════════════════════════════╝ */
-
-async function activateExam(examId) {
-  if (!confirm('Activate this exam now? Students will immediately see questions.')) return;
-  if (!fsReady()) { toast('Firestore not connected','err'); return; }
-  try {
-    await fsDb().collection('exams').doc(examId).update({
-      status: 'active',
-      startTime: new Date().toISOString(),  // override start to now
-    });
-    toast('✅ Exam is now ACTIVE — students can see it!', 'ok', 5000);
-    renderExamManage();
-    // Update the sidebar badge
-    const badge = document.getElementById('active-exam-badge');
-    if (badge) { badge.textContent = '1'; badge.style.display = ''; }
-  } catch(e) {
-    toast('Error: ' + e.message, 'err');
+function openLesson(courseId, moduleId, lessonId) {
+  currentModuleId = moduleId;
+  currentLessonId = lessonId;
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  if (!course) return;
+  let lesson = null, mod = null;
+  for (const m of (course.modules||[])) {
+    const l = (m.lessons||[]).find(l=>l.id===lessonId);
+    if (l) { lesson = l; mod = m; break; }
   }
+  if (!lesson) return;
+  renderLearnSidebar(course);
+  const area = document.getElementById('lesson-content-area');
+  let contentHtml = '';
+  if (lesson.type === 'video' && lesson.videoUrl) {
+    const embedUrl = youtubeEmbed(lesson.videoUrl);
+    contentHtml = `<div class="video-wrap">
+      ${embedUrl
+        ? `<iframe src="${embedUrl}" allowfullscreen loading="lazy"></iframe>`
+        : `<div style="color:var(--muted);text-align:center"><div style="font-size:3rem;margin-bottom:10px">▶</div><div style="font-size:.85rem">Video: ${sanitize(lesson.videoUrl)}</div></div>`
+      }
+    </div>`;
+  }
+  if (lesson.content) {
+    contentHtml += `<div class="article-content">${renderMarkdown(lesson.content)}</div>`;
+  }
+  // Find prev/next
+  let allLessons = [];
+  (course.modules||[]).forEach(m=>(m.lessons||[]).forEach(l=>allLessons.push({moduleId:m.id,lesson:l})));
+  const idx = allLessons.findIndex(x=>x.lesson.id===lessonId);
+  const prev = allLessons[idx-1];
+  const next = allLessons[idx+1];
+  area.innerHTML = `
+    <div style="font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:1.5px">${sanitize(mod?.title||'')}</div>
+    <h2 style="font-size:1.4rem;font-weight:900;color:var(--head);margin-bottom:20px">${sanitize(lesson.title||'')}</h2>
+    ${contentHtml || '<div style="color:var(--muted)">No content for this lesson.</div>'}
+    <div class="learn-nav-btns">
+      ${prev ? `<button class="btn btn-ghost" onclick="openLesson('${courseId}','${prev.moduleId}','${prev.lesson.id}')">← Previous</button>` : '<div></div>'}
+      <button class="btn btn-g" onclick="completeLessonAndNext('${courseId}','${moduleId}','${lessonId}','${next?.lesson?.id||''}','${next?.moduleId||''}')">
+        ${next ? 'Mark Complete & Next →' : '✓ Complete Course'}
+      </button>
+    </div>`;
 }
 
-async function endExam(examId, examName) {
-  if (!confirm(`End exam "${examName}"?\n\nStudents will no longer be able to submit. This cannot be undone.`)) return;
-  if (!fsReady()) { toast('Firestore not connected','err'); return; }
-  try {
-    await fsDb().collection('exams').doc(examId).update({
-      status: 'ended',
-      endTime: new Date().toISOString(),
-    });
-    toast('🏁 Exam ended. Results are now final.', 'ok', 5000);
-    renderExamManage();
-  } catch(e) {
-    toast('Error: ' + e.message, 'err');
-  }
-}
-
-async function deleteExam(examId, examName) {
-  if (!confirm(`Permanently delete "${examName}"?\n\nThis cannot be undone.`)) return;
-  if (!fsReady()) { toast('Firestore not connected','err'); return; }
-  try {
-    await fsDb().collection('exams').doc(examId).delete();
-    toast('Exam deleted.', 'warn');
-    renderExamManage();
-  } catch(e) {
-    toast('Error: ' + e.message, 'err');
-  }
-}
-
-function openEditExam(examId) {
-  const exam = _allExams.find(e => e.id === examId);
-  if (!exam) { toast('Exam not found','warn'); return; }
-
-  document.getElementById('edit-exam-id').value        = examId;
-  document.getElementById('edit-ex-name').value        = exam.name || '';
-  document.getElementById('edit-ex-duration').value    = exam.durationMins || 90;
-
-  // Convert ISO datetime to datetime-local format
-  const toLocal = iso => {
-    if (!iso) return '';
-    try {
-      const d = new Date(iso);
-      const pad = n => String(n).padStart(2,'0');
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    } catch(e) { return ''; }
-  };
-  document.getElementById('edit-ex-start').value = toLocal(exam.startTime);
-  document.getElementById('edit-ex-end').value   = toLocal(exam.endTime);
-
-  document.getElementById('edit-exam-modal').classList.add('open');
-}
-
-async function saveEditedExam() {
-  const examId   = document.getElementById('edit-exam-id').value;
-  const name     = document.getElementById('edit-ex-name').value.trim();
-  const start    = document.getElementById('edit-ex-start').value;
-  const end      = document.getElementById('edit-ex-end').value;
-  const duration = parseInt(document.getElementById('edit-ex-duration').value) || 90;
-
-  if (!name)  { toast('Enter an exam name','warn'); return; }
-  if (start && end && new Date(end) <= new Date(start)) {
-    toast('End time must be after start time','warn'); return;
-  }
-
-  if (!fsReady()) { toast('Firestore not connected','err'); return; }
-  try {
-    const updates = { name, durationMins: duration };
-    if (start) updates.startTime = start;
-    if (end)   updates.endTime   = end;
-    await fsDb().collection('exams').doc(examId).update(updates);
-    document.getElementById('edit-exam-modal').classList.remove('open');
-    toast('✅ Exam updated!', 'ok');
-    renderExamManage();
-  } catch(e) {
-    toast('Error: ' + e.message, 'err');
-  }
-}
-
-/* Phase 3 — Student page polls for exam status changes every 30s.
-   This lets the banner and question list auto-update when a professor
-   activates or ends an exam while the student already has the page open. */
-let _stuPollInterval = null;
-
-function startStudentStatusPoll() {
-  clearInterval(_stuPollInterval);
-  _stuPollInterval = setInterval(async () => {
-    if (document.getElementById('page-stu').classList.contains('active')) {
-      await loadQuestionsFromFirestore();
-      renderStuPage();
+async function completeLessonAndNext(courseId, moduleId, lessonId, nextLessonId, nextModuleId) {
+  await markLessonComplete(courseId, moduleId, lessonId);
+  toast('✅ Lesson complete!','ok',2000);
+  if (nextLessonId) {
+    openLesson(courseId, nextModuleId, nextLessonId);
+  } else {
+    // Check if there's a quiz for this module
+    const course = coursesCatalog.find(c=>c.id===courseId);
+    const mod = (course?.modules||[]).find(m=>m.id===moduleId);
+    if (mod?.hasQuiz) {
+      openQuiz(courseId, moduleId);
+    } else {
+      toast('🎉 You have completed the course!','ok',5000);
+      showPage('certificate');
+      await renderCertificate(courseId);
     }
-  }, 30000); // every 30 seconds
+  }
 }
 
-// Hook into onAuthSuccess to start the poll for students
-const _origOnAuthSuccess = window.onAuthSuccess;
-window.onAuthSuccess = function() {
-  _origOnAuthSuccess.apply(this, arguments);
-  if (typeof currentRole !== 'undefined' && currentRole === 'stu') {
-    startStudentStatusPoll();
+function updateLearnProgress(courseId) {
+  const enrollment = myEnrollments[courseId];
+  const pct = enrollment?.progress || 0;
+  const fill = document.getElementById('learn-progress-fill');
+  const chip = document.getElementById('learn-pct');
+  if (fill) fill.style.width = pct + '%';
+  if (chip) chip.textContent = pct + '%';
+}
+
+function youtubeEmbed(url) {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([\w-]{11})/);
+  return m ? `https://www.youtube.com/embed/${m[1]}` : null;
+}
+
+function renderMarkdown(md) {
+  return md
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>')
+    .replace(/\n/g,'<br>');
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   QUIZ VIEW
+   ────────────────────────────────────────────────────────────────── */
+async function openQuiz(courseId, moduleId) {
+  showPage('quiz');
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  document.getElementById('quiz-course-name').textContent = course?.title||'Quiz';
+  let questions = [];
+  if (fsReady()) {
+    try {
+      const snap = await db.collection('courses').doc(courseId)
+        .collection('quizzes').doc(moduleId).get();
+      if (snap.exists) questions = snap.data().questions || [];
+    } catch(e) { console.warn('loadQuiz error:', e); }
   }
+  if (!questions.length) questions = getDemoQuizQuestions();
+  quizState = { courseId, moduleId, questions, current: 0, answers: [], score: null };
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  const q = quizState.questions[quizState.current];
+  const total = quizState.questions.length;
+  const content = document.getElementById('quiz-content');
+  const progress = Array.from({length:total},(_,i)=>
+    `<div class="quiz-dot ${i<quizState.current?'done':i===quizState.current?'current':''}"></div>`
+  ).join('');
+  const opts = (q.options||[]).map((opt,i) => `
+    <div class="quiz-opt" onclick="selectQuizOpt(${i})" id="qopt-${i}">
+      <div class="quiz-opt-letter">${String.fromCharCode(65+i)}</div>
+      <div>${sanitize(opt)}</div>
+    </div>`).join('');
+  content.innerHTML = `
+    <div class="quiz-header">
+      <div class="quiz-progress">${progress}</div>
+      <div class="quiz-question-num">Question ${quizState.current+1} of ${total}</div>
+      <div class="quiz-question-text">${sanitize(q.question||q.text||'')}</div>
+      <div class="quiz-options">${opts}</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">
+      <button class="btn btn-g" id="quiz-next-btn" onclick="submitQuizAnswer()" disabled>
+        ${quizState.current < total-1 ? 'Next →' : 'Submit Quiz'}
+      </button>
+    </div>`;
+}
+
+let selectedQuizOpt = null;
+function selectQuizOpt(i) {
+  selectedQuizOpt = i;
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{
+    el.classList.toggle('selected', idx===i);
+  });
+  document.getElementById('quiz-next-btn').disabled = false;
+}
+
+async function submitQuizAnswer() {
+  const q = quizState.questions[quizState.current];
+  if (selectedQuizOpt === null) return;
+  quizState.answers.push(selectedQuizOpt);
+  selectedQuizOpt = null;
+  quizState.current++;
+  if (quizState.current < quizState.questions.length) {
+    renderQuizQuestion();
+  } else {
+    // Calculate score
+    let correct = 0;
+    quizState.questions.forEach((q,i)=>{
+      if (q.correctIndex === quizState.answers[i]) correct++;
+    });
+    const score = Math.round((correct/quizState.questions.length)*100);
+    quizState.score = score;
+    await saveQuizScore(quizState.courseId, quizState.moduleId, score);
+    showQuizResult(correct, quizState.questions.length, score);
+  }
+}
+
+function showQuizResult(correct, total, score) {
+  const passed = score >= 70;
+  const content = document.getElementById('quiz-content');
+  const pct = score + '%';
+  content.innerHTML = `
+    <div class="quiz-result-card ${passed?'':''}">
+      <div style="font-size:3rem;margin-bottom:16px">${passed?'🎉':'😊'}</div>
+      <h2 style="color:${passed?'var(--stu)':'var(--amber)'};font-size:1.6rem;margin-bottom:8px">
+        ${passed?'Quiz Passed!':'Keep Learning!'}
+      </h2>
+      <p style="color:var(--soft);margin-bottom:20px">
+        You got <strong style="color:var(--head)">${correct} out of ${total}</strong> questions correct.
+      </p>
+      <div style="font-size:3rem;font-weight:900;color:${passed?'var(--stu)':'var(--amber)'};margin-bottom:8px">${score}%</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:24px">${passed?'Pass threshold: 70%':score+'% — Need 70% to pass'}</div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        ${!passed?`<button class="btn btn-ghost" onclick="openQuiz('${quizState.courseId}','${quizState.moduleId}')">↺ Retry</button>`:''}
+        <button class="btn btn-g" onclick="openLearnView('${quizState.courseId}')">
+          ${passed?'Continue Course →':'Back to Lessons'}
+        </button>
+        ${passed?`<button class="btn btn-blue" onclick="showPage('certificate');renderCertificate('${quizState.courseId}')">🎓 View Certificate</button>`:''}
+      </div>
+    </div>`;
+}
+
+function exitQuiz() {
+  if (quizState?.courseId) openLearnView(quizState.courseId);
+  else showStuSection('catalog');
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MY LEARNING
+   ────────────────────────────────────────────────────────────────── */
+async function renderMyLearning() {
+  await loadCourses();
+  await loadMyEnrollments();
+  const el = document.getElementById('my-learning-content');
+  if (!el) return;
+  const enrolled = Object.entries(myEnrollments);
+  if (!enrolled.length) {
+    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted)">
+      <div style="font-size:3rem;margin-bottom:14px">📖</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--head);margin-bottom:8px">No Courses Yet</div>
+      <p style="font-size:.85rem">Browse the catalog to find your first course!</p>
+      <button class="btn btn-g" style="margin-top:16px" onclick="showStuSection('catalog')">Browse Catalog →</button>
+    </div>`; return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'my-learning-grid';
+  for (const [courseId, enrollment] of enrolled) {
+    const course = coursesCatalog.find(c=>c.id===courseId) || { title: courseId, thumbnail:'📚' };
+    const pct = enrollment.progress || 0;
+    const card = document.createElement('div');
+    card.className = 'my-course-card';
+    card.innerHTML = `
+      <div style="font-size:2rem;margin-bottom:10px">${course.thumbnail||'📚'}</div>
+      <div class="my-course-title">${sanitize(course.title||courseId)}</div>
+      <div class="my-course-meta">${course.language||''} · ${course.difficulty||'beginner'}</div>
+      <div class="my-course-pct">${pct}% Complete</div>
+      <div class="course-progress-bar" style="margin-bottom:0"><div class="course-progress-fill" style="width:${pct}%"></div></div>
+      <div class="my-course-actions">
+        <button class="btn btn-g btn-sm" onclick="openLearnView('${courseId}')">Continue</button>
+        ${pct>=100?`<button class="btn btn-blue btn-sm" onclick="showPage('certificate');renderCertificate('${courseId}')">🎓 Certificate</button>`:''}
+      </div>`;
+    grid.appendChild(card);
+  }
+  el.innerHTML = '';
+  el.appendChild(grid);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PHASE 3: CERTIFICATE ENGINE
+   ────────────────────────────────────────────────────────────────── */
+async function renderCertificate(courseId) {
+  currentCourseId = courseId;
+  const content = document.getElementById('cert-content');
+  if (!content) return;
+  content.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px">Generating certificate…</div>';
+  await loadCourses();
+  const cert = await getCertificate(courseId);
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  const enrollment = myEnrollments[courseId];
+  const studentName = cert?.studentName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+  const courseName = cert?.courseName || course?.title || courseId;
+  const score = cert?.score ?? enrollment?.quizScores ? Math.round(Object.values(enrollment?.quizScores||{}).reduce((a,b)=>Number(a)+Number(b),0)/Math.max(Object.values(enrollment?.quizScores||{}).length,1)) : 100;
+  const issuedAt = cert?.issuedAt?.toDate ? cert.issuedAt.toDate().toLocaleDateString() : new Date().toLocaleDateString();
+  const verifyId = cert?.verifyId || genId();
+  const verifyUrl = window.location.origin + window.location.pathname + '?verify=' + verifyId;
+  content.innerHTML = `
+    <div class="cert-card" id="cert-printable">
+      <div class="cert-inner">
+        <div class="cert-logo"><strong>ExamShield</strong> Learning Platform</div>
+        <div style="width:48px;height:2px;background:linear-gradient(90deg,var(--stu),var(--cyan));margin-bottom:28px;border-radius:99px"></div>
+        <div class="cert-title">Certificate of Completion</div>
+        <div style="font-size:.82rem;color:var(--soft);margin-bottom:8px">This certifies that</div>
+        <div class="cert-student-name">${sanitize(studentName)}</div>
+        <div class="cert-subtitle">has successfully completed the course</div>
+        <div class="cert-course-name">🎓 ${sanitize(courseName)}</div>
+        <div class="cert-meta-row">
+          <div class="cert-meta-item">
+            <div class="cert-meta-val">${score}%</div>
+            <div class="cert-meta-lbl">Final Score</div>
+          </div>
+          <div class="cert-meta-item">
+            <div class="cert-meta-val">${issuedAt}</div>
+            <div class="cert-meta-lbl">Issued Date</div>
+          </div>
+          <div class="cert-meta-item">
+            <div class="cert-meta-val">${course?.totalLessons||0}</div>
+            <div class="cert-meta-lbl">Lessons</div>
+          </div>
+        </div>
+        <div class="cert-footer">
+          <div>
+            <div class="cert-verify-id">Verify ID: ${verifyId}</div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px;font-family:var(--ff-mono)">${verifyUrl.substring(0,50)}…</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="text-align:right">
+              <div style="font-size:.78rem;font-weight:700;color:var(--head)">ExamShield</div>
+              <div style="font-size:.62rem;color:var(--muted)">Learning Platform</div>
+            </div>
+            <div class="cert-badge">🏆</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cert-actions">
+      <button class="btn btn-g btn-lg" onclick="downloadCertificatePDF('${sanitize(studentName)}','${sanitize(courseName)}','${verifyId}','${issuedAt}','${score}')">⬇ Download PDF</button>
+      <button class="btn btn-ghost" onclick="copyToClipboard('${verifyUrl}')">🔗 Copy Verify Link</button>
+      <button class="btn btn-ghost" onclick="showStuSection('my-learning')">← My Learning</button>
+    </div>`;
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard?.writeText(text).then(()=>toast('Link copied!','ok')).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); toast('Link copied!','ok');
+  });
+}
+
+/* ── PDF Certificate via canvas/jsPDF ────────────────────────── */
+async function downloadCertificatePDF(studentName, courseName, verifyId, issuedAt, score) {
+  toast('Generating PDF…','info',3000);
+  try {
+    // Generate using canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 1100; canvas.height = 780;
+    const ctx = canvas.getContext('2d');
+    // Background
+    const grad = ctx.createLinearGradient(0,0,1100,780);
+    grad.addColorStop(0,'#0a0c12'); grad.addColorStop(1,'#1e2535');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,1100,780);
+    // Border
+    const bGrad = ctx.createLinearGradient(0,0,1100,780);
+    bGrad.addColorStop(0,'#00e5a0'); bGrad.addColorStop(.5,'#06b6d4'); bGrad.addColorStop(1,'#00e5a0');
+    ctx.strokeStyle = bGrad; ctx.lineWidth = 5;
+    roundRect(ctx, 24, 24, 1052, 732, 20); ctx.stroke();
+    // Inner background
+    ctx.fillStyle = '#111520'; roundRect(ctx,30,30,1040,720,16); ctx.fill();
+    // Accent line
+    const acGrad = ctx.createLinearGradient(60,0,500,0);
+    acGrad.addColorStop(0,'#00e5a0'); acGrad.addColorStop(1,'#06b6d4');
+    ctx.fillStyle = acGrad; ctx.fillRect(60,110,160,3);
+    // Logo text
+    ctx.font = 'bold 28px Arial'; ctx.fillStyle='#00e5a0'; ctx.fillText('ExamShield',60,100);
+    ctx.font = '14px Arial'; ctx.fillStyle='#4a5872'; ctx.fillText('Learning Platform',60,135);
+    // Certificate title
+    ctx.font = 'bold 16px Arial'; ctx.fillStyle='#7b8faa'; ctx.fillText('CERTIFICATE OF COMPLETION',60,200);
+    // "This certifies that"
+    ctx.font = '18px Arial'; ctx.fillStyle='#c2cfe0'; ctx.fillText('This certifies that',60,250);
+    // Student name
+    ctx.font = 'bold 54px Arial'; ctx.fillStyle='#eef2f8';
+    ctx.fillText(studentName.substring(0,28), 60, 320);
+    // "has completed"
+    ctx.font = '18px Arial'; ctx.fillStyle='#7b8faa'; ctx.fillText('has successfully completed',60,370);
+    // Course name box
+    ctx.fillStyle='rgba(0,229,160,0.08)'; roundRect(ctx,60,390,720,66,10); ctx.fill();
+    ctx.strokeStyle='rgba(0,229,160,0.25)'; ctx.lineWidth=1; roundRect(ctx,60,390,720,66,10); ctx.stroke();
+    ctx.font = 'bold 26px Arial'; ctx.fillStyle='#00e5a0';
+    ctx.fillText('🎓 '+courseName.substring(0,42), 80, 432);
+    // Stats
+    const stats = [['Score',''+score+'%',800,280],['Date',issuedAt,920,280],['Grade',score>=90?'A+':score>=80?'A':score>=70?'B':'C',1020,280]];
+    stats.forEach(([lbl,val,x,y])=>{
+      ctx.font='bold 22px Arial'; ctx.fillStyle='#eef2f8'; ctx.textAlign='center'; ctx.fillText(val,x,y);
+      ctx.font='12px Arial'; ctx.fillStyle='#4a5872'; ctx.fillText(lbl.toUpperCase(),x,y+22);
+    });
+    ctx.textAlign='left';
+    // Footer
+    ctx.font='13px monospace'; ctx.fillStyle='#4a5872';
+    ctx.fillText('Verify ID: '+verifyId, 60, 700);
+    ctx.fillText('examshield.app/verify?id='+verifyId, 60, 720);
+    // Badge
+    ctx.font='52px Arial'; ctx.fillText('🏆', 980, 700);
+    // Download
+    const link = document.createElement('a');
+    link.download = 'certificate_'+verifyId.slice(0,8)+'.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('Certificate downloaded!','ok');
+  } catch(e) {
+    console.error('PDF error:', e);
+    toast('Download failed. Try right-clicking and saving the certificate.','err');
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   VERIFY PAGE (Public)
+   ────────────────────────────────────────────────────────────────── */
+async function verifyCert() {
+  const id = document.getElementById('verify-input').value.trim();
+  const result = document.getElementById('verify-result');
+  if (!id) { toast('Enter a verification ID','warn'); return; }
+  result.innerHTML = '<div style="color:var(--muted)">Searching…</div>';
+  let cert = null;
+  if (fsReady()) {
+    try {
+      const snap = await db.collection('certificates').where('verifyId','==',id).limit(1).get();
+      if (!snap.empty) cert = snap.docs[0].data();
+    } catch(e) { console.warn('verifyCert error:', e); }
+  }
+  if (!cert) {
+    result.innerHTML = `
+      <div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);border-radius:var(--r-lg);padding:20px;text-align:center;color:var(--danger)">
+        <div style="font-size:2rem;margin-bottom:8px">❌</div>
+        <div style="font-weight:700">Certificate Not Found</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-top:4px">No certificate found with this ID. Please check the ID and try again.</div>
+      </div>`;
+    return;
+  }
+  const issued = cert.issuedAt?.toDate ? cert.issuedAt.toDate().toLocaleDateString() : 'N/A';
+  result.innerHTML = `
+    <div style="background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2);border-radius:var(--r-lg);padding:24px;text-align:center">
+      <div style="font-size:2.5rem;margin-bottom:10px">✅</div>
+      <div style="font-size:1rem;font-weight:800;color:var(--stu);margin-bottom:16px">Certificate Verified!</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;margin-bottom:16px">
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px">Student</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--head)">${sanitize(cert.studentName)}</div>
+        </div>
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px;font-size:.62rem">Course</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--head)">${sanitize(cert.courseName)}</div>
+        </div>
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px">Score</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--stu)">${cert.score}%</div>
+        </div>
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px">Issued</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--head)">${issued}</div>
+        </div>
+      </div>
+      <div style="font-family:var(--ff-mono);font-size:.65rem;color:var(--muted)">Verify ID: ${id}</div>
+    </div>`;
+}
+
+/* Check URL for ?verify= on page load */
+function checkVerifyParam() {
+  const params = new URLSearchParams(window.location.search);
+  const vid = params.get('verify');
+  if (vid) {
+    showPage('verify');
+    document.getElementById('verify-input').value = vid;
+    verifyCert();
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   ADMIN COURSE BUILDER (Professor)
+   ────────────────────────────────────────────────────────────────── */
+function openCourseBuilder() {
+  courseBuilderModules = [];
+  document.getElementById('cb-title').value = '';
+  document.getElementById('cb-lang').value = '';
+  document.getElementById('cb-desc').value = '';
+  document.getElementById('cb-thumb').value = '📚';
+  document.getElementById('cb-modules-list').innerHTML = '';
+  document.getElementById('course-builder-modal').classList.add('open');
+}
+function closeCourseBuilder() { document.getElementById('course-builder-modal').classList.remove('open'); }
+
+let cbModuleCount = 0;
+function addCourseModule() {
+  const idx = cbModuleCount++;
+  courseBuilderModules.push({ id:'mod-'+genId(), title:'', lessons:[], hasQuiz:false });
+  const el = document.getElementById('cb-modules-list');
+  const row = document.createElement('div');
+  row.className = 'builder-step';
+  row.id = 'cbmod-'+idx;
+  row.innerHTML = `
+    <div class="builder-step-head">
+      <div class="step-num">${idx+1}</div>
+      <input class="inp" placeholder="Module title e.g. Basics" style="flex:1" oninput="courseBuilderModules[${idx}].title=this.value">
+      <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--soft)">
+        <input type="checkbox" onchange="courseBuilderModules[${idx}].hasQuiz=this.checked" style="accent-color:var(--stu)">
+        Has Quiz
+      </label>
+    </div>
+    <div id="cbmod-lessons-${idx}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addCBLesson(${idx})">+ Add Lesson</button>`;
+  el.appendChild(row);
+}
+
+function addCBLesson(modIdx) {
+  const lessonIdx = courseBuilderModules[modIdx].lessons.length;
+  courseBuilderModules[modIdx].lessons.push({ id:'l-'+genId(), title:'', type:'article', videoUrl:'', content:'', duration:'' });
+  const el = document.getElementById('cbmod-lessons-'+modIdx);
+  const row = document.createElement('div');
+  row.className = 'lesson-builder-item';
+  row.innerHTML = `
+    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
+    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
+    <select class="inp" style="width:100px;padding:7px"
+            onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value">
+      <option value="article">Article</option>
+      <option value="video">Video</option>
+    </select>
+    <input class="inp" placeholder="YouTube URL / content" style="flex:2;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
+    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">`;
+  el.appendChild(row);
+}
+
+async function saveCourse() {
+  const title = document.getElementById('cb-title').value.trim();
+  const lang  = document.getElementById('cb-lang').value.trim();
+  const desc  = document.getElementById('cb-desc').value.trim();
+  const diff  = document.getElementById('cb-diff').value;
+  const price = document.getElementById('cb-price').value;
+  const thumb = document.getElementById('cb-thumb').value.trim() || '📚';
+  if (!title) { toast('Course title is required','warn'); return; }
+  const totalLessons = courseBuilderModules.reduce((a,m)=>a+m.lessons.length,0);
+  const course = {
+    title, language:lang, description:desc, difficulty:diff,
+    price, thumbnail:thumb, totalLessons,
+    modules: courseBuilderModules,
+    createdBy: currentUser?.uid || 'unknown',
+    createdAt: fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
+  };
+  if (fsReady()) {
+    try {
+      const ref = await db.collection('courses').add(course);
+      course.id = ref.id;
+      // Save quizzes for modules that have them
+      for (const mod of courseBuilderModules) {
+        if (mod.hasQuiz) {
+          // Create an empty quiz placeholder
+          await db.collection('courses').doc(ref.id)
+            .collection('quizzes').doc(mod.id).set({ questions: [], moduleId: mod.id });
+        }
+      }
+      toast('Course created! 🎓','ok');
+    } catch(e) { toast('Save failed: '+e.message,'err'); return; }
+  } else {
+    course.id = 'demo-' + genId();
+    coursesCatalog.unshift(course);
+    toast('Course created (demo mode)','ok');
+  }
+  closeCourseBuilder();
+  profNav('course-analytics');
+}
+
+/* ── Quiz Builder ────────────────────────────────────────────── */
+let quizBuilderState = { courseId:'', moduleId:'' };
+let quizBuilderQuestions = [];
+
+function openQuizBuilder(courseId, moduleId) {
+  quizBuilderState = { courseId, moduleId };
+  quizBuilderQuestions = [];
+  document.getElementById('qb-module-name').textContent = 'Quiz for module: ' + moduleId;
+  document.getElementById('qb-questions-list').innerHTML = '';
+  document.getElementById('quiz-builder-modal').classList.add('open');
+}
+function closeQuizBuilder() { document.getElementById('quiz-builder-modal').classList.remove('open'); }
+
+let qbQCount = 0;
+function addQuizQuestion() {
+  const idx = qbQCount++;
+  quizBuilderQuestions.push({ question:'', options:['','','',''], correctIndex:0 });
+  const el = document.getElementById('qb-questions-list');
+  const item = document.createElement('div');
+  item.className = 'quiz-builder-item';
+  const opts = ['A','B','C','D'].map((letter,i)=>`
+    <div class="quiz-opt-input">
+      <input type="radio" name="qb-correct-${idx}" value="${i}" ${i===0?'checked':''}
+             onchange="quizBuilderQuestions[${idx}].correctIndex=${i}">
+      <span style="font-size:.72rem;color:var(--muted);width:16px">${letter}</span>
+      <input class="inp" placeholder="Option ${letter}" style="flex:1;padding:6px 10px"
+             oninput="quizBuilderQuestions[${idx}].options[${i}]=this.value">
+    </div>`).join('');
+  item.innerHTML = `
+    <div style="font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:6px">Q${idx+1}</div>
+    <textarea class="inp" placeholder="Enter question…" rows="2" style="margin-bottom:8px"
+              oninput="quizBuilderQuestions[${idx}].question=this.value"></textarea>
+    <div style="font-size:.65rem;color:var(--muted);margin-bottom:6px">Options (select correct answer):</div>
+    ${opts}`;
+  el.appendChild(item);
+}
+
+async function saveQuiz() {
+  const { courseId, moduleId } = quizBuilderState;
+  if (!quizBuilderQuestions.length) { toast('Add at least one question','warn'); return; }
+  if (fsReady()) {
+    try {
+      await db.collection('courses').doc(courseId)
+        .collection('quizzes').doc(moduleId)
+        .set({ questions: quizBuilderQuestions, moduleId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      toast('Quiz saved!','ok');
+    } catch(e) { toast('Save failed: '+e.message,'err'); return; }
+  } else {
+    toast('Quiz saved (demo mode)','ok');
+  }
+  closeQuizBuilder();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   COURSE ANALYTICS (Professor panel)
+   ────────────────────────────────────────────────────────────────── */
+async function renderCourseAnalytics() {
+  const el = document.getElementById('pp-course-analytics');
+  if (!el) return;
+  await loadCourses();
+  let enrollCount = 0, certCount = 0;
+  if (fsReady()) {
+    try {
+      const e = await db.collection('enrollments').get();
+      enrollCount = e.size;
+      const c = await db.collection('certificates').get();
+      certCount = c.size;
+    } catch(err) {}
+  }
+  const statGrid = el.querySelector('.course-analytic-grid');
+  if (statGrid) {
+    statGrid.innerHTML = `
+      <div class="stat-card c-blue"><div class="stat-val blue">${coursesCatalog.length}</div><div class="stat-label">Total Courses</div></div>
+      <div class="stat-card c-green"><div class="stat-val green">${enrollCount}</div><div class="stat-label">Total Enrollments</div></div>
+      <div class="stat-card c-amber"><div class="stat-val amber">${certCount}</div><div class="stat-label">Certificates Issued</div></div>`;
+  }
+  const courseList = el.querySelector('#course-list-table');
+  if (courseList) {
+    courseList.innerHTML = coursesCatalog.length ? coursesCatalog.map(c=>`
+      <tr>
+        <td>${sanitize(c.title)}</td>
+        <td style="font-family:var(--ff-mono);font-size:.75rem">${sanitize(c.language||'—')}</td>
+        <td><span class="diff ${c.difficulty==='beginner'?'easy':c.difficulty==='advanced'?'hard':'med'}">${c.difficulty}</span></td>
+        <td>${c.totalLessons||0}</td>
+        <td><span class="diff ${c.price==='free'?'easy':'med'}">${c.price}</span></td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="openQuizBuilder('${c.id}','mod-1')">+ Quiz</button>
+            <button class="btn btn-r btn-sm" onclick="deleteCourse('${c.id}')">🗑</button>
+          </div>
+        </td>
+      </tr>`).join('')
+      : '<tr><td colspan="6" style="color:var(--muted)">No courses yet.</td></tr>';
+  }
+}
+
+async function deleteCourse(courseId) {
+  if (!confirm('Delete this course?')) return;
+  coursesCatalog = coursesCatalog.filter(c=>c.id!==courseId);
+  if (fsReady()) {
+    try { await db.collection('courses').doc(courseId).delete(); } catch(e) {}
+  }
+  toast('Course deleted','warn');
+  renderCourseAnalytics();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   DEMO DATA
+   ────────────────────────────────────────────────────────────────── */
+function getDemoCourses() {
+  return [
+    {
+      id:'demo-py', title:'Python for Beginners', language:'Python', difficulty:'beginner',
+      price:'free', thumbnail:'🐍', description:'Learn Python from scratch with hands-on exercises. Covers variables, loops, functions, and more.',
+      totalLessons: 12, instructorName:'Prof. Smith',
+      modules:[
+        { id:'m1', title:'Getting Started', hasQuiz:true, lessons:[
+          { id:'l1', title:'What is Python?', type:'article', duration:'5m', content:'# Introduction to Python\n\nPython is a high-level, interpreted programming language...\n\n## Why Python?\n- **Easy to learn** — clean, readable syntax\n- **Versatile** — web, data science, AI\n- **Large community** — tons of libraries\n\n```\nprint("Hello, World!")\n```' },
+          { id:'l2', title:'Installing Python', type:'video', duration:'8m', videoUrl:'https://www.youtube.com/watch?v=YYXdXT2l-Gg', content:'Install Python from python.org and set up your environment.' },
+          { id:'l3', title:'Your First Program', type:'article', duration:'10m', content:'## Hello World\n\nLet\'s write your first Python program:\n\n```\n# My first program\nname = input("What is your name? ")\nprint("Hello,", name)\n```\n\n> **Tip:** Save your file with a .py extension!' },
+        ]},
+        { id:'m2', title:'Variables & Data Types', hasQuiz:true, lessons:[
+          { id:'l4', title:'Variables', type:'article', duration:'12m', content:'## Variables in Python\n\nVariables store data values:\n\n```\nx = 5\nname = "Alice"\npi = 3.14\nis_student = True\n```\n\n**Types:** int, float, str, bool' },
+          { id:'l5', title:'Strings', type:'article', duration:'10m', content:'## String Operations\n\n```\ngreeting = "Hello, World!"\nprint(len(greeting))  # 13\nprint(greeting.upper())\nprint(greeting[0:5])  # Hello\n```' },
+        ]},
+      ],
+    },
+    {
+      id:'demo-js', title:'JavaScript Essentials', language:'JavaScript', difficulty:'intermediate',
+      price:'free', thumbnail:'⚡', description:'Master modern JavaScript including ES6+, async/await, and DOM manipulation.',
+      totalLessons: 18, instructorName:'Dr. Chen',
+      modules:[
+        { id:'m1', title:'JS Fundamentals', hasQuiz:true, lessons:[
+          { id:'l1', title:'JavaScript Overview', type:'article', duration:'7m', content:'# JavaScript: The Language of the Web\n\nJavaScript runs in every browser and powers interactive web experiences.\n\n```javascript\nconsole.log("Hello from JS!");\nconst sum = (a, b) => a + b;\nconsole.log(sum(3, 4)); // 7\n```' },
+          { id:'l2', title:'Variables & Scope', type:'video', duration:'15m', videoUrl:'https://www.youtube.com/watch?v=9emXNzqCKyg', content:'Understanding var, let, and const.' },
+        ]},
+      ],
+    },
+    {
+      id:'demo-dsa', title:'Data Structures & Algorithms', language:'DSA', difficulty:'advanced',
+      price:'paid', thumbnail:'🧠', description:'Master arrays, linked lists, trees, graphs, sorting, and dynamic programming.',
+      totalLessons: 24, instructorName:'Prof. Johnson',
+      modules:[
+        { id:'m1', title:'Arrays & Sorting', hasQuiz:true, lessons:[
+          { id:'l1', title:'Array Basics', type:'article', duration:'10m', content:'## Arrays\n\nAn array is a collection of elements stored at contiguous memory locations.\n\n```python\narr = [1, 2, 3, 4, 5]\nprint(arr[0])  # 1\narr.append(6)\nprint(len(arr))  # 6\n```' },
+        ]},
+      ],
+    },
+  ];
+}
+
+function getDemoQuizQuestions() {
+  return [
+    { question:'What is the output of print(2 ** 3) in Python?', options:['6','8','9','None'], correctIndex:1 },
+    { question:'Which keyword is used to define a function in Python?', options:['function','def','func','define'], correctIndex:1 },
+    { question:'What does "len()" function return?', options:['Last element','Type of object','Length of object','Nothing'], correctIndex:2 },
+    { question:'How do you create a comment in Python?', options:['// comment','/* comment */','# comment','-- comment'], correctIndex:2 },
+  ];
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PROFESSOR PANEL UPDATES — add course tabs
+   ────────────────────────────────────────────────────────────────── */
+// Override renderProfPanel to handle course panels
+const _origRenderProfPanel = window.renderProfPanel || function(){};
+window.renderProfPanel = function(panel) {
+  _origRenderProfPanel(panel);
+  if (panel === 'course-analytics') renderCourseAnalytics();
 };
+
+/* ──────────────────────────────────────────────────────────────────
+   UPDATED onAuthSuccess — route students to catalog
+   ────────────────────────────────────────────────────────────────── */
+const _origOnAuthSuccess = window.onAuthSuccess;
+window.onAuthSuccess = async function() {
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+  if (currentRole === 'prof') {
+    document.getElementById('prof-av').textContent   = name[0].toUpperCase();
+    document.getElementById('prof-name').textContent = name;
+    renderProfDashboard();
+    showPage('prof');
+    toast('Welcome, '+name+'! 👨‍🏫','ok');
+  } else {
+    // Students go to catalog first, exams accessible via tab
+    await loadCourses();
+    await loadMyEnrollments();
+    document.getElementById('cat-av').textContent  = name[0].toUpperCase();
+    document.getElementById('cat-name').textContent = name;
+    document.getElementById('ml-av').textContent  = name[0].toUpperCase();
+    document.getElementById('ml-name').textContent = name;
+    showStuSection('catalog');
+    toast('Welcome back, '+name+'! 🎓','ok');
+    // Also start pyodide for coding exercises
+    document.getElementById('py-loader').classList.remove('hidden');
+    startPyodide();
+    _animatePyLoader();
+  }
+  // Check for verify URL param
+  checkVerifyParam();
+};
+
+/* ──────────────────────────────────────────────────────────────────
+   UPDATED Firestore rules display (security panel)
+   ────────────────────────────────────────────────────────────────── */
+// Extend the probeFirestorePermissions to check new collections
+const _origProbeFS = window.probeFirestorePermissions;
+window.probeFirestorePermissions = async function() {
+  await _origProbeFS?.();
+  // Additional probe for new collections
+  if (!fsReady()) return;
+  const newCols = ['courses','enrollments','certificates'];
+  newCols.forEach(async col => {
+    try { await db.collection(col).limit(1).get(); }
+    catch(e) { /* expected for students */ }
+  });
+};
+
 
 
 </script>
