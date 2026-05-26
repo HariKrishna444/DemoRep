@@ -2838,9 +2838,47 @@ window.addEventListener('message', function(ev) {
 
 function startPyodide() {
   if (_pyFrame) return;
+  // Build the Pyodide runner as an inline blob so no external iframe src is needed.
+  // Using unpkg.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
+  // errors in Edge/Safari caused by jsdelivr's cross-origin IndexedDB writes.
+  var pyRunnerHTML = [
+    '<!DOCTYPE html><html><head><meta charset="UTF-8">',
+    '<script src="https://unpkg.com/pyodide@0.25.1/pyodide.js"><\/script>',
+    '<script>',
+    'var pyodide = null;',
+    'async function init() {',
+    '  pyodide = await loadPyodide();',
+    '  // Redirect stdout/stderr',
+    '  pyodide.runPython("import sys, io");',
+    '  parent.postMessage({type:"py_ready"},"*");',
+    '}',
+    'init().catch(function(e){ parent.postMessage({type:"py_ready",error:String(e)},"*"); });',
+    'window.addEventListener("message", async function(ev) {',
+    '  if (!ev.data || ev.data.t !== "run") return;',
+    '  var id = ev.data.id, code = ev.data.code, stdin = ev.data.stdin || "";',
+    '  try {',
+    '    pyodide.runPython("import sys, io\n_stdout=io.StringIO()\n_stderr=io.StringIO()\nsys.stdout=_stdout\nsys.stderr=_stderr");',
+    '    if (stdin) {',
+    '      pyodide.runPython("import io as _io\nsys.stdin=_io.StringIO(" + JSON.stringify(stdin) + ")");',
+    '    }',
+    '    await pyodide.runPythonAsync(code);',
+    '    var out = pyodide.runPython("_stdout.getvalue()");',
+    '    var err = pyodide.runPython("_stderr.getvalue()");',
+    '    pyodide.runPython("sys.stdout=sys.__stdout__\nsys.stderr=sys.__stderr__");',
+    '    parent.postMessage({id:id,ok:true,stdout:out,stderr:err,ec:0},"*");',
+    '  } catch(e) {',
+    '    var errMsg = String(e);',
+    '    try { pyodide.runPython("sys.stdout=sys.__stdout__\nsys.stderr=sys.__stderr__"); } catch(_) {}',
+    '    parent.postMessage({id:id,ok:false,error:errMsg,stdout:"",stderr:errMsg,ec:1},"*");',
+    '  }',
+    '});',
+    '<\/script></head><body></body></html>'
+  ].join("\n");
+  var blob = new Blob([pyRunnerHTML], {type: 'text/html'});
+  var blobUrl = URL.createObjectURL(blob);
   var f = document.createElement('iframe');
   f.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px;';
-  f.src = 'pyrunner.html';
+  f.src = blobUrl;
   document.body.appendChild(f);
   _pyFrame = f;
 }
@@ -4339,6 +4377,11 @@ function loadMonaco() {
       cursorBlinking:'expand',
       smoothScrolling:true,
       suggest:{showSnippets:true},
+      tabSize: 4,
+      insertSpaces: true,
+      detectIndentation: false,
+      autoIndent: 'full',
+      formatOnType: true,
     });
 
     // Block paste via Monaco API
@@ -4502,13 +4545,19 @@ function removeRunning() { document.getElementById('run-ind')?.remove(); }
    CODE EXECUTION (Pyodide for Python)
    ═══════════════════════════════════════════════════════════════ */
 
+// Strip emoji/symbol chars that appear at the START of a line outside strings
+// e.g. "✅ Example with List" copied from problem description into the editor.
+function sanitizePythonCode(code) {
+  return code.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2700}-\u{27FF}\u{200B}-\u{200F}]+\s*/gmu, '');
+}
+
 async function pistonExecute(code, lang, stdin) {
   var engine = PISTON_LANGS[lang];
   if (engine === null) throw new Error('BROWSER_RENDER');
   if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
   if (!_pyFrame) startPyodide();
   await waitPyReady(60000);
-  var r = await runPy(code, stdin || '');
+  var r = await runPy(sanitizePythonCode(code), stdin || '');
   return { run: { stdout: r.stdout, stderr: r.stderr, code: r.ec, output: r.stdout }, compile: {} };
 }
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
