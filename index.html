@@ -2007,6 +2007,18 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == uid();
       allow update: if isProf();
     }
+
+    // ── module_progress/ — per-module completion tracking ─────────
+    match /module_progress/{docId} {
+      allow read:  if isProf() || (isSignedIn() && resource.data.userId == uid());
+      allow write: if isSignedIn() && request.resource.data.userId == uid();
+    }
+
+    // ── cert_verify/ — public certificate verification index ──────
+    match /cert_verify/{verifyId} {
+      allow read:  if true; // Public — anyone with the ID can verify
+      allow write: if isSignedIn();
+    }
   }
 }</pre>
           </div>
@@ -5954,7 +5966,11 @@ async function loadCourses() {
   }
   try {
     const snap = await db.collection('courses').orderBy('createdAt','desc').get();
-    coursesCatalog = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    coursesCatalog = snap.docs.map(doc => {
+      const d = doc.data();
+      d.price = 'free'; // All courses are free
+      return { id: doc.id, ...d };
+    });
     if (!coursesCatalog.length) coursesCatalog = getDemoCourses();
   } catch(e) {
     console.warn('loadCourses error:', e);
@@ -6802,7 +6818,8 @@ async function saveCourse() {
   const totalLessons = courseBuilderModules.reduce((a,m)=>a+m.lessons.length,0);
   const course = {
     title, language:lang, description:desc, difficulty:diff,
-    price, thumbnail:thumb, totalLessons,
+    price: 'free', // All courses are free
+    thumbnail:thumb, totalLessons,
     modules: courseBuilderModules,
     createdBy: currentUser?.uid || 'unknown',
     createdAt: fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
@@ -6914,9 +6931,10 @@ async function renderCourseAnalytics() {
         <td style="font-family:var(--ff-mono);font-size:.75rem">${sanitize(c.language||'—')}</td>
         <td><span class="diff ${c.difficulty==='beginner'?'easy':c.difficulty==='advanced'?'hard':'med'}">${c.difficulty}</span></td>
         <td>${c.totalLessons||0}</td>
-        <td><span class="diff ${c.price==='free'?'easy':'med'}">${c.price}</span></td>
+        <td><span class="diff easy">free</span></td>
         <td>
           <div style="display:flex;gap:6px">
+            <button class="btn btn-blue btn-sm" onclick="openAddModuleModal('${c.id}')">+ Module</button>
             <button class="btn btn-ghost btn-sm" onclick="openQuizBuilder('${c.id}','mod-1')">+ Quiz</button>
             <button class="btn btn-r btn-sm" onclick="deleteCourse('${c.id}')">🗑</button>
           </div>
@@ -6970,7 +6988,7 @@ function getDemoCourses() {
     },
     {
       id:'demo-dsa', title:'Data Structures & Algorithms', language:'DSA', difficulty:'advanced',
-      price:'paid', thumbnail:'🧠', description:'Master arrays, linked lists, trees, graphs, sorting, and dynamic programming.',
+      price:'free', thumbnail:'🧠', description:'Master arrays, linked lists, trees, graphs, sorting, and dynamic programming.',
       totalLessons: 24, instructorName:'Prof. Johnson',
       modules:[
         { id:'m1', title:'Arrays & Sorting', hasQuiz:true, lessons:[
@@ -7022,10 +7040,9 @@ window.onAuthSuccess = async function() {
     document.getElementById('ml-name').textContent = name;
     showStuSection('catalog');
     toast('Welcome back, '+name+'! 🎓','ok');
-    // Also start pyodide for coding exercises
-    document.getElementById('py-loader').classList.remove('hidden');
-    startPyodide();
-    _animatePyLoader();
+    // NOTE: Pyodide is NOT started here — it starts lazily when:
+    //   (a) student opens a Python course lesson with a playground, OR
+    //   (b) student enters the Exam platform
   }
   // Check for verify URL param
   checkVerifyParam();
@@ -7040,14 +7057,444 @@ window.probeFirestorePermissions = async function() {
   await _origProbeFS?.();
   // Additional probe for new collections
   if (!fsReady()) return;
-  const newCols = ['courses','enrollments','certificates'];
+  const newCols = ['courses','enrollments','certificates','module_progress'];
   newCols.forEach(async col => {
     try { await db.collection(col).limit(1).get(); }
     catch(e) { /* expected for students */ }
   });
 };
 
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE: LAZY PYODIDE — only loads after student opens Python course
+   or enters the exam platform
+   ══════════════════════════════════════════════════════════════════ */
+let _pyodideStarted = false;
 
+function ensurePyodideRunning() {
+  if (_pyodideStarted) return;
+  _pyodideStarted = true;
+  document.getElementById('py-loader').classList.remove('hidden');
+  startPyodide();
+  _animatePyLoader();
+}
+
+// Hook into the Exam page navigation — start Pyodide when student enters exams
+const _origShowStuSection = window.showStuSection;
+window.showStuSection = function(section) {
+  _origShowStuSection(section);
+};
+
+// Override openLearnView to start Pyodide when entering a Python course
+const _origOpenLearnView = window.openLearnView;
+window.openLearnView = async function(courseId) {
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  if (course && (course.language||'').toLowerCase().includes('python')) {
+    ensurePyodideRunning();
+  }
+  return _origOpenLearnView.apply(this, arguments);
+};
+
+// Start Pyodide when student navigates to exam tab
+const _origRenderStuPage = window.renderStuPage;
+window.renderStuPage = function() {
+  ensurePyodideRunning();
+  return _origRenderStuPage?.apply(this, arguments);
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE: PYTHON PLAYGROUND in lesson content (for Python courses)
+   Appends an inline Pyodide REPL below lesson content
+   ══════════════════════════════════════════════════════════════════ */
+
+// Default exercises per lesson title keyword
+const PY_EXERCISES = {
+  'hello':     '# Hello World\nprint("Hello, World!")\n',
+  'variable':  '# Variables & Data Types\nname = "Alice"\nage = 20\npi = 3.14\nprint(name, age, pi)\n',
+  'loop':      '# Loops\nfor i in range(1, 6):\n    print(f"Count: {i}")\n\n# While loop\nx = 3\nwhile x > 0:\n    print(f"x = {x}")\n    x -= 1\n',
+  'string':    '# String Operations\ngreeting = "Hello, World!"\nprint(len(greeting))\nprint(greeting.upper())\nprint(greeting[0:5])\nprint(greeting.split(","))\n',
+  'function':  '# Functions\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Alice"))\nprint(greet("Bob"))\n',
+  'list':      '# Lists\nfruits = ["apple", "banana", "cherry"]\nfruits.append("date")\nprint(fruits)\nprint(fruits[1])\nfor fruit in fruits:\n    print(fruit)\n',
+  'default':   '# Python Playground\n# Edit this code and click Run!\nprint("Hello from Python!")\n',
+};
+
+function getPyExercise(lessonTitle) {
+  const t = (lessonTitle||'').toLowerCase();
+  for (const [key, code] of Object.entries(PY_EXERCISES)) {
+    if (t.includes(key)) return code;
+  }
+  return PY_EXERCISES['default'];
+}
+
+function injectPythonPlayground(lessonTitle) {
+  const area = document.getElementById('lesson-content-area');
+  if (!area) return;
+  if (area.querySelector('.py-playground')) return; // already injected
+  const defaultCode = getPyExercise(lessonTitle);
+  const playground = document.createElement('div');
+  playground.className = 'py-playground';
+  playground.style.cssText = `
+    margin-top:28px;background:var(--ink2);border:1px solid rgba(0,229,160,.25);
+    border-radius:var(--r-lg);overflow:hidden;
+  `;
+  playground.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(0,229,160,.06);border-bottom:1px solid rgba(0,229,160,.15)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:1.1rem">🐍</span>
+        <span style="font-size:.82rem;font-weight:700;color:var(--stu)">Python Playground</span>
+        <span style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono)">Powered by Pyodide</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="resetPlayground(this)">↺ Reset</button>
+        <button class="btn btn-g btn-sm" id="py-run-btn" onclick="runPlayground(this)">▶ Run Code</button>
+      </div>
+    </div>
+    <div style="position:relative">
+      <textarea id="py-code-area" spellcheck="false" style="
+        width:100%;min-height:160px;resize:vertical;
+        background:var(--ink);color:var(--head);
+        font-family:var(--ff-mono);font-size:.82rem;line-height:1.6;
+        padding:16px;border:none;outline:none;
+        border-bottom:1px solid var(--line);
+      ">${defaultCode}</textarea>
+    </div>
+    <div style="padding:4px 16px 6px;background:var(--ink);border-bottom:1px solid var(--line)">
+      <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:var(--ff-mono)">Stdin (optional)</label>
+      <input id="py-stdin-area" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--ff-mono);font-size:.78rem;color:var(--soft);padding:4px 0" placeholder="Enter input for your program...">
+    </div>
+    <div id="py-output" style="
+      padding:14px 16px;font-family:var(--ff-mono);font-size:.8rem;
+      min-height:64px;white-space:pre-wrap;color:var(--stu);
+      background:var(--ink);
+    ">▶ Click "Run Code" to execute…</div>`;
+  area.appendChild(playground);
+  // Store default code for reset
+  playground.dataset.defaultCode = defaultCode;
+}
+
+async function runPlayground(btn) {
+  const playground = btn.closest('.py-playground');
+  const codeEl = playground.querySelector('#py-code-area') || document.getElementById('py-code-area');
+  const stdinEl = playground.querySelector('#py-stdin-area') || document.getElementById('py-stdin-area');
+  const outEl   = playground.querySelector('#py-output')    || document.getElementById('py-output');
+  const code    = codeEl?.value || '';
+  const stdin   = stdinEl?.value || '';
+  if (!code.trim()) return;
+  btn.disabled = true; btn.textContent = '⏳ Running…';
+  outEl.style.color = 'var(--soft)';
+  outEl.textContent = 'Running…';
+  try {
+    if (!_pyReady) {
+      ensurePyodideRunning();
+      outEl.textContent = '⏳ Loading Python engine… please wait ~15s then try again.';
+      btn.disabled = false; btn.textContent = '▶ Run Code';
+      return;
+    }
+    const result = await runPy(code, stdin);
+    if (result.ec !== 0 || result.stderr) {
+      outEl.style.color = 'var(--danger)';
+      outEl.textContent = (result.stderr || 'Error').trim();
+    } else {
+      outEl.style.color = 'var(--stu)';
+      outEl.textContent = result.stdout || '(no output)';
+    }
+  } catch(e) {
+    outEl.style.color = 'var(--danger)';
+    outEl.textContent = '⚠ ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '▶ Run Code';
+}
+
+function resetPlayground(btn) {
+  const playground = btn.closest('.py-playground');
+  const codeEl = playground.querySelector('#py-code-area') || document.getElementById('py-code-area');
+  const outEl  = playground.querySelector('#py-output')    || document.getElementById('py-output');
+  if (codeEl) codeEl.value = playground.dataset.defaultCode || PY_EXERCISES['default'];
+  if (outEl)  { outEl.style.color='var(--stu)'; outEl.textContent='▶ Click "Run Code" to execute…'; }
+}
+
+// Override openLesson to inject playground for Python courses
+const _origOpenLesson = window.openLesson;
+window.openLesson = function(courseId, moduleId, lessonId) {
+  _origOpenLesson.apply(this, arguments);
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  if (course && (course.language||'').toLowerCase().includes('python')) {
+    // Give DOM a tick to render then inject playground
+    setTimeout(() => {
+      let lesson = null;
+      for (const m of (course.modules||[])) {
+        const l = (m.lessons||[]).find(l=>l.id===lessonId);
+        if (l) { lesson = l; break; }
+      }
+      injectPythonPlayground(lesson?.title || '');
+    }, 80);
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE: MODULE COMPLETION stored in Firestore (module_progress collection)
+   ══════════════════════════════════════════════════════════════════ */
+
+// Extend markLessonComplete to also write module-level progress
+const _origMarkLessonComplete = window.markLessonComplete;
+window.markLessonComplete = async function(courseId, moduleId, lessonId) {
+  await _origMarkLessonComplete.apply(this, arguments);
+  // Check if entire module is complete
+  if (!currentUser) return;
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  const mod = (course?.modules||[]).find(m=>m.id===moduleId);
+  if (!mod) return;
+  const enrollment = myEnrollments[courseId];
+  const completed = enrollment?.completedLessons || [];
+  const modLessons = (mod.lessons||[]).map(l=>l.id);
+  const modComplete = modLessons.length > 0 && modLessons.every(lid=>completed.includes(lid));
+  if (modComplete && fsReady()) {
+    try {
+      const docId = currentUser.uid + '_' + courseId + '_' + moduleId;
+      await db.collection('module_progress').doc(docId).set({
+        userId:      currentUser.uid,
+        courseId,
+        moduleId,
+        moduleTitle: mod.title || moduleId,
+        completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        lessonsCompleted: modLessons.length,
+      }, { merge: true });
+      toast(`✅ Module "${mod.title||moduleId}" completed!`, 'ok', 3000);
+    } catch(e) { console.warn('module_progress write error:', e); }
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE: CERTIFICATE with Firestore-verifiable link
+   Enhanced issueCertificate to include verifyUrl field
+   ══════════════════════════════════════════════════════════════════ */
+
+const _origIssueCertificate = window.issueCertificate;
+window.issueCertificate = async function(courseId) {
+  if (!currentUser) return;
+  const docId = currentUser.uid + '_' + courseId;
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  const enrollment = myEnrollments[courseId];
+  const scores = enrollment?.quizScores || {};
+  const scoreVals = Object.values(scores).map(Number).filter(n=>!isNaN(n));
+  const avgScore = scoreVals.length ? Math.round(scoreVals.reduce((a,b)=>a+b,0)/scoreVals.length) : 100;
+  const verifyId = genId() + genId();
+  const verifyUrl = window.location.origin + window.location.pathname + '?verify=' + verifyId;
+  const cert = {
+    userId:      currentUser.uid,
+    courseId,
+    studentName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Student',
+    studentEmail: currentUser.email || '',
+    courseName:  course?.title || 'Course',
+    courseLanguage: course?.language || '',
+    score:       avgScore,
+    issuedAt:    fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
+    verifyId,
+    verifyUrl,
+    valid:       true,
+  };
+  if (fsReady()) {
+    try {
+      await db.collection('certificates').doc(docId).set(cert);
+      // Also write to a public verifiable index by verifyId for fast lookup
+      await db.collection('cert_verify').doc(verifyId).set({
+        ...cert,
+        certDocId: docId,
+      });
+      toast('🎓 Certificate issued & stored with verifiable link!','ok',5000);
+    } catch(e) { console.warn('issueCertificate error:', e); }
+  }
+  // Update local myEnrollments so renderCertificate picks up the verifyId
+  if (myEnrollments[courseId]) {
+    myEnrollments[courseId]._cert = cert;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE: verifyCert uses both certificates and cert_verify collections
+   ══════════════════════════════════════════════════════════════════ */
+const _origVerifyCert = window.verifyCert;
+window.verifyCert = async function() {
+  const id = document.getElementById('verify-input').value.trim();
+  const result = document.getElementById('verify-result');
+  if (!id) { toast('Enter a verification ID','warn'); return; }
+  result.innerHTML = '<div style="color:var(--muted)">Searching…</div>';
+  let cert = null;
+  if (fsReady()) {
+    try {
+      // First try the fast cert_verify collection
+      const snap = await db.collection('cert_verify').doc(id).get();
+      if (snap.exists) { cert = snap.data(); }
+      else {
+        // Fallback to old certificates collection query
+        const snap2 = await db.collection('certificates').where('verifyId','==',id).limit(1).get();
+        if (!snap2.empty) cert = snap2.docs[0].data();
+      }
+    } catch(e) { console.warn('verifyCert error:', e); }
+  }
+  if (!cert) {
+    result.innerHTML = `
+      <div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);border-radius:var(--r-lg);padding:20px;text-align:center;color:var(--danger)">
+        <div style="font-size:2rem;margin-bottom:8px">❌</div>
+        <div style="font-weight:700">Certificate Not Found</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-top:4px">No certificate found with this ID. Please check the ID and try again.</div>
+      </div>`;
+    return;
+  }
+  const issued = cert.issuedAt?.toDate ? cert.issuedAt.toDate().toLocaleDateString() : 'N/A';
+  const verifyUrl = cert.verifyUrl || (window.location.origin + window.location.pathname + '?verify=' + id);
+  result.innerHTML = `
+    <div style="background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2);border-radius:var(--r-lg);padding:24px;text-align:center">
+      <div style="font-size:2.5rem;margin-bottom:10px">✅</div>
+      <div style="font-size:1rem;font-weight:800;color:var(--stu);margin-bottom:16px">Certificate Verified!</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;margin-bottom:16px">
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px">Student</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--head)">${sanitize(cert.studentName)}</div>
+        </div>
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px">Course</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--head)">${sanitize(cert.courseName)}</div>
+        </div>
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px">Score</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--stu)">${cert.score}%</div>
+        </div>
+        <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:12px">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:4px">Issued</div>
+          <div style="font-size:.88rem;font-weight:700;color:var(--head)">${issued}</div>
+        </div>
+      </div>
+      <div style="background:var(--ink3);border:1px solid rgba(0,229,160,.2);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono)">🔗 Verify URL:</span>
+        <span style="font-family:var(--ff-mono);font-size:.68rem;color:var(--stu);word-break:break-all">${verifyUrl}</span>
+        <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="copyToClipboard('${verifyUrl}')">Copy</button>
+      </div>
+      <div style="font-family:var(--ff-mono);font-size:.65rem;color:var(--muted)">Verify ID: ${id}</div>
+    </div>`;
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   FEATURE: ADD MODULE TO EXISTING COURSE (Professor Panel)
+   ══════════════════════════════════════════════════════════════════ */
+let _addModuleCourseId = null;
+let _addModuleLessons = [];
+
+function openAddModuleModal(courseId) {
+  _addModuleCourseId = courseId;
+  _addModuleLessons = [];
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  // Build modal dynamically if not exists
+  let modal = document.getElementById('add-module-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'add-module-modal';
+    modal.className = 'modal-bg';
+    modal.innerHTML = `
+      <div class="modal" style="max-width:660px">
+        <h3>📦 Add Module to Course</h3>
+        <p class="sub" id="amm-course-name">Adding module to course</p>
+        <div class="modal-fields">
+          <div class="field">
+            <label>Module Title</label>
+            <input class="inp" id="amm-title" placeholder="e.g. Advanced Functions">
+          </div>
+          <div class="field" style="flex-direction:row;align-items:center;gap:10px">
+            <label style="flex-shrink:0">Has Quiz</label>
+            <input type="checkbox" id="amm-has-quiz" style="accent-color:var(--stu);width:16px;height:16px">
+          </div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)">Lessons</div>
+          <div id="amm-lessons-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addAmmLesson()" style="align-self:flex-start">+ Add Lesson</button>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeAddModuleModal()">Cancel</button>
+          <button class="btn btn-a" onclick="saveNewModule()">Add Module</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  document.getElementById('amm-course-name').textContent =
+    'Adding module to: ' + (course?.title || courseId);
+  document.getElementById('amm-title').value = '';
+  document.getElementById('amm-has-quiz').checked = false;
+  document.getElementById('amm-lessons-list').innerHTML = '';
+  _addModuleLessons = [];
+  modal.classList.add('open');
+}
+
+function closeAddModuleModal() {
+  const modal = document.getElementById('add-module-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+let _ammLessonCount = 0;
+function addAmmLesson() {
+  const idx = _ammLessonCount++;
+  _addModuleLessons.push({ id:'l-'+genId(), title:'', type:'article', videoUrl:'', content:'', duration:'' });
+  const el = document.getElementById('amm-lessons-list');
+  const row = document.createElement('div');
+  row.className = 'lesson-builder-item';
+  row.style.display = 'flex'; row.style.gap = '8px'; row.style.alignItems = 'center';
+  row.innerHTML = `
+    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${idx+1}</span>
+    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].title=this.value">
+    <select class="inp" style="width:100px;padding:7px"
+            onchange="_addModuleLessons[${idx}].type=this.value">
+      <option value="article">Article</option>
+      <option value="video">Video</option>
+    </select>
+    <input class="inp" placeholder="YouTube URL or content text" style="flex:2;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].videoUrl=this.value;_addModuleLessons[${idx}].content=this.value">
+    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].duration=this.value">`;
+  el.appendChild(row);
+}
+
+async function saveNewModule() {
+  const title = document.getElementById('amm-title').value.trim();
+  const hasQuiz = document.getElementById('amm-has-quiz').checked;
+  if (!title) { toast('Module title is required','warn'); return; }
+  if (!_addModuleLessons.length) { toast('Add at least one lesson','warn'); return; }
+  const courseId = _addModuleCourseId;
+  const course = coursesCatalog.find(c=>c.id===courseId);
+  if (!course) { toast('Course not found','err'); return; }
+  const newModule = { id:'mod-'+genId(), title, hasQuiz, lessons: _addModuleLessons.filter(l=>l.title) };
+  const updatedModules = [...(course.modules||[]), newModule];
+  const totalLessons = updatedModules.reduce((a,m)=>a+(m.lessons||[]).length, 0);
+  // Update in-memory
+  course.modules = updatedModules;
+  course.totalLessons = totalLessons;
+  if (fsReady()) {
+    try {
+      await db.collection('courses').doc(courseId).update({
+        modules: updatedModules,
+        totalLessons,
+      });
+      if (hasQuiz) {
+        await db.collection('courses').doc(courseId)
+          .collection('quizzes').doc(newModule.id)
+          .set({ questions: [], moduleId: newModule.id });
+      }
+      toast(`Module "${title}" added to course!`, 'ok');
+    } catch(e) { toast('Save failed: '+e.message,'err'); return; }
+  } else {
+    toast(`Module "${title}" added (demo mode)`, 'ok');
+  }
+  closeAddModuleModal();
+  renderCourseAnalytics();
+}
+
+/* CSS for Python playground */
+(function addPyPlaygroundCSS() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .py-playground textarea:focus { outline: none; }
+    .py-playground textarea { tab-size: 4; }
+    .lesson-builder-item { display:flex;gap:8px;align-items:center;padding:8px;background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm); }
+  `;
+  document.head.appendChild(st);
+})();
 
 </script>
 </body>
