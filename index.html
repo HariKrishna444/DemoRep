@@ -1875,8 +1875,11 @@ service cloud.firestore {
     // ── Helpers ─────────────────────────────────────────────────
     function isSignedIn()  { return request.auth != null; }
     function uid()         { return request.auth.uid; }
-    function isProf()      {
+    // Safe isProf: uses exists() before get() so a missing /users/{uid}
+    // document never causes a permission-denied cascade on other collections.
+    function isProf() {
       return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(uid())) &&
         get(/databases/$(database)/documents/users/$(uid())).data.role == 'prof';
     }
     function isSelf(u)     { return isSignedIn() && uid() == u; }
@@ -1977,20 +1980,22 @@ service cloud.firestore {
     }
 
     // ── courses/ — course catalog ─────────────────────────────────
+    // Courses are public (catalog). Quizzes require sign-in to prevent
+    // answer scraping by anonymous users.
     match /courses/{courseId} {
-      allow read:  if isSignedIn();
+      allow read:  if true;        // public catalog
       allow write: if isProf();
     }
     match /courses/{courseId}/modules/{moduleId} {
-      allow read:  if isSignedIn();
+      allow read:  if true;
       allow write: if isProf();
     }
     match /courses/{courseId}/modules/{moduleId}/lessons/{lessonId} {
-      allow read:  if isSignedIn();
+      allow read:  if true;
       allow write: if isProf();
     }
     match /courses/{courseId}/quizzes/{quizId} {
-      allow read:  if isSignedIn();
+      allow read:  if isSignedIn(); // quiz answers — require login
       allow write: if isProf();
     }
 
@@ -5960,21 +5965,34 @@ function showStuSection(section) {
    ────────────────────────────────────────────────────────────────── */
 async function loadCourses() {
   if (!fsReady()) {
-    // Demo courses for offline mode
     coursesCatalog = getDemoCourses();
     return;
   }
   try {
-    const snap = await db.collection('courses').orderBy('createdAt','desc').get();
-    coursesCatalog = snap.docs.map(doc => {
+    // No orderBy — avoids needing a composite index and works even when
+    // Firestore security rules are still being configured.
+    const snap = await db.collection('courses').get();
+    const fetched = snap.docs.map(doc => {
       const d = doc.data();
-      d.price = 'free'; // All courses are free
+      d.price = 'free';
       return { id: doc.id, ...d };
     });
-    if (!coursesCatalog.length) coursesCatalog = getDemoCourses();
+    // Always merge in demo courses so Python course is always visible
+    const demoCourses = getDemoCourses();
+    const fetchedIds = new Set(fetched.map(c => c.id));
+    const missing = demoCourses.filter(c => !fetchedIds.has(c.id));
+    coursesCatalog = [...fetched, ...missing];
+    if (!coursesCatalog.length) coursesCatalog = demoCourses;
   } catch(e) {
-    console.warn('loadCourses error:', e);
+    console.warn('loadCourses error:', e.code, e.message);
+    // On any error (permission-denied, offline, etc.) fall back to demo courses
     coursesCatalog = getDemoCourses();
+    if (e.code === 'permission-denied' && !window._coursePermToastShown) {
+      window._coursePermToastShown = true;
+      if (typeof toast === 'function') {
+        toast('Firestore rules not yet deployed — showing demo courses. Deploy rules from the Security panel.', 'warn', 8000);
+      }
+    }
   }
 }
 
@@ -5989,7 +6007,11 @@ async function loadMyEnrollments() {
       const d = doc.data();
       myEnrollments[d.courseId] = { id: doc.id, ...d };
     });
-  } catch(e) { console.warn('loadMyEnrollments error:', e); }
+  } catch(e) {
+    // permission-denied here means Firestore rules not yet deployed.
+    // Students can still browse courses; enrollments resume once rules are live.
+    console.warn('loadMyEnrollments error:', e.code, e.message);
+  }
 }
 
 async function enrollInCourse(courseId) {
