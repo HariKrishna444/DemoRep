@@ -1061,99 +1061,34 @@ select.inp option{background:var(--ink3)}
 .module-count{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)}
 .module-lessons{padding:0 16px 12px;display:flex;flex-direction:column;gap:6px;display:none}
 .module-lessons.open{display:flex}
-/* ── Learn View Layout ── */
-#page-learn{flex-direction:column}
-.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:hidden}
-.learn-progress-bar{height:3px;background:var(--line);flex-shrink:0}
-.learn-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));transition:width .6s}
-
-/* ── Sidebar ── */
-.learn-sidebar{
-  background:var(--ink2);border-right:1px solid var(--line);
-  overflow-y:auto;padding:12px 10px 24px;display:flex;flex-direction:column;gap:6px;
+.lesson-row{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;
+  border-radius:var(--r-sm);font-size:.8rem;cursor:pointer;
+  transition:background .18s;
 }
-.learn-sidebar::-webkit-scrollbar{width:4px}
-.learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
-
-/* Module card in sidebar */
-.sb-module-card{
-  background:var(--ink3);border:1px solid var(--line);
-  border-radius:10px;overflow:hidden;
-}
-.sb-module-header{
-  display:flex;align-items:center;gap:10px;
-  padding:11px 13px;cursor:pointer;user-select:none;
-  transition:background .15s;
-}
-.sb-module-header:hover{background:rgba(255,255,255,.04)}
-.sb-module-chevron{
-  font-size:.7rem;color:var(--muted);margin-left:auto;
-  transition:transform .22s;flex-shrink:0;
-}
-.sb-module-card.open .sb-module-chevron{transform:rotate(90deg)}
-.sb-module-num{
-  width:22px;height:22px;border-radius:50%;
-  background:rgba(255,255,255,.06);border:1px solid var(--line);
-  display:flex;align-items:center;justify-content:center;
-  font-size:.65rem;font-family:var(--ff-mono);color:var(--muted);flex-shrink:0;
-}
-.sb-module-info{flex:1;min-width:0}
-.sb-module-title{font-size:.78rem;font-weight:700;color:var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sb-module-meta{font-size:.65rem;color:var(--muted);margin-top:1px;font-family:var(--ff-mono)}
-.sb-module-prog{height:2px;background:var(--line);margin:0 13px 2px}
-.sb-module-prog-fill{height:100%;background:var(--stu);border-radius:1px;transition:width .4s}
-
-/* Lesson list inside card */
-.sb-lessons{display:none;padding:4px 8px 8px;display:flex;flex-direction:column;gap:3px}
-.sb-module-card:not(.open) .sb-lessons{display:none}
-.sb-module-card.open .sb-lessons{display:flex}
-
-.sb-lesson-row{
-  display:flex;align-items:center;gap:9px;
-  padding:8px 10px;border-radius:8px;
-  cursor:pointer;transition:background .15s;
-  border:1px solid transparent;
-}
-.sb-lesson-row:hover{background:rgba(255,255,255,.05)}
-.sb-lesson-row.active{
-  background:rgba(0,229,160,.09);
-  border-color:rgba(0,229,160,.2);
-}
-.sb-lesson-dot{
-  width:26px;height:26px;border-radius:50%;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:.75rem;
-  background:var(--ink);border:1px solid var(--line);
-}
-.sb-lesson-row.done .sb-lesson-dot{background:rgba(0,229,160,.12);border-color:rgba(0,229,160,.3);color:var(--stu)}
-.sb-lesson-row.active .sb-lesson-dot{background:rgba(0,229,160,.18);border-color:var(--stu)}
-.sb-lesson-info{flex:1;min-width:0}
-.sb-lesson-title{font-size:.76rem;color:var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
-.sb-lesson-row.active .sb-lesson-title{color:var(--stu);font-weight:600}
-.sb-lesson-row.done .sb-lesson-title{color:var(--soft)}
-.sb-lesson-sub{font-size:.62rem;color:var(--muted);font-family:var(--ff-mono);margin-top:2px}
-.sb-quiz-row{
-  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
-  cursor:pointer;transition:background .15s;
-  border:1px dashed rgba(251,191,36,.2);margin-top:4px;
-  background:rgba(251,191,36,.03);
-}
-.sb-quiz-row:hover{background:rgba(251,191,36,.07)}
-
-/* Deprecated lesson-row kept for compatibility */
-.lesson-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);font-size:.8rem;cursor:pointer;transition:background .18s}
 .lesson-row:hover{background:var(--ink4)}
 .lesson-icon{font-size:.8rem;width:16px;text-align:center}
 .lesson-title{flex:1;color:var(--body)}
 .lesson-dur{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)}
 .lesson-done{color:var(--stu);font-size:.75rem}
 
-/* ── Lesson Content Area ── */
+/* Learn View */
+#page-learn{flex-direction:column}
+.learn-layout{flex:1;display:grid;grid-template-columns:280px 1fr;min-height:0}
+.learn-sidebar{
+  background:var(--ink2);border-right:1px solid var(--line);
+  overflow-y:auto;padding:16px 0;
+}
+.learn-sidebar::-webkit-scrollbar{width:3px}
+.learn-sidebar::-webkit-scrollbar-thumb{background:var(--line)}
 .learn-content{overflow-y:auto;flex:1}
 .learn-content::-webkit-scrollbar{width:5px}
 .learn-content::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+.learn-progress-bar{height:2px;background:var(--line);flex-shrink:0}
+.learn-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));transition:width .5s}
 
 /* Video / Article content area */
-.lesson-content-area{padding:0;max-width:100%}
+.lesson-content-area{padding:32px 40px;max-width:900px}
 .video-wrap{
   background:var(--ink);border:1px solid var(--line);
   border-radius:var(--r-lg);overflow:hidden;
@@ -2478,7 +2413,7 @@ upgrade-insecure-requests;</pre>
   <div class="learn-layout" style="flex:1;overflow:hidden">
     <!-- Sidebar -->
     <div class="learn-sidebar">
-      <div style="padding:14px 12px 10px;font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;font-family:var(--ff-mono);font-weight:700">Course Content</div>
+      <div style="padding:16px;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:var(--ff-mono)">Course Content</div>
       <div id="learn-sidebar-content"></div>
     </div>
     <!-- Main content -->
@@ -6360,61 +6295,34 @@ function renderLearnSidebar(course) {
   const sidebar = document.getElementById('learn-sidebar-content');
   if (!sidebar) return;
   const enrollment = myEnrollments[currentCourseId];
-  const completed  = enrollment?.completedLessons || [];
-
-  sidebar.innerHTML = (course.modules||[]).map((mod, mi) => {
-    const lessons    = mod.lessons || [];
-    const doneCount  = lessons.filter(l => completed.includes(l.id)).length;
-    const progPct    = lessons.length ? Math.round(doneCount / lessons.length * 100) : 0;
-    const isOpen     = lessons.some(l => l.id === currentLessonId) || mi === 0;
-
-    const lessonRows = lessons.map(lesson => {
-      const isDone    = completed.includes(lesson.id);
+  const completed = enrollment?.completedLessons || [];
+  sidebar.innerHTML = (course.modules||[]).map((mod,mi) => {
+    const lessons = (mod.lessons||[]).map(lesson => {
+      const isDone = completed.includes(lesson.id);
       const isCurrent = lesson.id === currentLessonId;
-      const icon      = isDone ? '✓' : lesson.type === 'video' ? '▶' : '📄';
-      const typeLabel = lesson.type === 'video' ? 'Video' : 'Article';
       return `
-        <div class="sb-lesson-row ${isCurrent ? 'active' : ''} ${isDone ? 'done' : ''}"
+        <div class="lesson-row ${isCurrent?'active':''}"
+             style="${isCurrent?'background:rgba(0,229,160,.08);color:var(--stu)':''}"
              onclick="openLesson('${currentCourseId}','${mod.id}','${lesson.id}')">
-          <div class="sb-lesson-dot">${icon}</div>
-          <div class="sb-lesson-info">
-            <div class="sb-lesson-title">${sanitize(lesson.title || 'Lesson')}</div>
-            <div class="sb-lesson-sub">${typeLabel}${lesson.duration ? ' · ' + lesson.duration : ''}</div>
-          </div>
+          <span class="lesson-icon">${isDone?'✅':lesson.type==='video'?'▶':'📄'}</span>
+          <span class="lesson-title" style="font-size:.78rem">${sanitize(lesson.title||'Lesson')}</span>
+          <span class="lesson-dur">${lesson.duration||''}</span>
         </div>`;
     }).join('');
-
-    const quizRow = mod.hasQuiz ? `
-      <div class="sb-quiz-row" onclick="openQuiz('${currentCourseId}','${mod.id}')">
-        <div class="sb-lesson-dot" style="background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:var(--amber)">🧪</div>
-        <div class="sb-lesson-info">
-          <div class="sb-lesson-title" style="color:var(--amber)">Module Quiz</div>
-          <div class="sb-lesson-sub">Test your knowledge</div>
-        </div>
-      </div>` : '';
-
     return `
-      <div class="sb-module-card ${isOpen ? 'open' : ''}" id="sbmod-${mod.id}">
-        <div class="sb-module-header" onclick="toggleSbModule('${mod.id}')">
-          <div class="sb-module-num">${mi + 1}</div>
-          <div class="sb-module-info">
-            <div class="sb-module-title">${sanitize(mod.title || `Module ${mi + 1}`)}</div>
-            <div class="sb-module-meta">${lessons.length} lesson${lessons.length !== 1 ? 's' : ''} · ${doneCount}/${lessons.length} done</div>
-          </div>
-          <span class="sb-module-chevron">▶</span>
+      <div style="margin-bottom:4px">
+        <div style="padding:8px 16px;font-size:.7rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)">
+          ${sanitize(mod.title||`Module ${mi+1}`)}
         </div>
-        <div class="sb-module-prog"><div class="sb-module-prog-fill" style="width:${progPct}%"></div></div>
-        <div class="sb-lessons">
-          ${lessonRows}
-          ${quizRow}
-        </div>
+        ${lessons}
+        ${mod.hasQuiz?`
+          <div class="lesson-row" onclick="openQuiz('${currentCourseId}','${mod.id}')" style="border-top:1px solid var(--line);margin-top:4px">
+            <span class="lesson-icon">🧪</span>
+            <span class="lesson-title" style="font-size:.78rem;color:var(--amber)">Module Quiz</span>
+          </div>`:''
+        }
       </div>`;
   }).join('');
-}
-
-function toggleSbModule(modId) {
-  const card = document.getElementById('sbmod-' + modId);
-  if (card) card.classList.toggle('open');
 }
 
 function openLesson(courseId, moduleId, lessonId) {
@@ -6430,10 +6338,6 @@ function openLesson(courseId, moduleId, lessonId) {
   if (!lesson) return;
   renderLearnSidebar(course);
   const area = document.getElementById('lesson-content-area');
-  const enrollment = myEnrollments[courseId];
-  const completed  = enrollment?.completedLessons || [];
-  const isDone     = completed.includes(lessonId);
-
   let contentHtml = '';
   if (lesson.type === 'video' && lesson.videoUrl) {
     const embedUrl = youtubeEmbed(lesson.videoUrl);
@@ -6447,74 +6351,21 @@ function openLesson(courseId, moduleId, lessonId) {
   if (lesson.content) {
     contentHtml += `<div class="article-content">${renderMarkdown(lesson.content)}</div>`;
   }
-
-  // Prev / next
+  // Find prev/next
   let allLessons = [];
   (course.modules||[]).forEach(m=>(m.lessons||[]).forEach(l=>allLessons.push({moduleId:m.id,lesson:l})));
-  const idx  = allLessons.findIndex(x=>x.lesson.id===lessonId);
+  const idx = allLessons.findIndex(x=>x.lesson.id===lessonId);
   const prev = allLessons[idx-1];
   const next = allLessons[idx+1];
-
-  // Lesson type badge
-  const typeBadge = lesson.type === 'video'
-    ? `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:99px;padding:3px 10px;font-size:.68rem;font-family:var(--ff-mono)">▶ Video</span>`
-    : `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);color:var(--stu);border-radius:99px;padding:3px 10px;font-size:.68rem;font-family:var(--ff-mono)">📄 Article</span>`;
-
-  const doneBadge = isDone
-    ? `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);color:var(--stu);border-radius:99px;padding:3px 10px;font-size:.68rem;font-weight:700">✓ Completed</span>`
-    : '';
-
   area.innerHTML = `
-    <div style="padding:28px 36px;max-width:860px;margin:0 auto">
-
-      <!-- Breadcrumb -->
-      <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:18px;flex-wrap:wrap">
-        <span style="color:var(--soft)">${sanitize(course.title||'')}</span>
-        <span>›</span>
-        <span style="color:var(--soft)">${sanitize(mod?.title||'')}</span>
-        <span>›</span>
-        <span style="color:var(--stu)">${sanitize(lesson.title||'')}</span>
-      </div>
-
-      <!-- Lesson header card -->
-      <div style="background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin-bottom:28px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
-          <div>
-            <h2 style="font-size:1.35rem;font-weight:900;color:var(--head);margin:0 0 10px">${sanitize(lesson.title||'')}</h2>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              ${typeBadge}
-              ${lesson.duration ? `<span style="font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)">⏱ ${lesson.duration}</span>` : ''}
-              ${doneBadge}
-            </div>
-          </div>
-          <div style="font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);text-align:right;white-space:nowrap">
-            Lesson ${idx + 1} of ${allLessons.length}
-          </div>
-        </div>
-      </div>
-
-      <!-- Content -->
-      <div style="background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:28px 30px;min-height:200px;margin-bottom:24px">
-        ${contentHtml || `<div style="text-align:center;padding:48px 0;color:var(--muted)">
-          <div style="font-size:2.5rem;margin-bottom:12px">📄</div>
-          <div style="font-size:.85rem">No content added for this lesson yet.</div>
-        </div>`}
-      </div>
-
-      <!-- Nav buttons -->
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:4px">
-        <div>
-          ${prev ? `
-            <button class="btn btn-ghost" onclick="openLesson('${courseId}','${prev.moduleId}','${prev.lesson.id}')">
-              ← ${sanitize(prev.lesson.title||'Previous')}
-            </button>` : '<div></div>'}
-        </div>
-        <button class="btn btn-g" style="min-width:200px" onclick="completeLessonAndNext('${courseId}','${moduleId}','${lessonId}','${next?.lesson?.id||''}','${next?.moduleId||''}')">
-          ${isDone
-            ? (next ? '→ Next Lesson' : '✓ Course Complete')
-            : (next ? '✓ Mark Complete & Next →' : '✓ Complete Course')}
-        </button>
-      </div>
+    <div style="font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:1.5px">${sanitize(mod?.title||'')}</div>
+    <h2 style="font-size:1.4rem;font-weight:900;color:var(--head);margin-bottom:20px">${sanitize(lesson.title||'')}</h2>
+    ${contentHtml || '<div style="color:var(--muted)">No content for this lesson.</div>'}
+    <div class="learn-nav-btns">
+      ${prev ? `<button class="btn btn-ghost" onclick="openLesson('${courseId}','${prev.moduleId}','${prev.lesson.id}')">← Previous</button>` : '<div></div>'}
+      <button class="btn btn-g" onclick="completeLessonAndNext('${courseId}','${moduleId}','${lessonId}','${next?.lesson?.id||''}','${next?.moduleId||''}')">
+        ${next ? 'Mark Complete & Next →' : '✓ Complete Course'}
+      </button>
     </div>`;
 }
 
@@ -6552,17 +6403,96 @@ function youtubeEmbed(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : null;
 }
 
+let _mdPlaygroundIdx = 0;
+
+function _makePyPlayground(code) {
+  const pid = 'mdpy-' + (++_mdPlaygroundIdx);
+  const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return `<div class="md-py-block" style="margin:20px 0;background:var(--ink2);border:1px solid rgba(0,229,160,.25);border-radius:12px;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(0,229,160,.06);border-bottom:1px solid rgba(0,229,160,.12)">
+      <span style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:.95rem">🐍</span>
+        <span style="font-size:.74rem;font-weight:700;color:var(--stu);font-family:var(--ff-mono)">Python · Runnable</span>
+      </span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="(function(id){
+          document.getElementById(id+'-code').value=document.getElementById(id+'-code').dataset.orig;
+          var o=document.getElementById(id+'-out');o.style.color='var(--stu)';o.textContent='▶ Click Run to execute…';
+        })('${pid}')">↺ Reset</button>
+        <button class="btn btn-g btn-sm" onclick="runMdPlayground('${pid}',this)">▶ Run</button>
+      </div>
+    </div>
+    <textarea id="${pid}-code" data-orig="${escaped}" spellcheck="false"
+      style="width:100%;min-height:110px;resize:vertical;background:var(--ink);color:var(--head);
+             font-family:var(--ff-mono);font-size:.8rem;line-height:1.65;
+             padding:14px 16px;border:none;outline:none;border-bottom:1px solid var(--line);tab-size:4"
+    >${escaped}</textarea>
+    <div id="${pid}-out"
+      style="padding:11px 16px;font-family:var(--ff-mono);font-size:.78rem;min-height:44px;
+             white-space:pre-wrap;color:var(--stu);background:var(--ink)"
+    >▶ Click Run to execute…</div>
+  </div>`;
+}
+
 function renderMarkdown(md) {
-  return md
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/`([^`]+)`/g,'<code>$1</code>')
-    .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
-    .replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>')
-    .replace(/\n/g,'<br>');
+  const blocks = [];
+  const PH = '\x00BLK\x00';
+
+  // 1. '''PYTHON ... ''' → runnable playground  (prof's format)
+  md = md.replace(/'''PYTHON\s*([\s\S]*?)'''/gi, (_, code) => {
+    blocks.push(_makePyPlayground(code.trim()));
+    return PH + (blocks.length - 1) + '\x00';
+  });
+
+  // 2. ```python ... ``` or ``` ... ``` → runnable playground
+  md = md.replace(/```(?:python|py)?\s*([\s\S]*?)```/gi, (_, code) => {
+    blocks.push(_makePyPlayground(code.trim()));
+    return PH + (blocks.length - 1) + '\x00';
+  });
+
+  // 3. Inline markdown
+  md = md
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,  '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,   '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+    .replace(/`([^`]+)`/g,     '<code>$1</code>')
+    .replace(/^> (.+)$/gm,     '<blockquote>$1</blockquote>')
+    .replace(/\n/g, '<br>');
+
+  // 4. Restore blocks
+  md = md.replace(new RegExp('\x00BLK\x00(\\d+)\x00', 'g'), (_, i) => blocks[+i]);
+  return md;
+}
+
+async function runMdPlayground(pid, btn) {
+  const codeEl = document.getElementById(pid + '-code');
+  const outEl  = document.getElementById(pid + '-out');
+  const code   = codeEl?.value || '';
+  if (!code.trim()) return;
+  btn.disabled = true; btn.textContent = '⏳ Running…';
+  outEl.style.color = 'var(--soft)'; outEl.textContent = 'Running…';
+  try {
+    if (!_pyReady) {
+      ensurePyodideRunning();
+      outEl.textContent = '⏳ Loading Python engine… please wait ~15s then try again.';
+      btn.disabled = false; btn.textContent = '▶ Run';
+      return;
+    }
+    const result = await runPy(code, '');
+    if (result.ec !== 0 || result.stderr) {
+      outEl.style.color = '#f87171';
+      outEl.textContent = (result.stderr || 'Error').trim();
+    } else {
+      outEl.style.color = 'var(--stu)';
+      outEl.textContent = result.stdout || '(no output)';
+    }
+  } catch(e) {
+    outEl.style.color = '#f87171';
+    outEl.textContent = '⚠ ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '▶ Run';
 }
 
 /* ──────────────────────────────────────────────────────────────────
