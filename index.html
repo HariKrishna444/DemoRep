@@ -1097,28 +1097,92 @@ select.inp option{background:var(--ink3)}
 }
 .video-wrap iframe{width:100%;height:100%;border:none}
 .article-content{
-  font-size:.88rem;line-height:1.9;color:var(--soft);
+  font-size:.9rem;line-height:1.85;color:var(--soft);
 }
-.article-content h1,.article-content h2,.article-content h3{
-  color:var(--head);font-family:var(--ff-head);margin:24px 0 12px;
+/* Paragraphs */
+.article-content p{
+  margin:0 0 14px;color:var(--soft);
 }
-.article-content h2{font-size:1.1rem;border-bottom:1px solid var(--line);padding-bottom:8px}
+/* Spacer between sections */
+.article-content .ac-spacer{ height:10px; }
+
+/* Headings */
+.article-content h1{font-size:1.25rem;font-weight:900;color:var(--head);margin:28px 0 12px;font-family:var(--ff-head)}
+.article-content h2{
+  font-size:1.05rem;font-weight:800;color:var(--head);
+  margin:26px 0 10px;padding-bottom:8px;
+  border-bottom:1px solid var(--line);font-family:var(--ff-head);
+}
+.article-content h3{font-size:.92rem;font-weight:700;color:var(--head);margin:20px 0 8px}
+
+/* Emoji section header — e.g. "🐍 History of Python" */
+.article-content .ac-emoji-head{
+  display:flex;align-items:flex-start;gap:10px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:10px;padding:12px 16px;
+  margin:20px 0 10px;
+  font-size:1rem;font-weight:800;color:var(--head);
+  font-family:var(--ff-head);
+}
+.article-content .ac-emoji{font-size:1.3rem;flex-shrink:0;line-height:1.4}
+
+/* Numbered section header — e.g. "1. Simple and Easy to Learn" */
+.article-content .ac-num-section{
+  display:flex;align-items:center;gap:10px;
+  margin:18px 0 8px;
+  font-size:.92rem;font-weight:700;color:var(--head);
+}
+.article-content .ac-num-badge{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;
+  background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.3);
+  color:var(--stu);font-size:.72rem;font-weight:800;font-family:var(--ff-mono);
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* Lists */
+.article-content .ac-list{
+  margin:6px 0 14px 0;padding:0;
+  list-style:none;display:flex;flex-direction:column;gap:5px;
+}
+.article-content .ac-list li{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:7px 12px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:8px;font-size:.84rem;color:var(--soft);
+  line-height:1.5;
+}
+.article-content .ac-list li::before{
+  content:'›';color:var(--stu);font-weight:700;flex-shrink:0;margin-top:1px;
+}
+.article-content .ac-sub-list{margin-left:20px}
+.article-content .ac-sub-list li{
+  background:rgba(255,255,255,.02);border-color:rgba(255,255,255,.06);
+}
+.article-content .ac-sub-list li::before{content:'–';color:var(--muted)}
+
+/* Inline code */
 .article-content code{
-  font-family:var(--ff-mono);font-size:.82rem;
+  font-family:var(--ff-mono);font-size:.8rem;
   background:var(--ink);border:1px solid var(--line);
   border-radius:4px;padding:1px 6px;color:var(--green);
 }
+/* Code block (static) */
 .article-content pre{
   background:var(--ink);border:1px solid var(--line);
   border-radius:var(--r-sm);padding:16px;margin:16px 0;
   overflow-x:auto;font-family:var(--ff-mono);font-size:.78rem;
   color:var(--green);line-height:1.7;
 }
+/* Blockquote */
 .article-content blockquote{
   border-left:3px solid var(--stu);padding:10px 16px;
-  background:rgba(0,229,160,.04);margin:16px 0;border-radius:0 var(--r-sm) var(--r-sm) 0;
-  font-style:italic;
+  background:rgba(0,229,160,.04);margin:16px 0;
+  border-radius:0 var(--r-sm) var(--r-sm) 0;
+  font-style:italic;color:var(--soft);
 }
+/* Bold / em */
+.article-content strong{color:var(--head);font-weight:700}
+.article-content em{color:var(--amber)}
 .learn-nav-btns{display:flex;gap:10px;margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
 
 /* Quiz View */
@@ -6434,38 +6498,6 @@ function _makePyPlayground(code) {
   </div>`;
 }
 
-function renderMarkdown(md) {
-  const blocks = [];
-  const PH = '\x00BLK\x00';
-
-  // 1. '''PYTHON ... ''' → runnable playground  (prof's format)
-  md = md.replace(/'''PYTHON\s*([\s\S]*?)'''/gi, (_, code) => {
-    blocks.push(_makePyPlayground(code.trim()));
-    return PH + (blocks.length - 1) + '\x00';
-  });
-
-  // 2. ```python ... ``` or ``` ... ``` → runnable playground
-  md = md.replace(/```(?:python|py)?\s*([\s\S]*?)```/gi, (_, code) => {
-    blocks.push(_makePyPlayground(code.trim()));
-    return PH + (blocks.length - 1) + '\x00';
-  });
-
-  // 3. Inline markdown
-  md = md
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm,  '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm,   '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,     '<em>$1</em>')
-    .replace(/`([^`]+)`/g,     '<code>$1</code>')
-    .replace(/^> (.+)$/gm,     '<blockquote>$1</blockquote>')
-    .replace(/\n/g, '<br>');
-
-  // 4. Restore blocks
-  md = md.replace(new RegExp('\x00BLK\x00(\\d+)\x00', 'g'), (_, i) => blocks[+i]);
-  return md;
-}
-
 async function runMdPlayground(pid, btn) {
   const codeEl = document.getElementById(pid + '-code');
   const outEl  = document.getElementById(pid + '-out');
@@ -6474,8 +6506,8 @@ async function runMdPlayground(pid, btn) {
   btn.disabled = true; btn.textContent = '⏳ Running…';
   outEl.style.color = 'var(--soft)'; outEl.textContent = 'Running…';
   try {
-    if (!_pyReady) {
-      ensurePyodideRunning();
+    if (typeof _pyReady === 'undefined' || !_pyReady) {
+      if (typeof ensurePyodideRunning === 'function') ensurePyodideRunning();
       outEl.textContent = '⏳ Loading Python engine… please wait ~15s then try again.';
       btn.disabled = false; btn.textContent = '▶ Run';
       return;
@@ -6493,6 +6525,136 @@ async function runMdPlayground(pid, btn) {
     outEl.textContent = '⚠ ' + e.message;
   }
   btn.disabled = false; btn.textContent = '▶ Run';
+}
+
+function renderMarkdown(raw) {
+  if (!raw) return '';
+
+  /* ── 0. Extract code blocks first so their content is untouched ── */
+  const blocks = [];
+  const PH = '\x00BLK\x00';
+
+  // '''PYTHON ... '''  → runnable playground
+  raw = raw.replace(/'''PYTHON\s*([\s\S]*?)'''/gi, (_, code) => {
+    blocks.push(_makePyPlayground(code.trim())); return PH+(blocks.length-1)+'\x00';
+  });
+  // ```python / ``` ... ``` → runnable playground
+  raw = raw.replace(/```(?:python|py)?\s*([\s\S]*?)```/gi, (_, code) => {
+    blocks.push(_makePyPlayground(code.trim())); return PH+(blocks.length-1)+'\x00';
+  });
+
+  /* ── 1. Normalise line endings, split into lines ── */
+  const lines = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+
+  /* ── 2. Classify and convert each line ── */
+  const EMOJI_HEAD = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*(.+)/u;
+  // numbered section: "1. Foo" or "1️⃣ Foo"
+  const NUM_SECTION = /^(\d+[.)]|[0-9]️⃣)\s+(.+)/;
+  // bullet / sub-item (starts with - • * or leading spaces)
+  const BULLET      = /^[\-\*•]\s+(.+)/;
+  const SUB_BULLET  = /^\s{2,}[\-\*•]\s+(.+)/;
+  // key: value  (table-like)
+  const KV_LINE     = /^([A-Za-z][^:–—]{1,30})[\s]*[:\-–—]\s+(.+)/;
+
+  let html = '';
+  let inUl = false, inOl = false;
+
+  const closeList = () => {
+    if (inUl) { html += '</ul>'; inUl = false; }
+    if (inOl) { html += '</ol>'; inOl = false; }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+
+    /* placeholder → restore code block */
+    if (line.includes(PH.slice(0,5))) {
+      closeList();
+      html += line.replace(new RegExp('\x00BLK\x00(\\d+)\x00','g'),(_,n)=>blocks[+n]);
+      continue;
+    }
+
+    /* blank line → paragraph break */
+    if (!line.trim()) {
+      closeList();
+      html += '<div class="ac-spacer"></div>';
+      continue;
+    }
+
+    /* markdown headings */
+    if (/^### /.test(line)) { closeList(); html += `<h3>${_inl(line.slice(4))}</h3>`; continue; }
+    if (/^## /.test(line))  { closeList(); html += `<h2>${_inl(line.slice(3))}</h2>`; continue; }
+    if (/^# /.test(line))   { closeList(); html += `<h1>${_inl(line.slice(2))}</h1>`; continue; }
+
+    /* blockquote */
+    if (/^> /.test(line)) { closeList(); html += `<blockquote>${_inl(line.slice(2))}</blockquote>`; continue; }
+
+    /* numbered section header: "1. Title" or "1️⃣ Title" */
+    const numM = NUM_SECTION.exec(line);
+    if (numM) {
+      closeList();
+      html += `<div class="ac-num-section"><span class="ac-num-badge">${numM[1].replace('️⃣','')}</span><span>${_inl(numM[2])}</span></div>`;
+      continue;
+    }
+
+    /* emoji heading line */
+    const emojiM = EMOJI_HEAD.exec(line);
+    if (emojiM) {
+      closeList();
+      html += `<div class="ac-emoji-head"><span class="ac-emoji">${emojiM[1]}</span><span>${_inl(emojiM[2])}</span></div>`;
+      continue;
+    }
+
+    /* sub-bullet (indented) */
+    const subM = SUB_BULLET.exec(line);
+    if (subM) {
+      if (!inUl) { html += '<ul class="ac-list ac-sub-list">'; inUl = true; }
+      html += `<li>${_inl(subM[1])}</li>`;
+      continue;
+    }
+
+    /* bullet */
+    const bullM = BULLET.exec(line);
+    if (bullM) {
+      if (inOl) { html += '</ol>'; inOl = false; }
+      if (!inUl) { html += '<ul class="ac-list">'; inUl = true; }
+      html += `<li>${_inl(bullM[1])}</li>`;
+      continue;
+    }
+
+    /* short standalone line (≤60 chars, no sentence punctuation) → treat as sub-heading / list item */
+    const trimmed = line.trim();
+    if (trimmed.length <= 72 && !/[.!?]$/.test(trimmed) && trimmed.length > 0) {
+      // If previous sibling was also a short line, keep as bullet list
+      const prev = lines[i-1]?.trim();
+      const next = lines[i+1]?.trim();
+      const prevShort = prev && prev.length <= 72 && !/[.!?]$/.test(prev) && prev.length > 0;
+      const nextShort = next && next.length <= 72 && !/[.!?]$/.test(next) && next.length > 0;
+
+      if (prevShort || nextShort) {
+        if (inOl) { html += '</ol>'; inOl = false; }
+        if (!inUl) { html += '<ul class="ac-list">'; inUl = true; }
+        html += `<li>${_inl(trimmed)}</li>`;
+        continue;
+      }
+    }
+
+    /* default: paragraph text */
+    closeList();
+    html += `<p>${_inl(trimmed)}</p>`;
+  }
+
+  closeList();
+  return html;
+}
+
+/* inline formatting helper */
+function _inl(t) {
+  return t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
 }
 
 /* ──────────────────────────────────────────────────────────────────
