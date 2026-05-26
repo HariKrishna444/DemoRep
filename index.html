@@ -1061,34 +1061,99 @@ select.inp option{background:var(--ink3)}
 .module-count{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)}
 .module-lessons{padding:0 16px 12px;display:flex;flex-direction:column;gap:6px;display:none}
 .module-lessons.open{display:flex}
-.lesson-row{
-  display:flex;align-items:center;gap:10px;padding:8px 10px;
-  border-radius:var(--r-sm);font-size:.8rem;cursor:pointer;
-  transition:background .18s;
+/* ── Learn View Layout ── */
+#page-learn{flex-direction:column}
+.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:hidden}
+.learn-progress-bar{height:3px;background:var(--line);flex-shrink:0}
+.learn-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));transition:width .6s}
+
+/* ── Sidebar ── */
+.learn-sidebar{
+  background:var(--ink2);border-right:1px solid var(--line);
+  overflow-y:auto;padding:12px 10px 24px;display:flex;flex-direction:column;gap:6px;
 }
+.learn-sidebar::-webkit-scrollbar{width:4px}
+.learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
+
+/* Module card in sidebar */
+.sb-module-card{
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;
+}
+.sb-module-header{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 13px;cursor:pointer;user-select:none;
+  transition:background .15s;
+}
+.sb-module-header:hover{background:rgba(255,255,255,.04)}
+.sb-module-chevron{
+  font-size:.7rem;color:var(--muted);margin-left:auto;
+  transition:transform .22s;flex-shrink:0;
+}
+.sb-module-card.open .sb-module-chevron{transform:rotate(90deg)}
+.sb-module-num{
+  width:22px;height:22px;border-radius:50%;
+  background:rgba(255,255,255,.06);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;font-family:var(--ff-mono);color:var(--muted);flex-shrink:0;
+}
+.sb-module-info{flex:1;min-width:0}
+.sb-module-title{font-size:.78rem;font-weight:700;color:var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-module-meta{font-size:.65rem;color:var(--muted);margin-top:1px;font-family:var(--ff-mono)}
+.sb-module-prog{height:2px;background:var(--line);margin:0 13px 2px}
+.sb-module-prog-fill{height:100%;background:var(--stu);border-radius:1px;transition:width .4s}
+
+/* Lesson list inside card */
+.sb-lessons{display:none;padding:4px 8px 8px;display:flex;flex-direction:column;gap:3px}
+.sb-module-card:not(.open) .sb-lessons{display:none}
+.sb-module-card.open .sb-lessons{display:flex}
+
+.sb-lesson-row{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border-radius:8px;
+  cursor:pointer;transition:background .15s;
+  border:1px solid transparent;
+}
+.sb-lesson-row:hover{background:rgba(255,255,255,.05)}
+.sb-lesson-row.active{
+  background:rgba(0,229,160,.09);
+  border-color:rgba(0,229,160,.2);
+}
+.sb-lesson-dot{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;
+  background:var(--ink);border:1px solid var(--line);
+}
+.sb-lesson-row.done .sb-lesson-dot{background:rgba(0,229,160,.12);border-color:rgba(0,229,160,.3);color:var(--stu)}
+.sb-lesson-row.active .sb-lesson-dot{background:rgba(0,229,160,.18);border-color:var(--stu)}
+.sb-lesson-info{flex:1;min-width:0}
+.sb-lesson-title{font-size:.76rem;color:var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.sb-lesson-row.active .sb-lesson-title{color:var(--stu);font-weight:600}
+.sb-lesson-row.done .sb-lesson-title{color:var(--soft)}
+.sb-lesson-sub{font-size:.62rem;color:var(--muted);font-family:var(--ff-mono);margin-top:2px}
+.sb-quiz-row{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
+  cursor:pointer;transition:background .15s;
+  border:1px dashed rgba(251,191,36,.2);margin-top:4px;
+  background:rgba(251,191,36,.03);
+}
+.sb-quiz-row:hover{background:rgba(251,191,36,.07)}
+
+/* Deprecated lesson-row kept for compatibility */
+.lesson-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);font-size:.8rem;cursor:pointer;transition:background .18s}
 .lesson-row:hover{background:var(--ink4)}
 .lesson-icon{font-size:.8rem;width:16px;text-align:center}
 .lesson-title{flex:1;color:var(--body)}
 .lesson-dur{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)}
 .lesson-done{color:var(--stu);font-size:.75rem}
 
-/* Learn View */
-#page-learn{flex-direction:column}
-.learn-layout{flex:1;display:grid;grid-template-columns:280px 1fr;min-height:0}
-.learn-sidebar{
-  background:var(--ink2);border-right:1px solid var(--line);
-  overflow-y:auto;padding:16px 0;
-}
-.learn-sidebar::-webkit-scrollbar{width:3px}
-.learn-sidebar::-webkit-scrollbar-thumb{background:var(--line)}
+/* ── Lesson Content Area ── */
 .learn-content{overflow-y:auto;flex:1}
 .learn-content::-webkit-scrollbar{width:5px}
 .learn-content::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
-.learn-progress-bar{height:2px;background:var(--line);flex-shrink:0}
-.learn-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));transition:width .5s}
 
 /* Video / Article content area */
-.lesson-content-area{padding:32px 40px;max-width:900px}
+.lesson-content-area{padding:0;max-width:100%}
 .video-wrap{
   background:var(--ink);border:1px solid var(--line);
   border-radius:var(--r-lg);overflow:hidden;
@@ -2413,7 +2478,7 @@ upgrade-insecure-requests;</pre>
   <div class="learn-layout" style="flex:1;overflow:hidden">
     <!-- Sidebar -->
     <div class="learn-sidebar">
-      <div style="padding:16px;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:var(--ff-mono)">Course Content</div>
+      <div style="padding:14px 12px 10px;font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;font-family:var(--ff-mono);font-weight:700">Course Content</div>
       <div id="learn-sidebar-content"></div>
     </div>
     <!-- Main content -->
@@ -6295,34 +6360,61 @@ function renderLearnSidebar(course) {
   const sidebar = document.getElementById('learn-sidebar-content');
   if (!sidebar) return;
   const enrollment = myEnrollments[currentCourseId];
-  const completed = enrollment?.completedLessons || [];
-  sidebar.innerHTML = (course.modules||[]).map((mod,mi) => {
-    const lessons = (mod.lessons||[]).map(lesson => {
-      const isDone = completed.includes(lesson.id);
+  const completed  = enrollment?.completedLessons || [];
+
+  sidebar.innerHTML = (course.modules||[]).map((mod, mi) => {
+    const lessons    = mod.lessons || [];
+    const doneCount  = lessons.filter(l => completed.includes(l.id)).length;
+    const progPct    = lessons.length ? Math.round(doneCount / lessons.length * 100) : 0;
+    const isOpen     = lessons.some(l => l.id === currentLessonId) || mi === 0;
+
+    const lessonRows = lessons.map(lesson => {
+      const isDone    = completed.includes(lesson.id);
       const isCurrent = lesson.id === currentLessonId;
+      const icon      = isDone ? '✓' : lesson.type === 'video' ? '▶' : '📄';
+      const typeLabel = lesson.type === 'video' ? 'Video' : 'Article';
       return `
-        <div class="lesson-row ${isCurrent?'active':''}"
-             style="${isCurrent?'background:rgba(0,229,160,.08);color:var(--stu)':''}"
+        <div class="sb-lesson-row ${isCurrent ? 'active' : ''} ${isDone ? 'done' : ''}"
              onclick="openLesson('${currentCourseId}','${mod.id}','${lesson.id}')">
-          <span class="lesson-icon">${isDone?'✅':lesson.type==='video'?'▶':'📄'}</span>
-          <span class="lesson-title" style="font-size:.78rem">${sanitize(lesson.title||'Lesson')}</span>
-          <span class="lesson-dur">${lesson.duration||''}</span>
+          <div class="sb-lesson-dot">${icon}</div>
+          <div class="sb-lesson-info">
+            <div class="sb-lesson-title">${sanitize(lesson.title || 'Lesson')}</div>
+            <div class="sb-lesson-sub">${typeLabel}${lesson.duration ? ' · ' + lesson.duration : ''}</div>
+          </div>
         </div>`;
     }).join('');
-    return `
-      <div style="margin-bottom:4px">
-        <div style="padding:8px 16px;font-size:.7rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)">
-          ${sanitize(mod.title||`Module ${mi+1}`)}
+
+    const quizRow = mod.hasQuiz ? `
+      <div class="sb-quiz-row" onclick="openQuiz('${currentCourseId}','${mod.id}')">
+        <div class="sb-lesson-dot" style="background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:var(--amber)">🧪</div>
+        <div class="sb-lesson-info">
+          <div class="sb-lesson-title" style="color:var(--amber)">Module Quiz</div>
+          <div class="sb-lesson-sub">Test your knowledge</div>
         </div>
-        ${lessons}
-        ${mod.hasQuiz?`
-          <div class="lesson-row" onclick="openQuiz('${currentCourseId}','${mod.id}')" style="border-top:1px solid var(--line);margin-top:4px">
-            <span class="lesson-icon">🧪</span>
-            <span class="lesson-title" style="font-size:.78rem;color:var(--amber)">Module Quiz</span>
-          </div>`:''
-        }
+      </div>` : '';
+
+    return `
+      <div class="sb-module-card ${isOpen ? 'open' : ''}" id="sbmod-${mod.id}">
+        <div class="sb-module-header" onclick="toggleSbModule('${mod.id}')">
+          <div class="sb-module-num">${mi + 1}</div>
+          <div class="sb-module-info">
+            <div class="sb-module-title">${sanitize(mod.title || `Module ${mi + 1}`)}</div>
+            <div class="sb-module-meta">${lessons.length} lesson${lessons.length !== 1 ? 's' : ''} · ${doneCount}/${lessons.length} done</div>
+          </div>
+          <span class="sb-module-chevron">▶</span>
+        </div>
+        <div class="sb-module-prog"><div class="sb-module-prog-fill" style="width:${progPct}%"></div></div>
+        <div class="sb-lessons">
+          ${lessonRows}
+          ${quizRow}
+        </div>
       </div>`;
   }).join('');
+}
+
+function toggleSbModule(modId) {
+  const card = document.getElementById('sbmod-' + modId);
+  if (card) card.classList.toggle('open');
 }
 
 function openLesson(courseId, moduleId, lessonId) {
@@ -6338,6 +6430,10 @@ function openLesson(courseId, moduleId, lessonId) {
   if (!lesson) return;
   renderLearnSidebar(course);
   const area = document.getElementById('lesson-content-area');
+  const enrollment = myEnrollments[courseId];
+  const completed  = enrollment?.completedLessons || [];
+  const isDone     = completed.includes(lessonId);
+
   let contentHtml = '';
   if (lesson.type === 'video' && lesson.videoUrl) {
     const embedUrl = youtubeEmbed(lesson.videoUrl);
@@ -6351,21 +6447,74 @@ function openLesson(courseId, moduleId, lessonId) {
   if (lesson.content) {
     contentHtml += `<div class="article-content">${renderMarkdown(lesson.content)}</div>`;
   }
-  // Find prev/next
+
+  // Prev / next
   let allLessons = [];
   (course.modules||[]).forEach(m=>(m.lessons||[]).forEach(l=>allLessons.push({moduleId:m.id,lesson:l})));
-  const idx = allLessons.findIndex(x=>x.lesson.id===lessonId);
+  const idx  = allLessons.findIndex(x=>x.lesson.id===lessonId);
   const prev = allLessons[idx-1];
   const next = allLessons[idx+1];
+
+  // Lesson type badge
+  const typeBadge = lesson.type === 'video'
+    ? `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:99px;padding:3px 10px;font-size:.68rem;font-family:var(--ff-mono)">▶ Video</span>`
+    : `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);color:var(--stu);border-radius:99px;padding:3px 10px;font-size:.68rem;font-family:var(--ff-mono)">📄 Article</span>`;
+
+  const doneBadge = isDone
+    ? `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);color:var(--stu);border-radius:99px;padding:3px 10px;font-size:.68rem;font-weight:700">✓ Completed</span>`
+    : '';
+
   area.innerHTML = `
-    <div style="font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:1.5px">${sanitize(mod?.title||'')}</div>
-    <h2 style="font-size:1.4rem;font-weight:900;color:var(--head);margin-bottom:20px">${sanitize(lesson.title||'')}</h2>
-    ${contentHtml || '<div style="color:var(--muted)">No content for this lesson.</div>'}
-    <div class="learn-nav-btns">
-      ${prev ? `<button class="btn btn-ghost" onclick="openLesson('${courseId}','${prev.moduleId}','${prev.lesson.id}')">← Previous</button>` : '<div></div>'}
-      <button class="btn btn-g" onclick="completeLessonAndNext('${courseId}','${moduleId}','${lessonId}','${next?.lesson?.id||''}','${next?.moduleId||''}')">
-        ${next ? 'Mark Complete & Next →' : '✓ Complete Course'}
-      </button>
+    <div style="padding:28px 36px;max-width:860px;margin:0 auto">
+
+      <!-- Breadcrumb -->
+      <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:18px;flex-wrap:wrap">
+        <span style="color:var(--soft)">${sanitize(course.title||'')}</span>
+        <span>›</span>
+        <span style="color:var(--soft)">${sanitize(mod?.title||'')}</span>
+        <span>›</span>
+        <span style="color:var(--stu)">${sanitize(lesson.title||'')}</span>
+      </div>
+
+      <!-- Lesson header card -->
+      <div style="background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin-bottom:28px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
+          <div>
+            <h2 style="font-size:1.35rem;font-weight:900;color:var(--head);margin:0 0 10px">${sanitize(lesson.title||'')}</h2>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              ${typeBadge}
+              ${lesson.duration ? `<span style="font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)">⏱ ${lesson.duration}</span>` : ''}
+              ${doneBadge}
+            </div>
+          </div>
+          <div style="font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);text-align:right;white-space:nowrap">
+            Lesson ${idx + 1} of ${allLessons.length}
+          </div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div style="background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:28px 30px;min-height:200px;margin-bottom:24px">
+        ${contentHtml || `<div style="text-align:center;padding:48px 0;color:var(--muted)">
+          <div style="font-size:2.5rem;margin-bottom:12px">📄</div>
+          <div style="font-size:.85rem">No content added for this lesson yet.</div>
+        </div>`}
+      </div>
+
+      <!-- Nav buttons -->
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:4px">
+        <div>
+          ${prev ? `
+            <button class="btn btn-ghost" onclick="openLesson('${courseId}','${prev.moduleId}','${prev.lesson.id}')">
+              ← ${sanitize(prev.lesson.title||'Previous')}
+            </button>` : '<div></div>'}
+        </div>
+        <button class="btn btn-g" style="min-width:200px" onclick="completeLessonAndNext('${courseId}','${moduleId}','${lessonId}','${next?.lesson?.id||''}','${next?.moduleId||''}')">
+          ${isDone
+            ? (next ? '→ Next Lesson' : '✓ Course Complete')
+            : (next ? '✓ Mark Complete & Next →' : '✓ Complete Course')}
+        </button>
+      </div>
     </div>`;
 }
 
@@ -6403,57 +6552,8 @@ function youtubeEmbed(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : null;
 }
 
-let _mdPlaygroundIdx = 0;
 function renderMarkdown(md) {
-  // First, extract fenced code blocks so inner content isn't touched by inline replacements
-  const blocks = [];
-  const placeholder = '\x00BLOCK\x00';
-
-  // Replace ```python ... ``` with a runnable playground placeholder
-  // Replace ```otherlang ... ``` with a static <pre> placeholder
-  md = md.replace(/```(\w*)\n?([\s\S]*?)```/g, function(_, lang, code) {
-    const isPython = !lang || lang.toLowerCase() === 'python' || lang.toLowerCase() === 'py';
-    if (isPython) {
-      const pid = 'mdpy-' + (++_mdPlaygroundIdx);
-      const escaped = code.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      blocks.push(`
-        <div class="md-py-block" style="margin:18px 0;background:var(--ink2);border:1px solid rgba(0,229,160,.25);border-radius:var(--r-lg);overflow:hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(0,229,160,.06);border-bottom:1px solid rgba(0,229,160,.12)">
-            <span style="display:flex;align-items:center;gap:7px">
-              <span style="font-size:.95rem">🐍</span>
-              <span style="font-size:.76rem;font-weight:700;color:var(--stu);font-family:var(--ff-mono)">Python · Runnable</span>
-            </span>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-ghost btn-sm" onclick="(function(id){
-                var ta=document.getElementById(id+'-code');
-                var out=document.getElementById(id+'-out');
-                ta.value=ta.dataset.orig;
-                out.style.color='var(--stu)';out.textContent='▶ Click Run to execute…';
-              })('${pid}')">↺ Reset</button>
-              <button class="btn btn-g btn-sm" onclick="runMdPlayground('${pid}',this)">▶ Run</button>
-            </div>
-          </div>
-          <textarea id="${pid}-code" data-orig="${escaped}" spellcheck="false" style="
-            width:100%;min-height:120px;resize:vertical;
-            background:var(--ink);color:var(--head);
-            font-family:var(--ff-mono);font-size:.8rem;line-height:1.6;
-            padding:14px 16px;border:none;outline:none;
-            border-bottom:1px solid var(--line);tab-size:4;
-          ">${escaped}</textarea>
-          <div id="${pid}-out" style="
-            padding:12px 16px;font-family:var(--ff-mono);font-size:.78rem;
-            min-height:48px;white-space:pre-wrap;color:var(--stu);background:var(--ink);
-          ">▶ Click Run to execute…</div>
-        </div>`);
-    } else {
-      const escaped = code.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      blocks.push(`<pre><code>${escaped}</code></pre>`);
-    }
-    return placeholder + (blocks.length - 1) + '\x00';
-  });
-
-  // Now safe to do inline replacements
-  md = md
+  return md
     .replace(/^### (.+)$/gm,'<h3>$1</h3>')
     .replace(/^## (.+)$/gm,'<h2>$1</h2>')
     .replace(/^# (.+)$/gm,'<h1>$1</h1>')
@@ -6461,40 +6561,8 @@ function renderMarkdown(md) {
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
     .replace(/`([^`]+)`/g,'<code>$1</code>')
     .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>')
     .replace(/\n/g,'<br>');
-
-  // Restore blocks
-  md = md.replace(new RegExp('\x00BLOCK\x00(\\d+)\x00','g'), (_, i) => blocks[+i]);
-  return md;
-}
-
-async function runMdPlayground(pid, btn) {
-  const codeEl = document.getElementById(pid + '-code');
-  const outEl  = document.getElementById(pid + '-out');
-  const code   = codeEl?.value || '';
-  if (!code.trim()) return;
-  btn.disabled = true; btn.textContent = '⏳ Running…';
-  outEl.style.color = 'var(--soft)'; outEl.textContent = 'Running…';
-  try {
-    if (!_pyReady) {
-      ensurePyodideRunning();
-      outEl.textContent = '⏳ Loading Python engine… please wait ~15s then try again.';
-      btn.disabled = false; btn.textContent = '▶ Run';
-      return;
-    }
-    const result = await runPy(code, '');
-    if (result.ec !== 0 || result.stderr) {
-      outEl.style.color = 'var(--danger)';
-      outEl.textContent = (result.stderr || 'Error').trim();
-    } else {
-      outEl.style.color = 'var(--stu)';
-      outEl.textContent = result.stdout || '(no output)';
-    }
-  } catch(e) {
-    outEl.style.color = 'var(--danger)';
-    outEl.textContent = '⚠ ' + e.message;
-  }
-  btn.disabled = false; btn.textContent = '▶ Run';
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -6894,48 +6962,20 @@ function addCBLesson(modIdx) {
   const el = document.getElementById('cbmod-lessons-'+modIdx);
   const row = document.createElement('div');
   row.className = 'lesson-builder-item';
-  row.style.flexDirection = 'column';
   row.innerHTML = `
-    <div style="display:flex;gap:8px;align-items:center;width:100%">
-      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
-      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
-      <select class="inp" style="width:110px;padding:7px"
-              onchange="cbLessonTypeChange(this,${modIdx},${lessonIdx})">
-        <option value="article">📄 Article</option>
-        <option value="video">▶ Video</option>
-      </select>
-      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
-    </div>
-    <div class="cb-video-row" style="display:none;width:100%;padding-left:28px">
-      <input class="inp" placeholder="YouTube URL" style="width:100%;padding:7px 10px;margin-top:6px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
-    </div>
-    <div class="cb-content-row" style="width:100%;padding-left:28px">
-      <div style="font-size:.62rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px;margin:6px 0 4px">
-        Lesson Content <span style="color:var(--stu);text-transform:none;letter-spacing:0">— supports Markdown. Wrap Python in</span>
-        <code style="background:var(--ink);border:1px solid var(--line);border-radius:3px;padding:0 4px;color:var(--amber);\`\`\`python … \`\`\`</code>
-        for a runnable block
-      </div>
-      <textarea class="inp" rows="5" placeholder="Write lesson content here...&#10;&#10;Example runnable block:&#10;\`\`\`python&#10;print('Hello, World!')&#10;\`\`\`" style="width:100%;padding:10px;font-family:var(--ff-mono);font-size:.78rem;resize:vertical"
-                oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value"></textarea>
-    </div>`;
+    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
+    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
+    <select class="inp" style="width:100px;padding:7px"
+            onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value">
+      <option value="article">Article</option>
+      <option value="video">Video</option>
+    </select>
+    <input class="inp" placeholder="YouTube URL / content" style="flex:2;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
+    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">`;
   el.appendChild(row);
-}
-
-function cbLessonTypeChange(sel, modIdx, lessonIdx) {
-  courseBuilderModules[modIdx].lessons[lessonIdx].type = sel.value;
-  const item = sel.closest('.lesson-builder-item');
-  const videoRow   = item.querySelector('.cb-video-row');
-  const contentRow = item.querySelector('.cb-content-row');
-  if (sel.value === 'video') {
-    videoRow.style.display   = 'block';
-    contentRow.style.display = 'block'; // keep content for description
-  } else {
-    videoRow.style.display   = 'none';
-    contentRow.style.display = 'block';
-  }
 }
 
 async function saveCourse() {
@@ -7565,39 +7605,21 @@ function addAmmLesson() {
   const el = document.getElementById('amm-lessons-list');
   const row = document.createElement('div');
   row.className = 'lesson-builder-item';
-  row.style.flexDirection = 'column';
+  row.style.display = 'flex'; row.style.gap = '8px'; row.style.alignItems = 'center';
   row.innerHTML = `
-    <div style="display:flex;gap:8px;align-items:center;width:100%">
-      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${idx+1}</span>
-      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-             oninput="_addModuleLessons[${idx}].title=this.value">
-      <select class="inp" style="width:110px;padding:7px"
-              onchange="ammLessonTypeChange(this,${idx})">
-        <option value="article">📄 Article</option>
-        <option value="video">▶ Video</option>
-      </select>
-      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-             oninput="_addModuleLessons[${idx}].duration=this.value">
-    </div>
-    <div class="amm-video-row" style="display:none;width:100%;padding-left:28px">
-      <input class="inp" placeholder="YouTube URL" style="width:100%;padding:7px 10px;margin-top:6px"
-             oninput="_addModuleLessons[${idx}].videoUrl=this.value">
-    </div>
-    <div class="amm-content-row" style="width:100%;padding-left:28px">
-      <div style="font-size:.62rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px;margin:6px 0 4px">
-        Lesson Content — wrap Python in <code style="background:var(--ink);border:1px solid var(--line);border-radius:3px;padding:0 4px;color:var(--amber)">\`\`\`python … \`\`\`</code> for a runnable block
-      </div>
-      <textarea class="inp" rows="5" placeholder="Write lesson content here...&#10;&#10;Example:&#10;\`\`\`python&#10;print('Hello, World!')&#10;\`\`\`" style="width:100%;padding:10px;font-family:var(--ff-mono);font-size:.78rem;resize:vertical"
-                oninput="_addModuleLessons[${idx}].content=this.value"></textarea>
-    </div>`;
+    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${idx+1}</span>
+    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].title=this.value">
+    <select class="inp" style="width:100px;padding:7px"
+            onchange="_addModuleLessons[${idx}].type=this.value">
+      <option value="article">Article</option>
+      <option value="video">Video</option>
+    </select>
+    <input class="inp" placeholder="YouTube URL or content text" style="flex:2;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].videoUrl=this.value;_addModuleLessons[${idx}].content=this.value">
+    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].duration=this.value">`;
   el.appendChild(row);
-}
-
-function ammLessonTypeChange(sel, idx) {
-  _addModuleLessons[idx].type = sel.value;
-  const item = sel.closest('.lesson-builder-item');
-  item.querySelector('.amm-video-row').style.display   = sel.value === 'video' ? 'block' : 'none';
-  item.querySelector('.amm-content-row').style.display = 'block';
 }
 
 async function saveNewModule() {
@@ -7616,14 +7638,15 @@ async function saveNewModule() {
   course.totalLessons = totalLessons;
   if (fsReady()) {
     try {
-      await db.collection('courses').doc(courseId).set({
+      await db.collection('courses').doc(courseId).update({
         modules: updatedModules,
         totalLessons,
-      }, { merge: true });
+      });
       if (hasQuiz) {
-        await db.collection('courses').doc(courseId)
-          .collection('quizzes').doc(newModule.id)
-          .set({ questions: [], moduleId: newModule.id });
+        await db.collection('courses').doc(courseId).set({
+  modules: updatedModules,
+  totalLessons,
+}, { merge: true });
       }
       toast(`Module "${title}" added to course!`, 'ok');
     } catch(e) { toast('Save failed: '+e.message,'err'); return; }
@@ -7640,9 +7663,8 @@ async function saveNewModule() {
   st.textContent = `
     .py-playground textarea:focus { outline: none; }
     .py-playground textarea { tab-size: 4; }
-    .lesson-builder-item { display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm); }
-    .lesson-builder-item textarea { tab-size:4; }
-    .md-py-block textarea { tab-size:4; }`;
+    .lesson-builder-item { display:flex;gap:8px;align-items:center;padding:8px;background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm); }
+  `;
   document.head.appendChild(st);
 })();
 
