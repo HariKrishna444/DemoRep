@@ -7494,9 +7494,10 @@ async function saveNewModule() {
         totalLessons,
       });
       if (hasQuiz) {
-        await db.collection('courses').doc(courseId)
-          .collection('quizzes').doc(newModule.id)
-          .set({ questions: [], moduleId: newModule.id });
+        await db.collection('courses').doc(courseId).set({
+  modules: updatedModules,
+  totalLessons,
+}, { merge: true });
       }
       toast(`Module "${title}" added to course!`, 'ok');
     } catch(e) { toast('Save failed: '+e.message,'err'); return; }
