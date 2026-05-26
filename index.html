@@ -16,16 +16,17 @@
    ROOT TOKENS
    ═══════════════════════════════════════════════════ */
 :root{
-  --ink:    #0a0c12;
-  --ink2:   #111520;
-  --ink3:   #181d2a;
-  --ink4:   #1e2535;
-  --line:   #252d3e;
-  --line2:  #2e3850;
-  --muted:  #4a5872;
-  --soft:   #7b8faa;
-  --body:   #c2cfe0;
-  --head:   #eef2f8;
+  /* ── Lighter dark palette — easier on the eyes ── */
+  --ink:    #141820;
+  --ink2:   #1c2130;
+  --ink3:   #232b3e;
+  --ink4:   #2a3348;
+  --line:   #313d55;
+  --line2:  #3a4860;
+  --muted:  #6b7d99;
+  --soft:   #94a3b8;
+  --body:   #cbd5e1;
+  --head:   #f1f5fb;
 
   --red:    #ff3b5c;
   --amber:  #f5a623;
@@ -33,32 +34,34 @@
   --blue:   #3b82f6;
   --cyan:   #06b6d4;
 
-  --prof:   #f5a623;   /* professor accent */
-  --stu:    #00e5a0;   /* student accent   */
+  --prof:   #f5a623;
+  --stu:    #00e5a0;
   --danger: #ff3b5c;
 
-  --r-sm: 6px;
-  --r:    10px;
-  --r-lg: 16px;
-  --r-xl: 22px;
+  --r-sm: 8px;
+  --r:    12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
 
   --ff-head: 'Outfit', sans-serif;
   --ff-mono: 'DM Mono', monospace;
 
-  --sh: 0 8px 40px rgba(0,0,0,.55);
-  --glow-g: 0 0 30px rgba(0,229,160,.18);
-  --glow-a: 0 0 30px rgba(245,166,35,.18);
-  --glow-r: 0 0 30px rgba(255,59,92,.25);
+  /* Reduced shadows */
+  --sh: 0 4px 20px rgba(0,0,0,.28);
+  --glow-g: 0 0 16px rgba(0,229,160,.10);
+  --glow-a: 0 0 16px rgba(245,166,35,.10);
+  --glow-r: 0 0 16px rgba(255,59,92,.12);
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:14px;height:100%}
+html{font-size:15px;height:100%}
 body{
   background:var(--ink);
   color:var(--body);
   font-family:var(--ff-head);
   min-height:100vh;
   overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
 }
 
 /* animated noise grain overlay */
@@ -66,7 +69,7 @@ body::after{
   content:'';
   position:fixed;inset:0;pointer-events:none;z-index:9999;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  opacity:.4;
+  opacity:.18;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -189,8 +192,8 @@ select.inp option{background:var(--ink3)}
   border-radius:var(--r-xl);padding:36px;
   box-shadow:var(--sh);
 }
-.login-card.prof-mode{border-color:rgba(245,166,35,.2);box-shadow:var(--sh),var(--glow-a)}
-.login-card.stu-mode{border-color:rgba(0,229,160,.15);box-shadow:var(--sh),var(--glow-g)}
+.login-card.prof-mode{border-color:rgba(245,166,35,.2);box-shadow:var(--sh)}
+.login-card.stu-mode{border-color:rgba(0,229,160,.15);box-shadow:var(--sh)}
 
 .form-fields{display:flex;flex-direction:column;gap:16px}
 .divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.72rem;font-family:var(--ff-mono)}
@@ -206,7 +209,7 @@ select.inp option{background:var(--ink3)}
   position:sticky;top:0;z-index:200;
   backdrop-filter:blur(14px);
 }
-.tb-brand{font-family:var(--ff-head);font-size:1.2rem;font-weight:800;color:var(--stu);letter-spacing:-0.5px}
+.tb-brand{font-family:var(--ff-head);font-size:1.3rem;font-weight:900;color:var(--stu);letter-spacing:-0.5px}
 .tb-brand em{color:var(--muted);font-style:normal}
 .tb-center{display:flex;align-items:center;gap:12px}
 .tb-right{display:flex;align-items:center;gap:10px}
@@ -260,7 +263,7 @@ select.inp option{background:var(--ink3)}
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:24px;
 }
-.sec-hd h2{font-size:1.4rem;font-weight:800;color:var(--head);letter-spacing:-.3px}
+.sec-hd h2{font-size:1.6rem;font-weight:900;color:var(--head);letter-spacing:-.4px}
 .sec-hd p{font-size:.8rem;color:var(--soft);margin-top:3px}
 
 /* Stat cards */
@@ -349,7 +352,7 @@ select.inp option{background:var(--ink3)}
   background:var(--ink2);border:1px solid var(--line2);
   border-radius:var(--r-xl);padding:36px;
   width:100%;max-width:640px;max-height:90vh;overflow-y:auto;
-  box-shadow:var(--sh),var(--glow-a);
+  box-shadow:var(--sh);
   animation:fadeup .3s ease;
 }
 .modal h3{font-size:1.2rem;font-weight:800;color:var(--head);margin-bottom:6px}
@@ -438,7 +441,7 @@ select.inp option{background:var(--ink3)}
   content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
   background:linear-gradient(90deg,transparent,var(--line2),transparent);
 }
-.exam-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-2px);box-shadow:var(--sh),var(--glow-g)}
+.exam-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .exam-card.locked{opacity:.5;cursor:not-allowed}
 .exam-card.solved{border-color:rgba(0,229,160,.3)}
 .ec-num{
@@ -976,7 +979,7 @@ select.inp option{background:var(--ink3)}
   border-radius:var(--r-lg);overflow:hidden;cursor:pointer;
   transition:all .22s;position:relative;
 }
-.course-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-3px);box-shadow:var(--sh),var(--glow-g)}
+.course-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.2)}
 .course-thumb{
   width:100%;height:140px;object-fit:cover;
   background:linear-gradient(135deg,var(--ink3),var(--ink4));
@@ -992,7 +995,7 @@ select.inp option{background:var(--ink3)}
   font-size:.65rem;font-weight:700;font-family:var(--ff-mono);
   margin-bottom:10px;
 }
-.course-title{font-size:.95rem;font-weight:800;color:var(--head);margin-bottom:6px;line-height:1.3}
+.course-title{font-size:1.05rem;font-weight:800;color:var(--head);margin-bottom:6px;line-height:1.3}
 .course-desc{font-size:.77rem;color:var(--soft);line-height:1.6;margin-bottom:12px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .course-meta{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);font-family:var(--ff-mono)}
@@ -1028,7 +1031,7 @@ select.inp option{background:var(--ink3)}
 .cd-hero-inner{max-width:860px}
 .cd-breadcrumb{font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:16px}
 .cd-breadcrumb span{color:var(--stu)}
-.cd-title{font-size:1.8rem;font-weight:900;color:var(--head);margin-bottom:10px;letter-spacing:-.5px}
+.cd-title{font-size:2rem;font-weight:900;color:var(--head);margin-bottom:10px;letter-spacing:-.5px}
 .cd-desc{font-size:.88rem;color:var(--soft);line-height:1.8;margin-bottom:20px;max-width:600px}
 .cd-meta-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .cd-badge{
@@ -1057,7 +1060,7 @@ select.inp option{background:var(--ink3)}
 }
 .module-head:hover{background:var(--ink4)}
 .module-icon{font-size:1rem;width:20px;text-align:center}
-.module-title{font-weight:700;color:var(--head);flex:1}
+.module-title{font-weight:800;color:var(--head);flex:1;font-size:.9rem}
 .module-count{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono)}
 .module-lessons{padding:0 16px 12px;display:flex;flex-direction:column;gap:6px;display:none}
 .module-lessons.open{display:flex}
@@ -1107,13 +1110,13 @@ select.inp option{background:var(--ink3)}
 .article-content .ac-spacer{ height:10px; }
 
 /* Headings */
-.article-content h1{font-size:1.25rem;font-weight:900;color:var(--head);margin:28px 0 12px;font-family:var(--ff-head)}
+.article-content h1{font-size:1.5rem;font-weight:900;color:var(--head);margin:28px 0 14px;font-family:var(--ff-head)}
 .article-content h2{
-  font-size:1.05rem;font-weight:800;color:var(--head);
-  margin:26px 0 10px;padding-bottom:8px;
+  font-size:1.2rem;font-weight:800;color:var(--head);
+  margin:26px 0 12px;padding-bottom:10px;
   border-bottom:1px solid var(--line);font-family:var(--ff-head);
 }
-.article-content h3{font-size:.92rem;font-weight:700;color:var(--head);margin:20px 0 8px}
+.article-content h3{font-size:1.05rem;font-weight:700;color:var(--head);margin:20px 0 8px}
 
 /* Emoji section header — e.g. "🐍 History of Python" */
 .article-content .ac-emoji-head{
@@ -1200,7 +1203,7 @@ select.inp option{background:var(--ink3)}
 .quiz-dot.done{background:var(--stu)}
 .quiz-dot.current{background:var(--amber)}
 .quiz-question-num{font-size:.7rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
-.quiz-question-text{font-size:1.05rem;font-weight:700;color:var(--head);line-height:1.5}
+.quiz-question-text{font-size:1.15rem;font-weight:700;color:var(--head);line-height:1.5}
 .quiz-options{display:flex;flex-direction:column;gap:10px;margin-top:20px}
 .quiz-opt{
   background:var(--ink3);border:1px solid var(--line);
@@ -1244,7 +1247,7 @@ select.inp option{background:var(--ink3)}
   border-radius:var(--r-lg);padding:20px;cursor:pointer;
   transition:all .2s;
 }
-.my-course-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-2px)}
+.my-course-card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-1px)}
 .my-course-title{font-size:.92rem;font-weight:800;color:var(--head);margin-bottom:6px}
 .my-course-meta{font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:14px}
 .my-course-pct{font-size:.82rem;font-weight:700;color:var(--stu);margin-bottom:6px}
@@ -1354,6 +1357,179 @@ select.inp option{background:var(--ink3)}
 .stu-nav-tab:hover:not(.active){color:var(--body)}
 
 
+
+/* ═══════════════════════════════════════════════════
+   MOBILE RESPONSIVE — Complete overhaul
+   ═══════════════════════════════════════════════════ */
+
+/* ── Topbar mobile ── */
+@media(max-width:768px){
+  .topbar{padding:10px 14px;gap:8px}
+  .tb-brand{font-size:1.1rem}
+  .user-chip span{display:none}
+  .tb-right{gap:6px}
+
+  /* Professor layout — stack sidebar below on mobile */
+  .prof-main{grid-template-columns:1fr!important;grid-template-rows:auto 1fr}
+  .prof-sidebar{
+    display:flex;flex-direction:row;overflow-x:auto;
+    padding:8px 12px;gap:4px;border-right:none;
+    border-bottom:1px solid var(--line);
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .prof-sidebar::-webkit-scrollbar{display:none}
+  .sbar-section{display:none}
+  .sbar-item{
+    flex-shrink:0;flex-direction:column;gap:2px;
+    padding:8px 10px;border-radius:var(--r-sm);
+    font-size:.65rem;min-width:64px;text-align:center;
+  }
+  .sbar-item .sbar-icon{font-size:1.1rem;width:auto}
+  .sbar-badge{font-size:.55rem;padding:1px 5px}
+  .prof-content{padding:16px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px}
+  .analytics-grid{grid-template-columns:1fr!important}
+
+  /* Course catalog */
+  .course-catalog-grid{grid-template-columns:1fr!important;gap:12px}
+  .catalog-filters{gap:6px}
+  .catalog-filters #catalog-search{width:100%!important;margin-left:0!important;order:10}
+  
+  /* Page paddings */
+  #page-catalog > div:last-child{padding:16px!important}
+  #page-my-learning > div:last-child{padding:16px!important}
+  .prof-content{padding:14px!important}
+
+  /* Course detail hero */
+  .cd-hero{padding:22px 16px}
+  .cd-body{
+    grid-template-columns:1fr!important;
+    padding:16px!important;
+    gap:16px;
+  }
+  .cd-sidebar-wrap{position:static!important}
+  .cd-title{font-size:1.45rem!important}
+  .cd-meta-row{gap:6px;flex-wrap:wrap}
+  .cd-badge{font-size:.65rem;padding:3px 8px}
+
+  /* Learn view — sidebar collapses above content */
+  .learn-layout{
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto 1fr;
+  }
+  .learn-sidebar{
+    border-right:none!important;
+    border-bottom:1px solid var(--line);
+    max-height:200px;
+    overflow-y:auto;
+    padding:8px 0;
+  }
+  .lesson-content-area{
+    padding:16px!important;
+    max-width:100%!important;
+  }
+  #learn-course-title{display:none}
+  #learn-progress-chip{font-size:.68rem;padding:4px 10px}
+
+  /* Quiz view */
+  #page-quiz{padding:16px 12px}
+  .quiz-wrap{max-width:100%}
+  .quiz-header{padding:16px}
+  .quiz-question-text{font-size:1rem!important}
+  .quiz-opt{padding:11px 13px}
+  .quiz-opt-letter{width:26px;height:26px}
+
+  /* Certificate */
+  .cert-inner{padding:24px 16px!important}
+  .cert-student-name{font-size:1.5rem!important}
+  .cert-course-name{font-size:.95rem!important;padding:12px 14px}
+  .cert-meta-row{grid-template-columns:1fr 1fr!important;gap:8px}
+  .cert-actions{flex-wrap:wrap;justify-content:center;gap:8px}
+  .cert-wrap{margin-top:12px!important;padding:0 8px}
+
+  /* Modal */
+  .modal{padding:20px!important;width:calc(100% - 24px)!important}
+  .modal-row{grid-template-columns:1fr!important;gap:8px}
+  .modal-bg.open{padding:12px}
+
+  /* Student nav tabs */
+  .stu-nav-tabs{padding:0 8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .stu-nav-tabs::-webkit-scrollbar{display:none}
+  .stu-nav-tab{flex-shrink:0;padding:11px 14px;font-size:.75rem;white-space:nowrap}
+
+  /* Results page */
+  .res-stats{grid-template-columns:repeat(3,1fr)}
+  .res-card{padding:24px 16px}
+  .result-wrap{padding:0 12px}
+
+  /* Verify page */
+  .verify-card{padding:24px 16px;margin:0 8px}
+
+  /* My learning */
+  .my-learning-grid{grid-template-columns:1fr!important}
+
+  /* Nav buttons at bottom of lesson */
+  .learn-nav-btns{flex-wrap:wrap;gap:8px}
+  .learn-nav-btns .btn{flex:1;justify-content:center;min-width:120px}
+
+  /* Module rows in learn sidebar */
+  .lesson-row{padding:10px 14px}
+  .lesson-title{font-size:.82rem!important}
+
+  /* Data tables — scroll container */
+  .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Login page */
+  .login-wrap{max-width:100%!important}
+  .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
+  .login-brand h1{font-size:2rem}
+  .role-pills{margin-bottom:20px}
+
+  /* Topbar right — collapse some items */
+  .sec-hd{flex-direction:column;align-items:flex-start;gap:10px}
+  .sec-hd > div:last-child{width:100%;display:flex;flex-wrap:wrap;gap:6px}
+}
+
+@media(max-width:480px){
+  html{font-size:14px}
+  .course-card{border-radius:var(--r)}
+  .stat-grid{grid-template-columns:1fr 1fr!important}
+  .quiz-opt-letter{width:22px;height:22px;font-size:.65rem}
+  .cert-meta-row{grid-template-columns:1fr 1fr!important}
+  .cert-student-name{font-size:1.2rem!important}
+  .cd-title{font-size:1.2rem!important}
+  .sec-hd h2{font-size:1.25rem!important}
+  .lesson-content-area{padding:12px!important}
+  .prof-sidebar .sbar-item{min-width:52px;font-size:.58rem}
+  .tb-brand{font-size:1rem}
+  .article-content h1{font-size:1.25rem!important}
+  .article-content h2{font-size:1.05rem!important}
+}
+
+/* ── Touch: remove hover effects that feel broken on mobile ── */
+@media(hover:none) and (pointer:coarse){
+  .course-card:hover{transform:none!important;box-shadow:none!important;border-color:var(--line)}
+  .lesson-row:hover{background:transparent}
+  .quiz-opt:hover:not(.selected){border-color:var(--line);background:var(--ink3)}
+  .module-head:hover{background:var(--ink3)}
+  .btn:hover{transform:none!important}
+  .btn-g:hover{box-shadow:0 0 18px rgba(0,229,160,.25)!important}
+  .my-course-card:hover{transform:none!important}
+  .exam-card:hover{transform:none!important;box-shadow:none!important}
+}
+
+/* ── Tablet (481-900px) tweaks ── */
+@media(min-width:481px) and (max-width:900px){
+  .learn-layout{grid-template-columns:240px 1fr!important}
+  .lesson-content-area{padding:22px 28px!important}
+  .cd-body{grid-template-columns:1fr!important;padding:24px!important}
+  .cd-sidebar-wrap{position:static!important}
+  .prof-main{grid-template-columns:200px 1fr!important}
+  .sbar-item{font-size:.78rem;padding:9px 10px}
+  .course-catalog-grid{grid-template-columns:repeat(2,1fr)!important}
+  .stat-grid{grid-template-columns:repeat(2,1fr)!important}
+}
 </style>
 </head>
 <body>
@@ -6029,7 +6205,7 @@ function showStuSection(section) {
    ────────────────────────────────────────────────────────────────── */
 async function loadCourses() {
   if (!fsReady()) {
-    coursesCatalog = getDemoCourses();
+    coursesCatalog = [];
     return;
   }
   try {
@@ -6042,7 +6218,7 @@ async function loadCourses() {
       return { id: doc.id, ...d };
     });
     // Always merge in demo courses so Python course is always visible
-    const demoCourses = getDemoCourses();
+    // demoCourses removed — Firestore only
     const fetchedIds = new Set(fetched.map(c => c.id));
     const missing = demoCourses.filter(c => !fetchedIds.has(c.id));
     coursesCatalog = [...fetched, ...missing];
@@ -6375,7 +6551,7 @@ function renderLearnSidebar(course) {
     }).join('');
     return `
       <div style="margin-bottom:4px">
-        <div style="padding:8px 16px;font-size:.7rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)">
+        <div style="padding:10px 16px;font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:var(--ff-mono)">
           ${sanitize(mod.title||`Module ${mi+1}`)}
         </div>
         ${lessons}
@@ -7221,54 +7397,11 @@ async function deleteCourse(courseId) {
    DEMO DATA
    ────────────────────────────────────────────────────────────────── */
 function getDemoCourses() {
-  return [
-    {
-      id:'demo-py', title:'Python for Beginners', language:'Python', difficulty:'beginner',
-      price:'free', thumbnail:'🐍', description:'Learn Python from scratch with hands-on exercises. Covers variables, loops, functions, and more.',
-      totalLessons: 12, instructorName:'Prof. Smith',
-      modules:[
-        { id:'m1', title:'Getting Started', hasQuiz:true, lessons:[
-          { id:'l1', title:'What is Python?', type:'article', duration:'5m', content:'# Introduction to Python\n\nPython is a high-level, interpreted programming language...\n\n## Why Python?\n- **Easy to learn** — clean, readable syntax\n- **Versatile** — web, data science, AI\n- **Large community** — tons of libraries\n\n```\nprint("Hello, World!")\n```' },
-          { id:'l2', title:'Installing Python', type:'video', duration:'8m', videoUrl:'https://www.youtube.com/watch?v=YYXdXT2l-Gg', content:'Install Python from python.org and set up your environment.' },
-          { id:'l3', title:'Your First Program', type:'article', duration:'10m', content:'## Hello World\n\nLet\'s write your first Python program:\n\n```\n# My first program\nname = input("What is your name? ")\nprint("Hello,", name)\n```\n\n> **Tip:** Save your file with a .py extension!' },
-        ]},
-        { id:'m2', title:'Variables & Data Types', hasQuiz:true, lessons:[
-          { id:'l4', title:'Variables', type:'article', duration:'12m', content:'## Variables in Python\n\nVariables store data values:\n\n```\nx = 5\nname = "Alice"\npi = 3.14\nis_student = True\n```\n\n**Types:** int, float, str, bool' },
-          { id:'l5', title:'Strings', type:'article', duration:'10m', content:'## String Operations\n\n```\ngreeting = "Hello, World!"\nprint(len(greeting))  # 13\nprint(greeting.upper())\nprint(greeting[0:5])  # Hello\n```' },
-        ]},
-      ],
-    },
-    {
-      id:'demo-js', title:'JavaScript Essentials', language:'JavaScript', difficulty:'intermediate',
-      price:'free', thumbnail:'⚡', description:'Master modern JavaScript including ES6+, async/await, and DOM manipulation.',
-      totalLessons: 18, instructorName:'Dr. Chen',
-      modules:[
-        { id:'m1', title:'JS Fundamentals', hasQuiz:true, lessons:[
-          { id:'l1', title:'JavaScript Overview', type:'article', duration:'7m', content:'# JavaScript: The Language of the Web\n\nJavaScript runs in every browser and powers interactive web experiences.\n\n```javascript\nconsole.log("Hello from JS!");\nconst sum = (a, b) => a + b;\nconsole.log(sum(3, 4)); // 7\n```' },
-          { id:'l2', title:'Variables & Scope', type:'video', duration:'15m', videoUrl:'https://www.youtube.com/watch?v=9emXNzqCKyg', content:'Understanding var, let, and const.' },
-        ]},
-      ],
-    },
-    {
-      id:'demo-dsa', title:'Data Structures & Algorithms', language:'DSA', difficulty:'advanced',
-      price:'free', thumbnail:'🧠', description:'Master arrays, linked lists, trees, graphs, sorting, and dynamic programming.',
-      totalLessons: 24, instructorName:'Prof. Johnson',
-      modules:[
-        { id:'m1', title:'Arrays & Sorting', hasQuiz:true, lessons:[
-          { id:'l1', title:'Array Basics', type:'article', duration:'10m', content:'## Arrays\n\nAn array is a collection of elements stored at contiguous memory locations.\n\n```python\narr = [1, 2, 3, 4, 5]\nprint(arr[0])  # 1\narr.append(6)\nprint(len(arr))  # 6\n```' },
-        ]},
-      ],
-    },
-  ];
+  return []; // All courses are loaded exclusively from Firestore
 }
 
 function getDemoQuizQuestions() {
-  return [
-    { question:'What is the output of print(2 ** 3) in Python?', options:['6','8','9','None'], correctIndex:1 },
-    { question:'Which keyword is used to define a function in Python?', options:['function','def','func','define'], correctIndex:1 },
-    { question:'What does "len()" function return?', options:['Last element','Type of object','Length of object','Nothing'], correctIndex:2 },
-    { question:'How do you create a comment in Python?', options:['// comment','/* comment */','# comment','-- comment'], correctIndex:2 },
-  ];
+  return []; // Quizzes are loaded exclusively from Firestore
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -7327,171 +7460,11 @@ window.probeFirestorePermissions = async function() {
   });
 };
 
-/* ══════════════════════════════════════════════════════════════════
-   FEATURE: LAZY PYODIDE — only loads after student opens Python course
-   or enters the exam platform
-   ══════════════════════════════════════════════════════════════════ */
-let _pyodideStarted = false;
 
-function ensurePyodideRunning() {
-  if (_pyodideStarted) return;
-  _pyodideStarted = true;
-  document.getElementById('py-loader').classList.remove('hidden');
-  startPyodide();
-  _animatePyLoader();
-}
 
-// Hook into the Exam page navigation — start Pyodide when student enters exams
-const _origShowStuSection = window.showStuSection;
-window.showStuSection = function(section) {
-  _origShowStuSection(section);
-};
 
-// Override openLearnView to start Pyodide when entering a Python course
-const _origOpenLearnView = window.openLearnView;
-window.openLearnView = async function(courseId) {
-  const course = coursesCatalog.find(c=>c.id===courseId);
-  if (course && (course.language||'').toLowerCase().includes('python')) {
-    ensurePyodideRunning();
-  }
-  return _origOpenLearnView.apply(this, arguments);
-};
 
-// Start Pyodide when student navigates to exam tab
-const _origRenderStuPage = window.renderStuPage;
-window.renderStuPage = function() {
-  ensurePyodideRunning();
-  return _origRenderStuPage?.apply(this, arguments);
-};
 
-/* ══════════════════════════════════════════════════════════════════
-   FEATURE: PYTHON PLAYGROUND in lesson content (for Python courses)
-   Appends an inline Pyodide REPL below lesson content
-   ══════════════════════════════════════════════════════════════════ */
-
-// Default exercises per lesson title keyword
-const PY_EXERCISES = {
-  'hello':     '# Hello World\nprint("Hello, World!")\n',
-  'variable':  '# Variables & Data Types\nname = "Alice"\nage = 20\npi = 3.14\nprint(name, age, pi)\n',
-  'loop':      '# Loops\nfor i in range(1, 6):\n    print(f"Count: {i}")\n\n# While loop\nx = 3\nwhile x > 0:\n    print(f"x = {x}")\n    x -= 1\n',
-  'string':    '# String Operations\ngreeting = "Hello, World!"\nprint(len(greeting))\nprint(greeting.upper())\nprint(greeting[0:5])\nprint(greeting.split(","))\n',
-  'function':  '# Functions\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Alice"))\nprint(greet("Bob"))\n',
-  'list':      '# Lists\nfruits = ["apple", "banana", "cherry"]\nfruits.append("date")\nprint(fruits)\nprint(fruits[1])\nfor fruit in fruits:\n    print(fruit)\n',
-  'default':   '# Python Playground\n# Edit this code and click Run!\nprint("Hello from Python!")\n',
-};
-
-function getPyExercise(lessonTitle) {
-  const t = (lessonTitle||'').toLowerCase();
-  for (const [key, code] of Object.entries(PY_EXERCISES)) {
-    if (t.includes(key)) return code;
-  }
-  return PY_EXERCISES['default'];
-}
-
-function injectPythonPlayground(lessonTitle) {
-  const area = document.getElementById('lesson-content-area');
-  if (!area) return;
-  if (area.querySelector('.py-playground')) return; // already injected
-  const defaultCode = getPyExercise(lessonTitle);
-  const playground = document.createElement('div');
-  playground.className = 'py-playground';
-  playground.style.cssText = `
-    margin-top:28px;background:var(--ink2);border:1px solid rgba(0,229,160,.25);
-    border-radius:var(--r-lg);overflow:hidden;
-  `;
-  playground.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(0,229,160,.06);border-bottom:1px solid rgba(0,229,160,.15)">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:1.1rem">🐍</span>
-        <span style="font-size:.82rem;font-weight:700;color:var(--stu)">Python Playground</span>
-        <span style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono)">Powered by Pyodide</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="resetPlayground(this)">↺ Reset</button>
-        <button class="btn btn-g btn-sm" id="py-run-btn" onclick="runPlayground(this)">▶ Run Code</button>
-      </div>
-    </div>
-    <div style="position:relative">
-      <textarea id="py-code-area" spellcheck="false" style="
-        width:100%;min-height:160px;resize:vertical;
-        background:var(--ink);color:var(--head);
-        font-family:var(--ff-mono);font-size:.82rem;line-height:1.6;
-        padding:16px;border:none;outline:none;
-        border-bottom:1px solid var(--line);
-      ">${defaultCode}</textarea>
-    </div>
-    <div style="padding:4px 16px 6px;background:var(--ink);border-bottom:1px solid var(--line)">
-      <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-family:var(--ff-mono)">Stdin (optional)</label>
-      <input id="py-stdin-area" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--ff-mono);font-size:.78rem;color:var(--soft);padding:4px 0" placeholder="Enter input for your program...">
-    </div>
-    <div id="py-output" style="
-      padding:14px 16px;font-family:var(--ff-mono);font-size:.8rem;
-      min-height:64px;white-space:pre-wrap;color:var(--stu);
-      background:var(--ink);
-    ">▶ Click "Run Code" to execute…</div>`;
-  area.appendChild(playground);
-  // Store default code for reset
-  playground.dataset.defaultCode = defaultCode;
-}
-
-async function runPlayground(btn) {
-  const playground = btn.closest('.py-playground');
-  const codeEl = playground.querySelector('#py-code-area') || document.getElementById('py-code-area');
-  const stdinEl = playground.querySelector('#py-stdin-area') || document.getElementById('py-stdin-area');
-  const outEl   = playground.querySelector('#py-output')    || document.getElementById('py-output');
-  const code    = codeEl?.value || '';
-  const stdin   = stdinEl?.value || '';
-  if (!code.trim()) return;
-  btn.disabled = true; btn.textContent = '⏳ Running…';
-  outEl.style.color = 'var(--soft)';
-  outEl.textContent = 'Running…';
-  try {
-    if (!_pyReady) {
-      ensurePyodideRunning();
-      outEl.textContent = '⏳ Loading Python engine… please wait ~15s then try again.';
-      btn.disabled = false; btn.textContent = '▶ Run Code';
-      return;
-    }
-    const result = await runPy(code, stdin);
-    if (result.ec !== 0 || result.stderr) {
-      outEl.style.color = 'var(--danger)';
-      outEl.textContent = (result.stderr || 'Error').trim();
-    } else {
-      outEl.style.color = 'var(--stu)';
-      outEl.textContent = result.stdout || '(no output)';
-    }
-  } catch(e) {
-    outEl.style.color = 'var(--danger)';
-    outEl.textContent = '⚠ ' + e.message;
-  }
-  btn.disabled = false; btn.textContent = '▶ Run Code';
-}
-
-function resetPlayground(btn) {
-  const playground = btn.closest('.py-playground');
-  const codeEl = playground.querySelector('#py-code-area') || document.getElementById('py-code-area');
-  const outEl  = playground.querySelector('#py-output')    || document.getElementById('py-output');
-  if (codeEl) codeEl.value = playground.dataset.defaultCode || PY_EXERCISES['default'];
-  if (outEl)  { outEl.style.color='var(--stu)'; outEl.textContent='▶ Click "Run Code" to execute…'; }
-}
-
-// Override openLesson to inject playground for Python courses
-const _origOpenLesson = window.openLesson;
-window.openLesson = function(courseId, moduleId, lessonId) {
-  _origOpenLesson.apply(this, arguments);
-  const course = coursesCatalog.find(c=>c.id===courseId);
-  if (course && (course.language||'').toLowerCase().includes('python')) {
-    // Give DOM a tick to render then inject playground
-    setTimeout(() => {
-      let lesson = null;
-      for (const m of (course.modules||[])) {
-        const l = (m.lessons||[]).find(l=>l.id===lessonId);
-        if (l) { lesson = l; break; }
-      }
-      injectPythonPlayground(lesson?.title || '');
-    }, 80);
-  }
-};
 
 /* ══════════════════════════════════════════════════════════════════
    FEATURE: MODULE COMPLETION stored in Firestore (module_progress collection)
@@ -7749,16 +7722,7 @@ async function saveNewModule() {
   renderCourseAnalytics();
 }
 
-/* CSS for Python playground */
-(function addPyPlaygroundCSS() {
-  const st = document.createElement('style');
-  st.textContent = `
-    .py-playground textarea:focus { outline: none; }
-    .py-playground textarea { tab-size: 4; }
-    .lesson-builder-item { display:flex;gap:8px;align-items:center;padding:8px;background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm); }
-  `;
-  document.head.appendChild(st);
-})();
+
 
 </script>
 </body>
