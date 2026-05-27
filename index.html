@@ -4661,21 +4661,23 @@ async function runCode() {
 
 async function fetchHiddenTestcases(questionId) {
   // Demo / offline mode — no hidden TCs available
-  if (!firebaseReady || !db) return { tcs: [], denied: false };
+  if (!firebaseReady || !db) return { tcs: [], denied: false, networkError: false };
   try {
     const snap = await db.collection('questions_private').doc(questionId).get();
-    if (!snap.exists) return { tcs: [], denied: false };
+    if (!snap.exists) return { tcs: [], denied: false, networkError: false };
     const data = snap.data();
     const tcs  = data.hiddenTestcases || data.testcases || [];
-    return { tcs, denied: false };
+    return { tcs, denied: false, networkError: false };
   } catch(e) {
     // permission-denied is the normal student path — Firestore rules block them.
-    // Any other error (network, unavailable) is also handled gracefully.
-    // We do NOT log to console for permission-denied — it's expected and noisy.
-    if (e.code !== 'permission-denied') {
-      console.warn('fetchHiddenTestcases unexpected error:', e.code);
+    // Any other error (network, unavailable, QUIC drop) is a transient failure
+    // and must NOT be treated as "no test cases exist" — that would cause a
+    // zero-TC submission to be silently accepted.
+    if (e.code === 'permission-denied') {
+      return { tcs: [], denied: true, networkError: false };
     }
-    return { tcs: [], denied: e.code === 'permission-denied' };
+    console.warn('fetchHiddenTestcases network/transient error:', e.code, e.message);
+    return { tcs: [], denied: false, networkError: true };
   }
 }
 
@@ -4701,7 +4703,17 @@ async function submitCode() {
   // (Firestore rules deny read), and grading runs on visible TCs only.
   outLine('info', '🔍 Fetching test cases...');
   const visibleTCs = currentQ.testcases || [];
-  const { tcs: hiddenTCs, denied: hiddenDenied } = await fetchHiddenTestcases(currentQ.id);
+  const { tcs: hiddenTCs, denied: hiddenDenied, networkError: hiddenNetErr } = await fetchHiddenTestcases(currentQ.id);
+
+  // A network error (QUIC drop, ERR_UNAVAILABLE, etc.) must abort submission.
+  // We cannot grade without test cases, and we must not silently pass with 0/0.
+  if (hiddenNetErr && visibleTCs.length === 0) {
+    outLine('err', '⛔ Could not reach Firestore to load test cases (network error).');
+    outLine('warn', 'Check your connection and try submitting again. If the problem persists, reload the page.');
+    toast('Network error — test cases unavailable, try again', 'err', 8000);
+    btn.disabled = false; btn.textContent = '✓ Submit';
+    return;
+  }
 
   if (hiddenDenied) {
     outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length !== 1 ? 's' : ''} locally.`);
@@ -4715,12 +4727,12 @@ async function submitCode() {
 
   const totalTC = allTCs.length;
 
-  // Guard: if there are genuinely no test cases at all, refuse to submit rather
-  // than silently accepting (0 passed === 0 total → allOk = true).
+  // Guard: if there are genuinely no test cases at all (not a network failure —
+  // that's caught above), refuse to submit rather than silently accepting.
   if (totalTC === 0) {
-    outLine('warn', '⚠ No test cases found for this question. Cannot grade submission.');
-    outLine('warn', 'If you are a student, test cases may not have been published yet. Contact your professor.');
-    toast('No test cases — cannot grade', 'warn', 6000);
+    outLine('warn', '⚠ No test cases are configured for this question.');
+    outLine('warn', 'The professor has not added any test cases yet. Submission is disabled until they do.');
+    toast('No test cases configured — cannot grade', 'warn', 6000);
     btn.disabled = false; btn.textContent = '✓ Submit';
     return;
   }
