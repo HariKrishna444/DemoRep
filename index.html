@@ -4714,6 +4714,17 @@ async function submitCode() {
   ];
 
   const totalTC = allTCs.length;
+
+  // Guard: if there are genuinely no test cases at all, refuse to submit rather
+  // than silently accepting (0 passed === 0 total → allOk = true).
+  if (totalTC === 0) {
+    outLine('warn', '⚠ No test cases found for this question. Cannot grade submission.');
+    outLine('warn', 'If you are a student, test cases may not have been published yet. Contact your professor.');
+    toast('No test cases — cannot grade', 'warn', 6000);
+    btn.disabled = false; btn.textContent = '✓ Submit';
+    return;
+  }
+
   if (!hiddenDenied) {
     outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC !== 1 ? 's' : ''} (${hiddenTCs.length} hidden)`);
   }
@@ -6832,11 +6843,20 @@ async function runMdPlayground(pid, btn) {
   btn.disabled = true; btn.textContent = '⏳ Running…';
   outEl.style.color = 'var(--soft)'; outEl.textContent = 'Running…';
   try {
-    if (typeof _pyReady === 'undefined' || !_pyReady) {
-      if (typeof ensurePyodideRunning === 'function') ensurePyodideRunning();
-      outEl.textContent = '⏳ Loading Python engine… please wait ~15s then try again.';
-      btn.disabled = false; btn.textContent = '▶ Run';
-      return;
+    // Start the Pyodide iframe if it hasn't been created yet (students who
+    // navigate directly to a course lesson never go through onAuthSuccess →
+    // startPyodide, so we must lazily initialise it here).
+    if (!_pyFrame) startPyodide();
+    if (!_pyReady) {
+      outEl.textContent = '⏳ Loading Python engine… (first run takes ~15 s)';
+      try {
+        await waitPyReady(75000);
+      } catch(e) {
+        outEl.style.color = '#f87171';
+        outEl.textContent = '⚠ Python engine failed to load — reload the page and try again.';
+        btn.disabled = false; btn.textContent = '▶ Run';
+        return;
+      }
     }
     const result = await runPy(code, '');
     if (result.ec !== 0 || result.stderr) {
