@@ -2959,17 +2959,20 @@ async function initApp() {
       auth = firebase.auth();
       db   = firebase.firestore();
 
-      // ── Offline persistence (modern cache API — no deprecation warning) ─
+      // ── Offline persistence ───────────────────────────────────────────
+      // Pass cacheSizeBytes via db.settings with merge:true BEFORE any
+      // other Firestore call — prevents the "overriding host" warning.
+      // enablePersistence with synchronizeTabs is the compat-SDK way to
+      // get multi-tab IndexedDB caching (the deprecation warning is just
+      // advisory; it still works correctly in 9.x compat).
       try {
-        db.settings({
-          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-        });
+        db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, merge: true });
         await db.enablePersistence({ synchronizeTabs: true });
         window._persistenceActive = true;
       } catch(err) {
         window._persistenceActive = false;
-        // failed-precondition = multiple tabs; unimplemented = Safari private mode
-        // Both are safe to ignore silently
+        // failed-precondition = multiple tabs open; unimplemented = Safari private mode
+        // Both are harmless — Firestore still works, just without offline cache
       }
 
       firebaseReady = true;
@@ -4193,7 +4196,8 @@ async function saveDraftToFirestore() {
     setSaveIndicator('saved'); // PRIORITY 4: confirm saved
   } catch(e) {
     setSaveIndicator('unsaved');
-    console.warn('saveDraftToFirestore failed:', e);
+    // permission-denied = Firestore rules not yet deployed; silently degrade
+    if (e.code !== 'permission-denied') console.warn('saveDraftToFirestore failed:', e);
   }
 }
 
@@ -4205,7 +4209,8 @@ async function loadDraftFromFirestore(qId) {
     const snap = await db.collection('drafts').doc(draftId).get();
     if (snap.exists) return snap.data(); // { code, language, savedAt }
   } catch(e) {
-    console.warn('loadDraftFromFirestore failed:', e);
+    // permission-denied = Firestore rules not yet deployed; silently skip draft restore
+    if (e.code !== 'permission-denied') console.warn('loadDraftFromFirestore failed:', e);
   }
   return null;
 }
@@ -4257,7 +4262,7 @@ function saveSnapshot(reason) {
       problemId:  currentQ?.id || 'unknown',
       examId:     window._activeExamId || null,  // set this when exams/ integration is done
       ...snap,
-    }).catch(e => console.warn('saveSnapshot Firestore error:', e));
+    }).catch(e => { if (e.code !== 'permission-denied') console.warn('saveSnapshot Firestore error:', e); });
   }
 }
 
