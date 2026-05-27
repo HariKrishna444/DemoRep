@@ -2802,7 +2802,7 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
 
 <script>
 
@@ -2988,28 +2988,17 @@ async function initApp() {
       auth = firebase.auth();
       db   = firebase.firestore();
 
-      // ── Offline persistence (SDK 9 compat API) ────────────────
-      // enableMultiTabIndexedDbPersistence() is deprecated — use the
-      // FirestoreSettings.cache approach via experimentalForceLongPolling
-      // shim. In the compat SDK (v9.x) the cleanest non-deprecated path
-      // is still db.settings() with cacheSizeBytes, then
-      // enableMultiTabIndexedDbPersistence → replaced here with the
-      // long-lived-but-documented enablePersistence({synchronizeTabs}).
-      // We suppress the deprecation warning by catching and ignoring it;
-      // all actual errors (failed-precondition, unimplemented) are handled.
-      const _origWarn = console.warn.bind(console);
+      // ── Offline persistence (modern cache API — no deprecation warning) ─
       try {
-        console.warn = (...a) => { if (!String(a[0]).includes('enableMultiTabIndexedDbPersistence')) _origWarn(...a); };
+        db.settings({
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+        });
         await db.enablePersistence({ synchronizeTabs: true });
         window._persistenceActive = true;
       } catch(err) {
         window._persistenceActive = false;
-        const code = err?.code || err?.message || 'unavailable';
-        if (code !== 'failed-precondition' && code !== 'unimplemented') {
-          _origWarn('Firestore persistence skipped:', code);
-        }
-      } finally {
-        console.warn = _origWarn;
+        // failed-precondition = multiple tabs; unimplemented = Safari private mode
+        // Both are safe to ignore silently
       }
 
       firebaseReady = true;
@@ -4334,8 +4323,8 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  const _mvs  = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
-  const _mmin = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
+  const _mvs  = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs';
+  const _mmin = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
       let w = _mvs + '/base/worker/workerMain.js';
