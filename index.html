@@ -3644,6 +3644,11 @@ async function saveQuestion() {
       difficulty:  q.diff,
       tags:        q.tags,
       templates:   q.templates,       // starter code per language
+      // testcases stored here too so the prof can run/test from the editor
+      // without needing a questions_private round-trip. Students read
+      // questions_public but never see expected outputs — those are only
+      // meaningful when you can also run code, which requires auth.
+      testcases:   q.testcases.map(tc => ({ input: tc.input, expected: tc.expected })),
       createdBy:   currentUser?.uid || 'unknown',
       createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
     };
@@ -4662,22 +4667,33 @@ async function runCode() {
 async function fetchHiddenTestcases(questionId) {
   // Demo / offline mode — no hidden TCs available
   if (!firebaseReady || !db) return { tcs: [], denied: false, networkError: false };
-  try {
-    const snap = await db.collection('questions_private').doc(questionId).get();
-    if (!snap.exists) return { tcs: [], denied: false, networkError: false };
+
+  async function attempt() {
+    // {source:'server'} bypasses the Firestore client cache — ensures we always
+    // get live data even if a previous failed request was cached as empty.
+    const snap = await db.collection('questions_private').doc(questionId)
+      .get({ source: 'server' });
+    if (!snap.exists) return { tcs: [], denied: false, networkError: false, notFound: true };
     const data = snap.data();
     const tcs  = data.hiddenTestcases || data.testcases || [];
-    return { tcs, denied: false, networkError: false };
+    return { tcs, denied: false, networkError: false, notFound: false };
+  }
+
+  try {
+    return await attempt();
   } catch(e) {
-    // permission-denied is the normal student path — Firestore rules block them.
-    // Any other error (network, unavailable, QUIC drop) is a transient failure
-    // and must NOT be treated as "no test cases exist" — that would cause a
-    // zero-TC submission to be silently accepted.
     if (e.code === 'permission-denied') {
-      return { tcs: [], denied: true, networkError: false };
+      return { tcs: [], denied: true, networkError: false, notFound: false };
     }
-    console.warn('fetchHiddenTestcases network/transient error:', e.code, e.message);
-    return { tcs: [], denied: false, networkError: true };
+    // Transient error (QUIC drop, ERR_UNAVAILABLE, etc.) — retry once after 1.2 s
+    console.warn('fetchHiddenTestcases transient error, retrying…', e.code, e.message);
+    await new Promise(r => setTimeout(r, 1200));
+    try {
+      return await attempt();
+    } catch(e2) {
+      console.warn('fetchHiddenTestcases retry also failed:', e2.code, e2.message);
+      return { tcs: [], denied: false, networkError: true, notFound: false };
+    }
   }
 }
 
@@ -4703,14 +4719,26 @@ async function submitCode() {
   // (Firestore rules deny read), and grading runs on visible TCs only.
   outLine('info', '🔍 Fetching test cases...');
   const visibleTCs = currentQ.testcases || [];
-  const { tcs: hiddenTCs, denied: hiddenDenied, networkError: hiddenNetErr } = await fetchHiddenTestcases(currentQ.id);
+  const { tcs: hiddenTCs, denied: hiddenDenied, networkError: hiddenNetErr, notFound: hiddenNotFound } = await fetchHiddenTestcases(currentQ.id);
 
-  // A network error (QUIC drop, ERR_UNAVAILABLE, etc.) must abort submission.
-  // We cannot grade without test cases, and we must not silently pass with 0/0.
+  // Transient network error (QUIC drop, ERR_UNAVAILABLE, etc.) — already retried once.
   if (hiddenNetErr && visibleTCs.length === 0) {
-    outLine('err', '⛔ Could not reach Firestore to load test cases (network error).');
+    outLine('err', '⛔ Could not reach Firestore to load test cases (network error after retry).');
     outLine('warn', 'Check your connection and try submitting again. If the problem persists, reload the page.');
     toast('Network error — test cases unavailable, try again', 'err', 8000);
+    btn.disabled = false; btn.textContent = '✓ Submit';
+    return;
+  }
+
+  // questions_private doc is missing — the question was saved before the
+  // private-split existed, or the write failed silently. For profs, surface
+  // this clearly so they can re-save the question to create the missing doc.
+  if (hiddenNotFound && visibleTCs.length === 0) {
+    outLine('err', '⛔ No test cases found in Firestore for this question.');
+    outLine('warn', currentRole === 'prof'
+      ? 'The questions_private document is missing. Open the question editor, re-enter the test cases, and save again.'
+      : 'Test cases have not been published for this question yet. Contact your professor.');
+    toast('Test cases not found in Firestore', 'err', 8000);
     btn.disabled = false; btn.textContent = '✓ Submit';
     return;
   }
