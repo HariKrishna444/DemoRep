@@ -164,40 +164,109 @@ textarea.inp{resize:vertical;min-height:80px}
 select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
-#page-login{align-items:center;justify-content:center;padding:40px 20px;
-  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent)}
-.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
-@keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
-.login-brand{text-align:center;margin-bottom:36px}
-.login-brand h1{
-  font-family:var(--ff-head);font-size:2.6rem;font-weight:900;
-  color:var(--stu);letter-spacing:-1.5px;
-  text-shadow:0 0 50px rgba(0,229,160,.4);
+/* ═══════════════════════════════════════════════════
+   LOGIN PAGE — modern split card design
+   ═══════════════════════════════════════════════════ */
+#page-login{
+  align-items:center;justify-content:center;padding:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 50%,rgba(0,229,160,.07),transparent),
+    radial-gradient(ellipse 50% 60% at 80% 20%,rgba(59,130,246,.06),transparent),
+    var(--ink);
 }
-.login-brand h1 span{color:var(--muted)}
-.login-brand p{font-family:var(--ff-mono);font-size:.7rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:6px}
+.login-wrap{
+  width:100%;max-width:900px;
+  display:grid;grid-template-columns:1fr 1fr;
+  min-height:100vh;animation:fadeup .5s ease;
+}
+@keyframes fadeup{from{opacity:0;transform:translateY(20px)}}
+
+/* Left panel — brand */
+.login-left{
+  display:flex;flex-direction:column;justify-content:center;
+  padding:60px 52px;
+  border-right:1px solid var(--line);
+  background:linear-gradient(160deg,var(--ink2) 0%,var(--ink) 100%);
+  position:relative;overflow:hidden;
+}
+.login-left::before{
+  content:'';position:absolute;
+  width:320px;height:320px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,229,160,.08),transparent 70%);
+  top:-60px;left:-60px;pointer-events:none;
+}
+.login-left::after{
+  content:'';position:absolute;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(59,130,246,.06),transparent 70%);
+  bottom:40px;right:-40px;pointer-events:none;
+}
+.login-logo{
+  font-family:var(--ff-head);font-size:2.4rem;font-weight:900;
+  color:var(--stu);letter-spacing:-1.5px;line-height:1;margin-bottom:6px;
+}
+.login-logo em{color:var(--head);font-style:normal}
+.login-tagline{
+  font-family:var(--ff-mono);font-size:.65rem;color:var(--muted);
+  letter-spacing:3px;text-transform:uppercase;margin-bottom:44px;
+}
+.login-feature-list{display:flex;flex-direction:column;gap:14px;margin-bottom:44px}
+.login-feature{display:flex;align-items:center;gap:12px}
+.login-feature-icon{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+  background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.18);
+}
+.login-feature-text{font-size:.82rem;color:var(--soft);line-height:1.4}
+.login-feature-text strong{color:var(--head);display:block;font-size:.85rem;margin-bottom:1px}
+.login-version{
+  font-family:var(--ff-mono);font-size:.62rem;color:var(--muted);
+  border-top:1px solid var(--line);padding-top:16px;
+}
+
+/* Right panel — form */
+.login-right{
+  display:flex;flex-direction:column;justify-content:center;
+  padding:60px 52px;background:var(--ink2);
+}
+.login-right-title{
+  font-size:1.5rem;font-weight:900;color:var(--head);
+  letter-spacing:-.5px;margin-bottom:4px;
+}
+.login-right-sub{font-size:.82rem;color:var(--muted);margin-bottom:32px}
 
 /* Role selector */
-.role-pills{display:flex;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:4px;gap:4px;margin-bottom:28px}
+.role-pills{
+  display:flex;background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r);padding:4px;gap:4px;margin-bottom:28px;
+}
 .role-pill{
-  flex:1;text-align:center;padding:10px;border-radius:var(--r-sm);
+  flex:1;text-align:center;padding:10px 14px;border-radius:var(--r-sm);
   font-size:.82rem;font-weight:700;cursor:pointer;
   color:var(--muted);transition:all .2s;font-family:var(--ff-head);
 }
-.role-pill.active-prof{background:var(--ink3);color:var(--amber)}
-.role-pill.active-stu{background:var(--ink3);color:var(--stu)}
-
-.login-card{
-  background:var(--ink2);border:1px solid var(--line);
-  border-radius:var(--r-xl);padding:36px;
-  box-shadow:var(--sh);
+.role-pill.active-prof{
+  background:rgba(245,166,35,.12);color:var(--amber);
+  box-shadow:0 0 0 1px rgba(245,166,35,.2);
 }
-.login-card.prof-mode{border-color:rgba(245,166,35,.2);box-shadow:var(--sh)}
-.login-card.stu-mode{border-color:rgba(0,229,160,.15);box-shadow:var(--sh)}
+.role-pill.active-stu{
+  background:rgba(0,229,160,.1);color:var(--stu);
+  box-shadow:0 0 0 1px rgba(0,229,160,.2);
+}
 
-.form-fields{display:flex;flex-direction:column;gap:16px}
-.divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.72rem;font-family:var(--ff-mono)}
+.login-card{background:transparent;border:none;padding:0}
+.login-card.prof-mode{}
+.login-card.stu-mode{}
+
+.form-fields{display:flex;flex-direction:column;gap:14px}
+.divider{
+  display:flex;align-items:center;gap:10px;
+  color:var(--muted);font-size:.7rem;font-family:var(--ff-mono);
+}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* Login brand (legacy — hidden now) */
+.login-brand{display:none}
 
 /* ═══════════════════════════════════════════════════
    SHARED TOPBAR
@@ -1087,6 +1156,7 @@ select.inp option{background:var(--ink3)}
 .learn-sidebar{
   background:var(--ink2);border-right:1px solid var(--line);
   overflow-y:auto;padding:0 0 24px;display:flex;flex-direction:column;
+  min-height:0; /* critical: allows grid child to shrink and scroll internally */
 }
 .learn-sidebar::-webkit-scrollbar{width:4px}
 .learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
@@ -1541,11 +1611,12 @@ select.inp option{background:var(--ink3)}
   /* Data tables — scroll container */
   .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
-  /* Login page */
-  .login-wrap{max-width:100%!important}
-  .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
-  .login-brand h1{font-size:2rem}
-  .role-pills{margin-bottom:20px}
+  /* Login page — stack on mobile */
+  .login-wrap{grid-template-columns:1fr!important;min-height:auto}
+  .login-left{display:none}
+  .login-right{padding:40px 24px;min-height:100vh;justify-content:center}
+  .login-right-title{font-size:1.8rem}
+  #page-login{align-items:flex-start}
 
   /* Topbar right — collapse some items */
   .sec-hd{flex-direction:column;align-items:flex-start;gap:10px}
@@ -1660,31 +1731,72 @@ select.inp option{background:var(--ink3)}
      PAGE: LOGIN
      ══════════════════════════════════════════════════ -->
 <div id="page-login" class="page">
-  <div class="login-wrap" style="margin:auto">
-    <div class="login-brand">
-      <h1>Exam<span>Shield</span></h1>
-      <p>Secure College Exam Platform</p>
-    </div>
+  <div class="login-wrap">
 
-    <div class="role-pills">
-      <div class="role-pill active-prof" id="rp-prof" onclick="setRole('prof')">👨‍🏫 Professor</div>
-      <div class="role-pill" id="rp-stu"  onclick="setRole('stu')">👨‍💻 Student</div>
-    </div>
+    <!-- Left: brand + features -->
+    <div class="login-left">
+      <div class="login-logo">Exam<em>Shield</em></div>
+      <div class="login-tagline">Secure College Exam Platform</div>
 
-    <div class="login-card prof-mode" id="login-card">
-      <div class="form-fields">
-        <div class="field"><label>Email</label><input class="inp" id="l-email" type="email" placeholder="professor@college.edu"></div>
-        <div class="field"><label>Password</label><input class="inp" id="l-pass" type="password" placeholder="••••••••"></div>
-        <button class="btn btn-a btn-lg" id="btn-login" onclick="handleLogin()" style="width:100%;justify-content:center;margin-top:4px">
-          <span id="btn-login-txt">Sign In</span>
-        </button>
-        <div class="divider">new here?</div>
-        <button class="btn btn-ghost btn-lg" onclick="handleRegister()" id="btn-reg" style="width:100%;justify-content:center">
-          <span id="btn-reg-txt">Create Account</span>
-        </button>
+      <div class="login-feature-list">
+        <div class="login-feature">
+          <div class="login-feature-icon">🛡️</div>
+          <div class="login-feature-text">
+            <strong>Anti-Cheat Engine</strong>
+            Fullscreen lock, tab detection &amp; keystroke analysis
+          </div>
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-icon">📚</div>
+          <div class="login-feature-text">
+            <strong>Course Platform</strong>
+            Video lessons, quizzes and verified certificates
+          </div>
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-icon">📊</div>
+          <div class="login-feature-text">
+            <strong>Live Analytics</strong>
+            Real-time monitoring and grade exports
+          </div>
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-icon">🏛️</div>
+          <div class="login-feature-text">
+            <strong>University Management</strong>
+            Departments, semesters, hall allocation
+          </div>
+        </div>
       </div>
 
+      <div class="login-version">ExamShield v2.0 · Firebase · Pyodide</div>
     </div>
+
+    <!-- Right: form -->
+    <div class="login-right">
+      <div class="login-right-title">Welcome back</div>
+      <div class="login-right-sub">Sign in to your account to continue</div>
+
+      <div class="role-pills">
+        <div class="role-pill active-prof" id="rp-prof" onclick="setRole('prof')">👨‍🏫 Professor</div>
+        <div class="role-pill" id="rp-stu" onclick="setRole('stu')">👨‍💻 Student</div>
+      </div>
+
+      <div class="login-card prof-mode" id="login-card">
+        <div class="form-fields">
+          <div class="field"><label>Email</label><input class="inp" id="l-email" type="email" placeholder="professor@college.edu"></div>
+          <div class="field"><label>Password</label><input class="inp" id="l-pass" type="password" placeholder="••••••••"></div>
+          <button class="btn btn-a btn-lg" id="btn-login" onclick="handleLogin()" style="width:100%;justify-content:center;margin-top:4px">
+            <span id="btn-login-txt">Sign In</span>
+          </button>
+          <div class="divider">new here?</div>
+          <button class="btn btn-ghost btn-lg" onclick="handleRegister()" id="btn-reg" style="width:100%;justify-content:center">
+            <span id="btn-reg-txt">Create Account</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -6327,14 +6439,20 @@ async function loadCourses() {
       d.price = 'free';
       return { id: doc.id, ...d };
     });
-    coursesCatalog = fetched;
+    // Always merge in demo courses so Python course is always visible
+    // demoCourses removed — Firestore only
+    const fetchedIds = new Set(fetched.map(c => c.id));
+    const missing = demoCourses.filter(c => !fetchedIds.has(c.id));
+    coursesCatalog = [...fetched, ...missing];
+    if (!coursesCatalog.length) coursesCatalog = demoCourses;
   } catch(e) {
     console.warn('loadCourses error:', e.code, e.message);
-    coursesCatalog = [];
+    // On any error (permission-denied, offline, etc.) fall back to demo courses
+    coursesCatalog = getDemoCourses();
     if (e.code === 'permission-denied' && !window._coursePermToastShown) {
       window._coursePermToastShown = true;
       if (typeof toast === 'function') {
-        toast('Firestore permission denied — check your security rules in the Security panel.', 'warn', 8000);
+        toast('Firestore rules not yet deployed — showing demo courses. Deploy rules from the Security panel.', 'warn', 8000);
       }
     }
   }
@@ -6822,7 +6940,11 @@ let _mdPlaygroundIdx = 0;
 
 function _makePyPlayground(code) {
   const pid = 'mdpy-' + (++_mdPlaygroundIdx);
+  // For the data-orig attribute we need HTML-escaped content
   const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  // Textarea innerHTML must use &lt; etc but actual newlines — NOT collapsed to spaces
+  // We set value via JS after insertion to guarantee proper newlines
+  const safeId = JSON.stringify(pid);
   return `<div class="md-py-block" style="margin:20px 0;background:var(--ink2);border:1px solid rgba(0,229,160,.25);border-radius:12px;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(0,229,160,.06);border-bottom:1px solid rgba(0,229,160,.12)">
       <span style="display:flex;align-items:center;gap:7px">
@@ -6830,39 +6952,61 @@ function _makePyPlayground(code) {
         <span style="font-size:.74rem;font-weight:700;color:var(--stu);font-family:var(--ff-mono)">Python · Runnable</span>
       </span>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="(function(id){
-          document.getElementById(id+'-code').value=document.getElementById(id+'-code').dataset.orig;
-          var o=document.getElementById(id+'-out');o.style.color='var(--stu)';o.textContent='▶ Click Run to execute…';
-        })('${pid}')">↺ Reset</button>
-        <button class="btn btn-g btn-sm" onclick="runMdPlayground('${pid}',this)">▶ Run</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetMdPlayground(${safeId})">↺ Reset</button>
+        <button class="btn btn-g btn-sm" onclick="runMdPlayground(${safeId},this)">▶ Run</button>
       </div>
     </div>
     <textarea id="${pid}-code" data-orig="${escaped}" spellcheck="false"
       style="width:100%;min-height:110px;resize:vertical;background:var(--ink);color:var(--head);
-             font-family:var(--ff-mono);font-size:.8rem;line-height:1.65;
-             padding:14px 16px;border:none;outline:none;border-bottom:1px solid var(--line);tab-size:4"
-    >${escaped}</textarea>
+             font-family:var(--ff-mono);font-size:.82rem;line-height:1.7;
+             padding:14px 16px;border:none;outline:none;border-bottom:1px solid var(--line);
+             tab-size:4;white-space:pre;overflow-x:auto;"
+    ></textarea>
     <div id="${pid}-out"
       style="padding:11px 16px;font-family:var(--ff-mono);font-size:.78rem;min-height:44px;
              white-space:pre-wrap;color:var(--stu);background:var(--ink)"
     >▶ Click Run to execute…</div>
-  </div>`;
+  </div>
+  <script>(function(){
+    var ta=document.getElementById(${safeId}+'-code');
+    if(ta){var raw=ta.dataset.orig||'';
+      ta.value=raw.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');}
+  })();<\/script>`;
 }
 
-async function runMdPlayground(pid, btn) {
+function resetMdPlayground(pid) {
+  const ta = document.getElementById(pid + '-code');
+  const out = document.getElementById(pid + '-out');
+  if (ta) {
+    const raw = ta.dataset.orig || '';
+    ta.value = raw.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+  }
+  if (out) { out.style.color = 'var(--stu)'; out.textContent = '▶ Click Run to execute…'; }
+}
   const codeEl = document.getElementById(pid + '-code');
   const outEl  = document.getElementById(pid + '-out');
   const code   = codeEl?.value || '';
   if (!code.trim()) return;
-  btn.disabled = true; btn.textContent = '⏳ Running…';
-  outEl.style.color = 'var(--soft)'; outEl.textContent = 'Running…';
+  btn.disabled = true; btn.textContent = '⏳';
+  outEl.style.color = 'var(--soft)';
+
   try {
+    // If pyodide not ready yet, start it and wait (show spinner in output)
     if (typeof _pyReady === 'undefined' || !_pyReady) {
-      if (typeof ensurePyodideRunning === 'function') ensurePyodideRunning();
-      outEl.textContent = '⏳ Loading Python engine… please wait ~15s then try again.';
-      btn.disabled = false; btn.textContent = '▶ Run';
-      return;
+      if (typeof startPyodide === 'function') startPyodide();
+      outEl.textContent = '⏳ Starting Python engine…';
+      // Poll until ready (max 30s)
+      await new Promise((res, rej) => {
+        const deadline = Date.now() + 30000;
+        const check = () => {
+          if (typeof _pyReady !== 'undefined' && _pyReady) return res();
+          if (Date.now() > deadline) return rej(new Error('Timed out'));
+          setTimeout(check, 400);
+        };
+        check();
+      });
     }
+    outEl.textContent = 'Running…';
     const result = await runPy(code, '');
     if (result.ec !== 0 || result.stderr) {
       outEl.style.color = '#f87171';
