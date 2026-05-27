@@ -1475,8 +1475,8 @@ select.inp option{background:var(--ink3)}
   .cd-badge{font-size:.65rem;padding:3px 8px}
 
   /* Learn view — sidebar collapses above content */
-  .learn-layout{grid-template-columns:260px 1fr!important}
-  .lesson-content-area{padding:22px 28px!important}    grid-template-columns:1fr!important;
+  .learn-layout{
+    grid-template-columns:1fr!important;
     grid-template-rows:auto 1fr;
   }
   .learn-sidebar{
@@ -6555,52 +6555,55 @@ async function openCourseDetail(courseId) {
         <div class="module-lessons" id="cdmod-${mi}">${lessons}</div>
       </div>`;
   }).join('');
+  const enrollBtn = enrolled
+    ? `<button class="btn btn-g" onclick="openLearnView('${courseId}')" style="gap:8px">
+         ▶ Continue <span style="font-family:var(--ff-mono);font-size:.75rem;opacity:.8">${enrolled.progress||0}%</span>
+       </button>`
+    : `<button class="btn btn-g" onclick="enrollInCourse('${courseId}')">🎓 Enroll Free</button>`;
+
   content.innerHTML = `
     <div class="cd-hero">
       <div class="cd-hero-inner">
         <div class="cd-breadcrumb">Catalog <span>›</span> ${sanitize(course.language||'General')} <span>›</span> ${sanitize(course.title)}</div>
-        <div class="cd-title">${sanitize(course.title)}</div>
-        <div class="cd-desc">${sanitize(course.description||'')}</div>
-        <div class="cd-meta-row">
-          <div class="cd-badge">📌 ${sanitize(course.language||'General')}</div>
-          <div class="cd-badge">🎯 ${course.difficulty||'Beginner'}</div>
-          <div class="cd-badge">📚 ${course.totalLessons||0} Lessons</div>
-          <div class="cd-badge">${course.price==='free'?'🆓 Free':'💰 Paid'}</div>
+
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <div class="cd-title">${sanitize(course.title)}</div>
+            <div class="cd-desc">${sanitize(course.description||'')}</div>
+            <div class="cd-meta-row">
+              <div class="cd-badge">📌 ${sanitize(course.language||'General')}</div>
+              <div class="cd-badge">🎯 ${course.difficulty||'Beginner'}</div>
+              <div class="cd-badge">📚 ${course.totalLessons||0} Lessons</div>
+              <div class="cd-badge">${course.price==='free'?'🆓 Free':'💰 Paid'}</div>
+              ${course.instructorName?`<div class="cd-badge">👤 ${sanitize(course.instructorName)}</div>`:''}
+            </div>
+          </div>
+
+          <div style="
+            flex-shrink:0;background:var(--ink3);
+            border:1px solid var(--line);border-radius:var(--r-lg);
+            padding:20px 22px;min-width:220px;max-width:260px;
+            display:flex;flex-direction:column;gap:12px;
+          ">
+            <div style="font-size:1.6rem;font-weight:900;
+              color:${course.price==='free'?'var(--stu)':'var(--amber)'};
+              letter-spacing:-.5px;line-height:1">
+              ${course.price==='free'?'Free':'Paid'}
+            </div>
+            ${enrollBtn}
+            <div style="font-size:.72rem;color:var(--muted);line-height:1.8;border-top:1px solid var(--line);padding-top:10px">
+              ✓ Lifetime access<br>
+              ✓ Certificate on completion<br>
+              ✓ ${course.totalLessons||0} lessons
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="cd-body">
-      <div class="cd-main">
-        <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">📋 Course Syllabus</div>
-        <div class="syllabus-list">${syllabus||'<div style="color:var(--muted)">No modules yet.</div>'}</div>
-        ${course.instructorName?`
-        <div style="margin-top:24px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;display:flex;align-items:center;gap:16px">
-          <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--amber),#ff8c00);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;color:var(--ink)">
-            ${(course.instructorName||'I')[0]}
-          </div>
-          <div>
-            <div style="font-size:.85rem;font-weight:700;color:var(--head)">${sanitize(course.instructorName)}</div>
-            <div style="font-size:.72rem;color:var(--muted)">Course Instructor</div>
-          </div>
-        </div>`:''
-        }
-      </div>
-      <div class="cd-sidebar-wrap">
-        <div class="cd-price-big ${course.price==='free'?'free':'paid'}">${course.price==='free'?'Free':'Paid'}</div>
-        ${enrolled
-          ? `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="openLearnView('${courseId}')">
-               ▶ Continue Learning (${enrolled.progress||0}%)
-             </button>`
-          : `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="enrollInCourse('${courseId}')">
-               🎓 Enroll Now
-             </button>`
-        }
-        <div style="margin-top:16px;font-size:.75rem;color:var(--muted);line-height:1.6">
-          ✓ Full lifetime access<br>
-          ✓ Certificate on completion<br>
-          ✓ ${course.totalLessons||0} video/article lessons
-        </div>
-      </div>
+
+    <div style="padding:28px 40px;max-width:860px">
+      <div style="font-size:.85rem;font-weight:700;color:var(--head);margin-bottom:14px">📋 Course Syllabus</div>
+      <div class="syllabus-list">${syllabus||'<div style="color:var(--muted)">No modules yet.</div>'}</div>
     </div>`;
 }
 
@@ -7421,7 +7424,7 @@ function addCBLesson(modIdx) {
       <option value="video">Video</option>
     </select>
     <input class="inp" placeholder="YouTube URL / content" style="flex:2;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
+           oninput="(function(v,m,l){if(courseBuilderModules[m].lessons[l].type==='video'){courseBuilderModules[m].lessons[l].videoUrl=v;courseBuilderModules[m].lessons[l].content=''}else{courseBuilderModules[m].lessons[l].content=v;courseBuilderModules[m].lessons[l].videoUrl=''}})(this.value,${modIdx},${lessonIdx})">
     <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
            oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">`;
   el.appendChild(row);
@@ -7862,7 +7865,7 @@ function addAmmLesson() {
       <option value="video">Video</option>
     </select>
     <input class="inp" placeholder="YouTube URL or content text" style="flex:2;padding:7px 10px"
-           oninput="_addModuleLessons[${idx}].videoUrl=this.value;_addModuleLessons[${idx}].content=this.value">
+           oninput="(function(v,i){if(_addModuleLessons[i].type==='video'){_addModuleLessons[i].videoUrl=v;_addModuleLessons[i].content=''}else{_addModuleLessons[i].content=v;_addModuleLessons[i].videoUrl=''}})(this.value,${idx})">
     <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
            oninput="_addModuleLessons[${idx}].duration=this.value">`;
   el.appendChild(row);
