@@ -165,7 +165,7 @@ select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
 #page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
-.login-wrap{width:100%;max-width:400px;margin-left:auto;margin-right:auto;animation:fadeup .6s ease}
+.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
@@ -771,7 +771,7 @@ select.inp option{background:var(--ink3)}
 @media(max-width:768px){
   /* Login page: full width padding */
   #page-login{padding:20px 16px}
-  .login-wrap{max-width:400px;width:calc(100% - 32px)}
+  .login-wrap{max-width:100%}
   .login-card{padding:24px 20px}
   .login-brand h1{font-size:2rem}
 
@@ -1076,7 +1076,7 @@ select.inp option{background:var(--ink3)}
 
 /* ── Learn View Layout ── */
 #page-learn{flex-direction:column}
-.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:visible;align-items:start}
+.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:hidden}
 
 /* ── Top progress bar ── */
 .learn-progress-bar{height:3px;background:var(--line);flex-shrink:0}
@@ -1085,7 +1085,7 @@ select.inp option{background:var(--ink3)}
 /* ── Sidebar ── */
 .learn-sidebar{
   background:var(--ink2);border-right:1px solid var(--line);
-  overflow-y:visible;padding:0 0 24px;display:flex;flex-direction:column;
+  overflow-y:auto;padding:0 0 24px;display:flex;flex-direction:column;
 }
 .learn-sidebar::-webkit-scrollbar{width:4px}
 .learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
@@ -1094,6 +1094,7 @@ select.inp option{background:var(--ink3)}
   font-size:.6rem;color:var(--muted);text-transform:uppercase;
   letter-spacing:2px;font-family:var(--ff-mono);font-weight:700;
   border-bottom:1px solid var(--line);margin-bottom:8px;
+  position:sticky;top:0;background:var(--ink2);z-index:1;
 }
 
 /* Module group */
@@ -1391,8 +1392,16 @@ select.inp option{background:var(--ink3)}
 .lesson-builder-item{
   background:var(--ink3);border:1px solid var(--line);
   border-radius:var(--r-sm);padding:12px 16px;
-  display:flex;align-items:center;gap:12px;
+  display:flex;flex-direction:column;gap:8px;
   margin-bottom:8px;
+}
+.lesson-builder-row{display:flex;align-items:center;gap:12px}
+.lesson-content-field{display:flex;flex-direction:column;gap:4px}
+.lesson-content-field label{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px}
+.lesson-content-field textarea.inp{
+  width:100%;min-height:120px;resize:vertical;
+  font-family:var(--ff-mono);font-size:.78rem;line-height:1.6;
+  padding:8px 10px;tab-size:4;
 }
 .quiz-builder-item{
   background:var(--ink3);border:1px solid var(--line);
@@ -1480,7 +1489,8 @@ select.inp option{background:var(--ink3)}
   .learn-sidebar{
     border-right:none!important;
     border-bottom:1px solid var(--line);
-    overflow-y:visible;
+    max-height:200px;
+    overflow-y:auto;
     padding:8px 0;
   }
   .lesson-content-area{
@@ -1539,7 +1549,7 @@ select.inp option{background:var(--ink3)}
   .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
   /* Login page */
-  .login-wrap{max-width:400px!important;width:calc(100% - 32px)!important}
+  .login-wrap{max-width:100%!important}
   .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
   .login-brand h1{font-size:2rem}
   .role-pills{margin-bottom:20px}
@@ -2708,7 +2718,7 @@ upgrade-insecure-requests;</pre>
     </div>
   </div>
   <div class="learn-progress-bar"><div class="learn-progress-fill" id="learn-progress-fill" style="width:0%"></div></div>
-  <div class="learn-layout" style="flex:1">
+  <div class="learn-layout" style="flex:1;overflow:hidden">
     <!-- Sidebar -->
     <div class="learn-sidebar">
       <div class="sb-header">Course Content</div>
@@ -6806,18 +6816,7 @@ let _mdPlaygroundIdx = 0;
 
 function _makePyPlayground(code) {
   const pid = 'mdpy-' + (++_mdPlaygroundIdx);
-
-  // Firestore sometimes stores newlines as literal \n (backslash+n) text.
-  // Normalize everything to real newlines before rendering.
-  code = code.replace(/\\r\\n/g,'\n').replace(/\\n/g,'\n').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-
-  // HTML-escape for textarea content (real newlines preserved inside <textarea>)
   const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-
-  // For the data-orig attribute, newlines must be &#10; — browsers collapse
-  // raw newlines in attribute values to spaces, breaking the Reset button.
-  const escapedAttr = escaped.replace(/\n/g,'&#10;');
-
   return `<div class="md-py-block" style="margin:20px 0;background:var(--ink2);border:1px solid rgba(0,229,160,.25);border-radius:12px;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(0,229,160,.06);border-bottom:1px solid rgba(0,229,160,.12)">
       <span style="display:flex;align-items:center;gap:7px">
@@ -6826,14 +6825,13 @@ function _makePyPlayground(code) {
       </span>
       <div style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="(function(id){
-          var orig=document.getElementById(id+'-code').dataset.orig;
-          document.getElementById(id+'-code').value=orig.replace(/&#10;/g,'\n').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+          document.getElementById(id+'-code').value=document.getElementById(id+'-code').dataset.orig;
           var o=document.getElementById(id+'-out');o.style.color='var(--stu)';o.textContent='▶ Click Run to execute…';
         })('${pid}')">↺ Reset</button>
         <button class="btn btn-g btn-sm" onclick="runMdPlayground('${pid}',this)">▶ Run</button>
       </div>
     </div>
-    <textarea id="${pid}-code" data-orig="${escapedAttr}" spellcheck="false"
+    <textarea id="${pid}-code" data-orig="${escaped}" spellcheck="false"
       style="width:100%;min-height:110px;resize:vertical;background:var(--ink);color:var(--head);
              font-family:var(--ff-mono);font-size:.8rem;line-height:1.65;
              padding:14px 16px;border:none;outline:none;border-bottom:1px solid var(--line);tab-size:4"
@@ -6885,10 +6883,6 @@ async function runMdPlayground(pid, btn) {
 
 function renderMarkdown(raw) {
   if (!raw) return '';
-
-  // Firestore may store newlines as the literal two-character sequence \n
-  // instead of a real newline — normalize before any line-based parsing.
-  raw = raw.replace(/\\r\\n/g,'\n').replace(/\\n/g,'\n').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
 
   /* ── 0. Extract code blocks first so their content is untouched ── */
   const blocks = [];
@@ -7414,19 +7408,38 @@ function addCBLesson(modIdx) {
   const el = document.getElementById('cbmod-lessons-'+modIdx);
   const row = document.createElement('div');
   row.className = 'lesson-builder-item';
+  const pid = `cbl-${modIdx}-${lessonIdx}`;
   row.innerHTML = `
-    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
-    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
-    <select class="inp" style="width:100px;padding:7px"
-            onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value">
-      <option value="article">Article</option>
-      <option value="video">Video</option>
-    </select>
-    <input class="inp" placeholder="YouTube URL / content" style="flex:2;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
-    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">`;
+    <div class="lesson-builder-row">
+      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
+      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
+      <select class="inp" style="width:100px;padding:7px"
+              onchange="
+                courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;
+                document.getElementById('${pid}-url').style.display=this.value==='video'?'flex':'none';
+                document.getElementById('${pid}-content').style.display=this.value==='article'?'flex':'none';
+              ">
+        <option value="article">Article</option>
+        <option value="video">Video</option>
+      </select>
+      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
+    </div>
+    <div id="${pid}-url" class="lesson-builder-row" style="display:none">
+      <input class="inp" placeholder="YouTube URL" style="flex:1;padding:7px 10px"
+             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
+    </div>
+    <div id="${pid}-content" class="lesson-content-field" style="display:flex">
+      <label>Lesson content — use \`\`\`python ... \`\`\` for runnable code blocks</label>
+      <textarea class="inp" placeholder="Write lesson content here...
+Use triple backticks for runnable Python:
+\`\`\`python
+a = 10
+print(a > 5 and a < 20)
+\`\`\`"
+        oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value"></textarea>
+    </div>`;
   el.appendChild(row);
 }
 
@@ -7854,20 +7867,38 @@ function addAmmLesson() {
   const el = document.getElementById('amm-lessons-list');
   const row = document.createElement('div');
   row.className = 'lesson-builder-item';
-  row.style.display = 'flex'; row.style.gap = '8px'; row.style.alignItems = 'center';
+  const pid = `amml-${idx}`;
   row.innerHTML = `
-    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${idx+1}</span>
-    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-           oninput="_addModuleLessons[${idx}].title=this.value">
-    <select class="inp" style="width:100px;padding:7px"
-            onchange="_addModuleLessons[${idx}].type=this.value">
-      <option value="article">Article</option>
-      <option value="video">Video</option>
-    </select>
-    <input class="inp" placeholder="YouTube URL or content text" style="flex:2;padding:7px 10px"
-           oninput="_addModuleLessons[${idx}].videoUrl=this.value;_addModuleLessons[${idx}].content=this.value">
-    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-           oninput="_addModuleLessons[${idx}].duration=this.value">`;
+    <div class="lesson-builder-row">
+      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${idx+1}</span>
+      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+             oninput="_addModuleLessons[${idx}].title=this.value">
+      <select class="inp" style="width:100px;padding:7px"
+              onchange="
+                _addModuleLessons[${idx}].type=this.value;
+                document.getElementById('${pid}-url').style.display=this.value==='video'?'flex':'none';
+                document.getElementById('${pid}-content').style.display=this.value==='article'?'flex':'none';
+              ">
+        <option value="article">Article</option>
+        <option value="video">Video</option>
+      </select>
+      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+             oninput="_addModuleLessons[${idx}].duration=this.value">
+    </div>
+    <div id="${pid}-url" class="lesson-builder-row" style="display:none">
+      <input class="inp" placeholder="YouTube URL" style="flex:1;padding:7px 10px"
+             oninput="_addModuleLessons[${idx}].videoUrl=this.value;_addModuleLessons[${idx}].content=this.value">
+    </div>
+    <div id="${pid}-content" class="lesson-content-field" style="display:flex">
+      <label>Lesson content — use \`\`\`python ... \`\`\` for runnable code blocks</label>
+      <textarea class="inp" placeholder="Write lesson content here...
+Use triple backticks for runnable Python:
+\`\`\`python
+a = 10
+print(a > 5 and a < 20)
+\`\`\`"
+        oninput="_addModuleLessons[${idx}].content=this.value"></textarea>
+    </div>`;
   el.appendChild(row);
 }
 
