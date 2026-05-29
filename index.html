@@ -165,7 +165,7 @@ select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
 #page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
-.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
+.login-wrap{width:100%;max-width:400px;margin-left:auto;margin-right:auto;animation:fadeup .6s ease}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
@@ -771,7 +771,7 @@ select.inp option{background:var(--ink3)}
 @media(max-width:768px){
   /* Login page: full width padding */
   #page-login{padding:20px 16px}
-  .login-wrap{max-width:100%}
+  .login-wrap{max-width:400px;width:calc(100% - 32px)}
   .login-card{padding:24px 20px}
   .login-brand h1{font-size:2rem}
 
@@ -1076,7 +1076,7 @@ select.inp option{background:var(--ink3)}
 
 /* ── Learn View Layout ── */
 #page-learn{flex-direction:column}
-.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:hidden}
+.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:visible;align-items:start}
 
 /* ── Top progress bar ── */
 .learn-progress-bar{height:3px;background:var(--line);flex-shrink:0}
@@ -1085,7 +1085,7 @@ select.inp option{background:var(--ink3)}
 /* ── Sidebar ── */
 .learn-sidebar{
   background:var(--ink2);border-right:1px solid var(--line);
-  overflow-y:auto;padding:0 0 24px;display:flex;flex-direction:column;
+  overflow-y:visible;padding:0 0 24px;display:flex;flex-direction:column;
 }
 .learn-sidebar::-webkit-scrollbar{width:4px}
 .learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
@@ -1094,7 +1094,6 @@ select.inp option{background:var(--ink3)}
   font-size:.6rem;color:var(--muted);text-transform:uppercase;
   letter-spacing:2px;font-family:var(--ff-mono);font-weight:700;
   border-bottom:1px solid var(--line);margin-bottom:8px;
-  position:sticky;top:0;background:var(--ink2);z-index:1;
 }
 
 /* Module group */
@@ -1481,8 +1480,7 @@ select.inp option{background:var(--ink3)}
   .learn-sidebar{
     border-right:none!important;
     border-bottom:1px solid var(--line);
-    max-height:200px;
-    overflow-y:auto;
+    overflow-y:visible;
     padding:8px 0;
   }
   .lesson-content-area{
@@ -1541,7 +1539,7 @@ select.inp option{background:var(--ink3)}
   .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
   /* Login page */
-  .login-wrap{max-width:100%!important}
+  .login-wrap{max-width:400px!important;width:calc(100% - 32px)!important}
   .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
   .login-brand h1{font-size:2rem}
   .role-pills{margin-bottom:20px}
@@ -2710,7 +2708,7 @@ upgrade-insecure-requests;</pre>
     </div>
   </div>
   <div class="learn-progress-bar"><div class="learn-progress-fill" id="learn-progress-fill" style="width:0%"></div></div>
-  <div class="learn-layout" style="flex:1;overflow:hidden">
+  <div class="learn-layout" style="flex:1">
     <!-- Sidebar -->
     <div class="learn-sidebar">
       <div class="sb-header">Course Content</div>
@@ -6809,23 +6807,16 @@ let _mdPlaygroundIdx = 0;
 function _makePyPlayground(code) {
   const pid = 'mdpy-' + (++_mdPlaygroundIdx);
 
-  // Normalize: Firestore sometimes stores newlines as the two-character
-  // sequence \n (literal backslash-n) rather than a real newline character.
-  // Convert both \r\n and literal \\n to real newlines before doing anything.
-  code = code.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Firestore sometimes stores newlines as literal \n (backslash+n) text.
+  // Normalize everything to real newlines before rendering.
+  code = code.replace(/\\r\\n/g,'\n').replace(/\\n/g,'\n').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
 
-  // HTML-escape for display inside the textarea tag (preserves real newlines
-  // because textarea treats its text content literally).
-  const escaped = code
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  // HTML-escape for textarea content (real newlines preserved inside <textarea>)
+  const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-  // For the data-orig attribute, newlines must be encoded as &#10; — browsers
-  // normalise raw newlines inside attribute values to a single space, which
-  // collapses all lines into one when Reset reads dataset.orig.
-  const escapedAttr = escaped.replace(/\n/g, '&#10;');
+  // For the data-orig attribute, newlines must be &#10; — browsers collapse
+  // raw newlines in attribute values to spaces, breaking the Reset button.
+  const escapedAttr = escaped.replace(/\n/g,'&#10;');
 
   return `<div class="md-py-block" style="margin:20px 0;background:var(--ink2);border:1px solid rgba(0,229,160,.25);border-radius:12px;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(0,229,160,.06);border-bottom:1px solid rgba(0,229,160,.12)">
@@ -6836,8 +6827,6 @@ function _makePyPlayground(code) {
       <div style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="(function(id){
           var orig=document.getElementById(id+'-code').dataset.orig;
-          // dataset.orig stores newlines as &#10; to survive HTML attribute parsing;
-          // decode them back to real newlines before restoring into the textarea.
           document.getElementById(id+'-code').value=orig.replace(/&#10;/g,'\n').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
           var o=document.getElementById(id+'-out');o.style.color='var(--stu)';o.textContent='▶ Click Run to execute…';
         })('${pid}')">↺ Reset</button>
@@ -6897,10 +6886,9 @@ async function runMdPlayground(pid, btn) {
 function renderMarkdown(raw) {
   if (!raw) return '';
 
-  // Firestore may store newlines as the two-character literal sequence \n
-  // (backslash + n) rather than a real U+000A newline — normalise first so
-  // all subsequent line-based parsing works correctly.
-  raw = raw.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Firestore may store newlines as the literal two-character sequence \n
+  // instead of a real newline — normalize before any line-based parsing.
+  raw = raw.replace(/\\r\\n/g,'\n').replace(/\\n/g,'\n').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
 
   /* ── 0. Extract code blocks first so their content is untouched ── */
   const blocks = [];
