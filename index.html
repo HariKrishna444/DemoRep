@@ -165,7 +165,7 @@ select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
 #page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
-.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
+.login-wrap{width:100%;max-width:400px;margin-left:auto;margin-right:auto;animation:fadeup .6s ease}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
@@ -771,7 +771,7 @@ select.inp option{background:var(--ink3)}
 @media(max-width:768px){
   /* Login page: full width padding */
   #page-login{padding:20px 16px}
-  .login-wrap{max-width:100%}
+  .login-wrap{max-width:400px;width:calc(100% - 32px)}
   .login-card{padding:24px 20px}
   .login-brand h1{font-size:2rem}
 
@@ -1076,7 +1076,7 @@ select.inp option{background:var(--ink3)}
 
 /* ── Learn View Layout ── */
 #page-learn{flex-direction:column}
-.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:hidden}
+.learn-layout{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0;overflow:visible;align-items:start}
 
 /* ── Top progress bar ── */
 .learn-progress-bar{height:3px;background:var(--line);flex-shrink:0}
@@ -1085,7 +1085,7 @@ select.inp option{background:var(--ink3)}
 /* ── Sidebar ── */
 .learn-sidebar{
   background:var(--ink2);border-right:1px solid var(--line);
-  overflow-y:auto;padding:0 0 24px;display:flex;flex-direction:column;
+  overflow-y:visible;padding:0 0 24px;display:flex;flex-direction:column;
 }
 .learn-sidebar::-webkit-scrollbar{width:4px}
 .learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
@@ -1094,7 +1094,6 @@ select.inp option{background:var(--ink3)}
   font-size:.6rem;color:var(--muted);text-transform:uppercase;
   letter-spacing:2px;font-family:var(--ff-mono);font-weight:700;
   border-bottom:1px solid var(--line);margin-bottom:8px;
-  position:sticky;top:0;background:var(--ink2);z-index:1;
 }
 
 /* Module group */
@@ -1481,8 +1480,7 @@ select.inp option{background:var(--ink3)}
   .learn-sidebar{
     border-right:none!important;
     border-bottom:1px solid var(--line);
-    max-height:200px;
-    overflow-y:auto;
+    overflow-y:visible;
     padding:8px 0;
   }
   .lesson-content-area{
@@ -1541,7 +1539,7 @@ select.inp option{background:var(--ink3)}
   .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
   /* Login page */
-  .login-wrap{max-width:100%!important}
+  .login-wrap{max-width:400px!important;width:calc(100% - 32px)!important}
   .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
   .login-brand h1{font-size:2rem}
   .role-pills{margin-bottom:20px}
@@ -2710,7 +2708,7 @@ upgrade-insecure-requests;</pre>
     </div>
   </div>
   <div class="learn-progress-bar"><div class="learn-progress-fill" id="learn-progress-fill" style="width:0%"></div></div>
-  <div class="learn-layout" style="flex:1;overflow:hidden">
+  <div class="learn-layout" style="flex:1">
     <!-- Sidebar -->
     <div class="learn-sidebar">
       <div class="sb-header">Course Content</div>
@@ -3644,11 +3642,6 @@ async function saveQuestion() {
       difficulty:  q.diff,
       tags:        q.tags,
       templates:   q.templates,       // starter code per language
-      // testcases stored here too so the prof can run/test from the editor
-      // without needing a questions_private round-trip. Students read
-      // questions_public but never see expected outputs — those are only
-      // meaningful when you can also run code, which requires auth.
-      testcases:   q.testcases.map(tc => ({ input: tc.input, expected: tc.expected })),
       createdBy:   currentUser?.uid || 'unknown',
       createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
     };
@@ -4666,34 +4659,21 @@ async function runCode() {
 
 async function fetchHiddenTestcases(questionId) {
   // Demo / offline mode — no hidden TCs available
-  if (!firebaseReady || !db) return { tcs: [], denied: false, networkError: false };
-
-  async function attempt() {
-    // {source:'server'} bypasses the Firestore client cache — ensures we always
-    // get live data even if a previous failed request was cached as empty.
-    const snap = await db.collection('questions_private').doc(questionId)
-      .get({ source: 'server' });
-    if (!snap.exists) return { tcs: [], denied: false, networkError: false, notFound: true };
+  if (!firebaseReady || !db) return { tcs: [], denied: false };
+  try {
+    const snap = await db.collection('questions_private').doc(questionId).get();
+    if (!snap.exists) return { tcs: [], denied: false };
     const data = snap.data();
     const tcs  = data.hiddenTestcases || data.testcases || [];
-    return { tcs, denied: false, networkError: false, notFound: false };
-  }
-
-  try {
-    return await attempt();
+    return { tcs, denied: false };
   } catch(e) {
-    if (e.code === 'permission-denied') {
-      return { tcs: [], denied: true, networkError: false, notFound: false };
+    // permission-denied is the normal student path — Firestore rules block them.
+    // Any other error (network, unavailable) is also handled gracefully.
+    // We do NOT log to console for permission-denied — it's expected and noisy.
+    if (e.code !== 'permission-denied') {
+      console.warn('fetchHiddenTestcases unexpected error:', e.code);
     }
-    // Transient error (QUIC drop, ERR_UNAVAILABLE, etc.) — retry once after 1.2 s
-    console.warn('fetchHiddenTestcases transient error, retrying…', e.code, e.message);
-    await new Promise(r => setTimeout(r, 1200));
-    try {
-      return await attempt();
-    } catch(e2) {
-      console.warn('fetchHiddenTestcases retry also failed:', e2.code, e2.message);
-      return { tcs: [], denied: false, networkError: true, notFound: false };
-    }
+    return { tcs: [], denied: e.code === 'permission-denied' };
   }
 }
 
@@ -4719,29 +4699,7 @@ async function submitCode() {
   // (Firestore rules deny read), and grading runs on visible TCs only.
   outLine('info', '🔍 Fetching test cases...');
   const visibleTCs = currentQ.testcases || [];
-  const { tcs: hiddenTCs, denied: hiddenDenied, networkError: hiddenNetErr, notFound: hiddenNotFound } = await fetchHiddenTestcases(currentQ.id);
-
-  // Transient network error (QUIC drop, ERR_UNAVAILABLE, etc.) — already retried once.
-  if (hiddenNetErr && visibleTCs.length === 0) {
-    outLine('err', '⛔ Could not reach Firestore to load test cases (network error after retry).');
-    outLine('warn', 'Check your connection and try submitting again. If the problem persists, reload the page.');
-    toast('Network error — test cases unavailable, try again', 'err', 8000);
-    btn.disabled = false; btn.textContent = '✓ Submit';
-    return;
-  }
-
-  // questions_private doc is missing — the question was saved before the
-  // private-split existed, or the write failed silently. For profs, surface
-  // this clearly so they can re-save the question to create the missing doc.
-  if (hiddenNotFound && visibleTCs.length === 0) {
-    outLine('err', '⛔ No test cases found in Firestore for this question.');
-    outLine('warn', currentRole === 'prof'
-      ? 'The questions_private document is missing. Open the question editor, re-enter the test cases, and save again.'
-      : 'Test cases have not been published for this question yet. Contact your professor.');
-    toast('Test cases not found in Firestore', 'err', 8000);
-    btn.disabled = false; btn.textContent = '✓ Submit';
-    return;
-  }
+  const { tcs: hiddenTCs, denied: hiddenDenied } = await fetchHiddenTestcases(currentQ.id);
 
   if (hiddenDenied) {
     outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length !== 1 ? 's' : ''} locally.`);
@@ -4755,12 +4713,12 @@ async function submitCode() {
 
   const totalTC = allTCs.length;
 
-  // Guard: if there are genuinely no test cases at all (not a network failure —
-  // that's caught above), refuse to submit rather than silently accepting.
+  // Guard: if there are genuinely no test cases at all, refuse to submit rather
+  // than silently accepting (0 passed === 0 total → allOk = true).
   if (totalTC === 0) {
-    outLine('warn', '⚠ No test cases are configured for this question.');
-    outLine('warn', 'The professor has not added any test cases yet. Submission is disabled until they do.');
-    toast('No test cases configured — cannot grade', 'warn', 6000);
+    outLine('warn', '⚠ No test cases found for this question. Cannot grade submission.');
+    outLine('warn', 'If you are a student, test cases may not have been published yet. Contact your professor.');
+    toast('No test cases — cannot grade', 'warn', 6000);
     btn.disabled = false; btn.textContent = '✓ Submit';
     return;
   }
