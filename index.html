@@ -7783,22 +7783,50 @@ async function buildCourseFromWeb(meta, videoIds, wikiTopics, bookQuery) {
   const videoLessons   = lessons.filter(l => l.type === 'video');
   if (refLesson) videoLessons.push(refLesson);
 
+  // For the Python curriculum, group into named topic modules
+  const PYTHON_MODULE_MAP = [
+    { title:'🐍 Module 1 — Introduction to Python',          wikiKeys:['Python (programming language)','Integrated development environment'], videoKeys:['Python Tutorial for Beginners','Learn Python in 1 Hour'], hasQuiz:true },
+    { title:'🔢 Module 2 — Python Basics',                    wikiKeys:['Variable (computer science)','Data type','Type conversion'], videoKeys:['Variables, Data Types','Input, Output'], hasQuiz:true },
+    { title:'🔀 Module 3 — Decision Making',                  wikiKeys:['Control flow','Conditional (computer programming)'], videoKeys:['if else elif','Conditionals'], hasQuiz:true },
+    { title:'🔁 Module 4 — Loops',                            wikiKeys:['For loop','While loop'], videoKeys:['Loops','for, while, break'], hasQuiz:true },
+    { title:'📦 Module 5 — Data Structures',                  wikiKeys:['String (computer science)','Linked list','Hash table','Set (abstract data type)'], videoKeys:['Lists, Tuples','String Methods','Comprehensions'], hasQuiz:true },
+    { title:'⚙️ Module 6 — Functions',                        wikiKeys:['Function (computer programming)','Recursion (computer science)','Lambda calculus'], videoKeys:['Functions','Parameters, Return','Lambda','Recursion'], hasQuiz:true },
+    { title:'🏗️ Module 7 — Object-Oriented Programming',     wikiKeys:['Object-oriented programming','Class (computer programming)','Inheritance (object-oriented programming)','Polymorphism (computer science)'], videoKeys:['OOP','Classes, Objects','Polymorphism','Encapsulation'], hasQuiz:true },
+    { title:'🛡️ Module 8 — Exception Handling',              wikiKeys:['Exception handling'], videoKeys:['Exception','try except'], hasQuiz:true },
+    { title:'📂 Module 9 — File Handling',                    wikiKeys:['Computer file'], videoKeys:['File Handling','Read, Write'], hasQuiz:false },
+    { title:'📦 Module 10 — Modules & Packages',              wikiKeys:['Modular programming'], videoKeys:['Modules','pip'], hasQuiz:false },
+    { title:'🚀 Module 11 — Advanced Python',                 wikiKeys:['Iterator pattern','Generator (computer programming)','Decorator pattern','Regular expression','Multithreading','JSON'], videoKeys:['Generators','Iterators','Decorators','Regex','Regular Expressions'], hasQuiz:true },
+    { title:'🗄️ Module 12 — Database Connectivity',          wikiKeys:['SQLite','MySQL','Create, read, update and delete'], videoKeys:['SQLite','Database','CRUD'], hasQuiz:false },
+    { title:'🌐 Module 13 — Web Development',                 wikiKeys:['Flask (web framework)','Django (web framework)','Representational state transfer'], videoKeys:['Flask','Web App'], hasQuiz:false },
+    { title:'📊 Module 14 — Data Science & Machine Learning', wikiKeys:['NumPy','Pandas (software)','Matplotlib','Scikit-learn'], videoKeys:['NumPy','Pandas','Matplotlib','Data Science'], hasQuiz:false },
+    { title:'🛠️ Module 15 — Projects',                       wikiKeys:['Calculator'], videoKeys:['Projects','Calculator','Games'], hasQuiz:false },
+  ];
+
+  // If this is the Python curriculum (has many lessons), use named modules
   const modules = [];
-  if (articleLessons.length) {
-    modules.push({
-      id:       'mod-' + genId(),
-      title:    '📚 Reading & Theory',
-      hasQuiz:  true,
-      lessons:  articleLessons,
-    });
-  }
-  if (videoLessons.length) {
-    modules.push({
-      id:       'mod-' + genId(),
-      title:    '🎥 Video Lessons',
-      hasQuiz:  false,
-      lessons:  videoLessons,
-    });
+  if (articleLessons.length > 3 && meta.id === 'course-python-intro') {
+    for (const mod of PYTHON_MODULE_MAP) {
+      const modArticles = articleLessons.filter(l => mod.wikiKeys.some(k => l.title && l.title.toLowerCase().includes(k.split('(')[0].trim().toLowerCase())));
+      const modVideos   = videoLessons.filter(l => mod.videoKeys.some(k => l.title && l.title.toLowerCase().includes(k.toLowerCase())));
+      const modLessons  = [...modArticles, ...modVideos];
+      if (modLessons.length) {
+        modules.push({ id:'mod-'+genId(), title:mod.title, hasQuiz:mod.hasQuiz, lessons:modLessons });
+      }
+    }
+    // Catch-all: any lesson not yet assigned to a module
+    const assigned = new Set(modules.flatMap(m => m.lessons.map(l => l.id)));
+    const leftover = [...articleLessons, ...videoLessons].filter(l => !assigned.has(l.id));
+    if (leftover.length) {
+      modules.push({ id:'mod-'+genId(), title:'📚 Additional Resources', hasQuiz:false, lessons:leftover });
+    }
+  } else {
+    // Default grouping for non-Python courses
+    if (articleLessons.length) {
+      modules.push({ id:'mod-'+genId(), title:'📚 Reading & Theory', hasQuiz:true, lessons:articleLessons });
+    }
+    if (videoLessons.length) {
+      modules.push({ id:'mod-'+genId(), title:'🎥 Video Lessons', hasQuiz:false, lessons:videoLessons });
+    }
   }
 
   return {
@@ -7809,7 +7837,7 @@ async function buildCourseFromWeb(meta, videoIds, wikiTopics, bookQuery) {
     difficulty:   meta.difficulty || 'beginner',
     thumbnail:    meta.thumbnail || '📚',
     price:        'free',
-    totalLessons: lessons.length + (refLesson ? 1 : 0),
+    totalLessons: modules.reduce((a,m)=>a+(m.lessons||[]).length,0) || lessons.length + (refLesson ? 1 : 0),
     modules,
     _source:      'web',
   };
@@ -7821,12 +7849,103 @@ async function buildCourseFromWeb(meta, videoIds, wikiTopics, bookQuery) {
  */
 const WEB_COURSE_DEFS = [
   {
-    meta: { id:'course-python-intro', title:'Python Programming — Zero to Hero', description:'Learn Python from scratch with Wikipedia articles and YouTube tutorials.', language:'Python', difficulty:'beginner', thumbnail:'🐍' },
+    meta: { id:'course-python-intro', title:'Python Programming — Complete Curriculum', description:'Master Python from scratch to advanced: syntax, OOP, file handling, databases, web dev, data science, and real-world projects.', language:'Python', difficulty:'beginner', thumbnail:'🐍' },
     videoIds: [
-      { id:'rfscVS0vtbw', title:'Learn Python in 4 Hours', duration:'30m' },
-      { id:'8DvywoWv6fI', title:'Python for Beginners – Full Tutorial', duration:'20m' },
+      // 1. Intro to Python
+      { id:'rfscVS0vtbw', title:'Python Tutorial for Beginners – Full Course', duration:'30m' },
+      { id:'kqtD5dpn9C8', title:'Python for Beginners – Learn Python in 1 Hour', duration:'10m' },
+      // 2. Python Basics
+      { id:'8DvywoWv6fI', title:'Python Variables, Data Types & Operators', duration:'20m' },
+      { id:'9Os0o3wzS_I', title:'Python Input, Output & Type Conversion', duration:'12m' },
+      // 3. Decision Making
+      { id:'PqFCg4JLwK4', title:'Python if else elif – Conditionals Explained', duration:'10m' },
+      // 4. Loops
+      { id:'94UHCEmprCY', title:'Python Loops – for, while, break, continue', duration:'15m' },
+      // 5. Data Structures
+      { id:'W8KRzm-HUcc', title:'Python Lists, Tuples, Sets & Dictionaries', duration:'20m' },
+      { id:'daefaLgNkw0', title:'Python String Methods & Comprehensions', duration:'14m' },
+      // 6. Functions
+      { id:'9Os0o3wzS_I', title:'Python Functions – Parameters, Return & Lambda', duration:'16m' },
+      { id:'nFn4_JJqh9k', title:'Python Recursion Explained with Examples', duration:'12m' },
+      // 7. OOP
+      { id:'JeznW_7DlB0', title:'Python OOP – Classes, Objects & Inheritance', duration:'20m' },
+      { id:'Ej_02ICOIgs', title:'Python OOP – Polymorphism & Encapsulation', duration:'14m' },
+      // 8. Exception Handling
+      { id:'NIWwJbo-9_8', title:'Python Exception Handling – try except finally', duration:'10m' },
+      // 9. File Handling
+      { id:'Uh2ebFW8OYM', title:'Python File Handling – Read, Write & Append', duration:'12m' },
+      // 10. Modules & Packages
+      { id:'CqvZ3vGoGs0', title:'Python Modules & pip Packages', duration:'10m' },
+      // 11. Advanced Python
+      { id:'C7lioXU7yys', title:'Python Generators, Iterators & Decorators', duration:'18m' },
+      { id:'K-YtKaGAYjE', title:'Python Regular Expressions (Regex) Tutorial', duration:'14m' },
+      // 12. Databases
+      { id:'pd-0G0MigUA', title:'Python SQLite – Database CRUD Operations', duration:'16m' },
+      // 13. Web Development
+      { id:'Z1RJmh_OqeA', title:'Flask Tutorial for Beginners – Build a Web App', duration:'20m' },
+      // 14. Data Science
+      { id:'GPVsHOlRBBI', title:'NumPy & Pandas for Data Science – Full Tutorial', duration:'25m' },
+      { id:'a9UrKTVEynI', title:'Matplotlib – Python Data Visualization', duration:'15m' },
+      // 15. Projects
+      { id:'8ext9G7xspg', title:'Python Projects – Calculator, Games & More', duration:'20m' },
     ],
-    wikiTopics: ['Python (programming language)', 'Control flow', 'Function (computer programming)'],
+    wikiTopics: [
+      // 1. Intro
+      'Python (programming language)',
+      'Integrated development environment',
+      // 2. Basics
+      'Variable (computer science)',
+      'Data type',
+      'Type conversion',
+      // 3. Decision Making
+      'Control flow',
+      'Conditional (computer programming)',
+      // 4. Loops
+      'For loop',
+      'While loop',
+      // 5. Data Structures
+      'String (computer science)',
+      'Linked list',
+      'Hash table',
+      'Set (abstract data type)',
+      // 6. Functions
+      'Function (computer programming)',
+      'Recursion (computer science)',
+      'Lambda calculus',
+      // 7. OOP
+      'Object-oriented programming',
+      'Class (computer programming)',
+      'Inheritance (object-oriented programming)',
+      'Polymorphism (computer science)',
+      // 8. Exception Handling
+      'Exception handling',
+      // 9. File Handling
+      'Computer file',
+      // 10. Modules
+      'Modular programming',
+      // 11. Advanced
+      'Iterator pattern',
+      'Generator (computer programming)',
+      'Decorator pattern',
+      'Regular expression',
+      'Multithreading',
+      'JSON',
+      // 12. Databases
+      'SQLite',
+      'MySQL',
+      'Create, read, update and delete',
+      // 13. Web Dev
+      'Flask (web framework)',
+      'Django (web framework)',
+      'Representational state transfer',
+      // 14. Data Science
+      'NumPy',
+      'Pandas (software)',
+      'Matplotlib',
+      'Scikit-learn',
+      // 15. Projects
+      'Calculator',
+    ],
     bookQuery: 'Python programming Lutz',
   },
   {
