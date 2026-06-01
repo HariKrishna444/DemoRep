@@ -165,7 +165,7 @@ select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
 #page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
-.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
+.login-wrap{width:440px;max-width:calc(100% - 32px);animation:fadeup .6s ease}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
@@ -1111,6 +1111,9 @@ select.inp option{background:var(--ink3)}
 .sb-mod-group.open .sb-mod-chevron{transform:rotate(90deg)}
 .sb-mod-lessons{display:none;padding-left:4px}
 .sb-mod-group.open .sb-mod-lessons{display:block}
+/* Auto-expand all modules in sidebar */
+.learn-sidebar .sb-mod-group .sb-mod-lessons{display:block}
+.learn-sidebar .sb-mod-group .sb-mod-chevron{transform:rotate(90deg)}
 /* mini progress under module label */
 .sb-mod-prog{height:2px;background:var(--line);border-radius:1px;margin:0 10px 6px}
 .sb-mod-prog-fill{height:100%;background:var(--stu);border-radius:1px;transition:width .4s}
@@ -1392,16 +1395,8 @@ select.inp option{background:var(--ink3)}
 .lesson-builder-item{
   background:var(--ink3);border:1px solid var(--line);
   border-radius:var(--r-sm);padding:12px 16px;
-  display:flex;flex-direction:column;gap:8px;
+  display:flex;align-items:center;gap:12px;
   margin-bottom:8px;
-}
-.lesson-builder-row{display:flex;align-items:center;gap:12px}
-.lesson-content-field{display:flex;flex-direction:column;gap:4px}
-.lesson-content-field label{font-size:.68rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px}
-.lesson-content-field textarea.inp{
-  width:100%;min-height:120px;resize:vertical;
-  font-family:var(--ff-mono);font-size:.78rem;line-height:1.6;
-  padding:8px 10px;tab-size:4;
 }
 .quiz-builder-item{
   background:var(--ink3);border:1px solid var(--line);
@@ -6640,7 +6635,7 @@ function renderLearnSidebar(course) {
     const doneCount = lessons.filter(l => completed.includes(l.id)).length;
     const progPct   = lessons.length ? Math.round(doneCount / lessons.length * 100) : 0;
     const hasActive = lessons.some(l => l.id === currentLessonId);
-    const isOpen    = hasActive || mi === 0;
+    const isOpen    = true; // Always expand all modules for better visibility
 
     const lessonRows = lessons.map(lesson => {
       const isDone    = completed.includes(lesson.id);
@@ -7408,38 +7403,19 @@ function addCBLesson(modIdx) {
   const el = document.getElementById('cbmod-lessons-'+modIdx);
   const row = document.createElement('div');
   row.className = 'lesson-builder-item';
-  const pid = `cbl-${modIdx}-${lessonIdx}`;
   row.innerHTML = `
-    <div class="lesson-builder-row">
-      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
-      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
-      <select class="inp" style="width:100px;padding:7px"
-              onchange="
-                courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;
-                document.getElementById('${pid}-url').style.display=this.value==='video'?'flex':'none';
-                document.getElementById('${pid}-content').style.display=this.value==='article'?'flex':'none';
-              ">
-        <option value="article">Article</option>
-        <option value="video">Video</option>
-      </select>
-      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
-    </div>
-    <div id="${pid}-url" class="lesson-builder-row" style="display:none">
-      <input class="inp" placeholder="YouTube URL" style="flex:1;padding:7px 10px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
-    </div>
-    <div id="${pid}-content" class="lesson-content-field" style="display:flex">
-      <label>Lesson content — use \`\`\`python ... \`\`\` for runnable code blocks</label>
-      <textarea class="inp" placeholder="Write lesson content here...
-Use triple backticks for runnable Python:
-\`\`\`python
-a = 10
-print(a > 5 and a < 20)
-\`\`\`"
-        oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value"></textarea>
-    </div>`;
+    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
+    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
+    <select class="inp" style="width:100px;padding:7px"
+            onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value">
+      <option value="article">Article</option>
+      <option value="video">Video</option>
+    </select>
+    <input class="inp" placeholder="YouTube URL / content" style="flex:2;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
+    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">`;
   el.appendChild(row);
 }
 
@@ -7867,38 +7843,20 @@ function addAmmLesson() {
   const el = document.getElementById('amm-lessons-list');
   const row = document.createElement('div');
   row.className = 'lesson-builder-item';
-  const pid = `amml-${idx}`;
+  row.style.display = 'flex'; row.style.gap = '8px'; row.style.alignItems = 'center';
   row.innerHTML = `
-    <div class="lesson-builder-row">
-      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${idx+1}</span>
-      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-             oninput="_addModuleLessons[${idx}].title=this.value">
-      <select class="inp" style="width:100px;padding:7px"
-              onchange="
-                _addModuleLessons[${idx}].type=this.value;
-                document.getElementById('${pid}-url').style.display=this.value==='video'?'flex':'none';
-                document.getElementById('${pid}-content').style.display=this.value==='article'?'flex':'none';
-              ">
-        <option value="article">Article</option>
-        <option value="video">Video</option>
-      </select>
-      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-             oninput="_addModuleLessons[${idx}].duration=this.value">
-    </div>
-    <div id="${pid}-url" class="lesson-builder-row" style="display:none">
-      <input class="inp" placeholder="YouTube URL" style="flex:1;padding:7px 10px"
-             oninput="_addModuleLessons[${idx}].videoUrl=this.value;_addModuleLessons[${idx}].content=this.value">
-    </div>
-    <div id="${pid}-content" class="lesson-content-field" style="display:flex">
-      <label>Lesson content — use \`\`\`python ... \`\`\` for runnable code blocks</label>
-      <textarea class="inp" placeholder="Write lesson content here...
-Use triple backticks for runnable Python:
-\`\`\`python
-a = 10
-print(a > 5 and a < 20)
-\`\`\`"
-        oninput="_addModuleLessons[${idx}].content=this.value"></textarea>
-    </div>`;
+    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${idx+1}</span>
+    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].title=this.value">
+    <select class="inp" style="width:100px;padding:7px"
+            onchange="_addModuleLessons[${idx}].type=this.value">
+      <option value="article">Article</option>
+      <option value="video">Video</option>
+    </select>
+    <input class="inp" placeholder="YouTube URL or content text" style="flex:2;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].videoUrl=this.value;_addModuleLessons[${idx}].content=this.value">
+    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+           oninput="_addModuleLessons[${idx}].duration=this.value">`;
   el.appendChild(row);
 }
 
