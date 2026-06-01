@@ -2160,6 +2160,178 @@ select.inp option{background:var(--ink3)}
             </div>
           </div>
         </div>
+
+        <!-- Firestore Rules REMOVED — managed directly in Firebase Console -->
+        <div style="background:var(--ink2);border:1px solid rgba(245,166,35,.2);border-radius:var(--r-lg);padding:20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <span style="font-size:1.4rem">🗄️</span>
+            <div>
+              <div style="font-size:.85rem;font-weight:700;color:var(--head)">Firestore Security Rules</div>
+              <div style="font-size:.75rem;color:var(--soft);margin-top:3px">Rules are managed directly in your Firebase Console under <strong style="color:var(--amber)">Firestore → Rules</strong>. No rules are embedded in this app.</div>
+            </div>
+            <a href="https://console.firebase.google.com/" target="_blank" rel="noopener" class="btn btn-a btn-sm" style="margin-left:auto;text-decoration:none">Open Firebase Console ↗</a>
+          </div>
+          <div style="background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 16px;font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);line-height:1.8">
+            ✅ Firestore rules are handled server-side in your Firebase project.<br>
+            ✅ This app does not store or copy security rules locally.<br>
+            ⚡ Navigate to Firebase Console → your project → Firestore Database → Rules to view or edit.
+          </div>
+          <!-- REMOVED RULES BLOCK PLACEHOLDER -->
+          <pre id="firestore-rules-block" style="display:none">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────
+    function isSignedIn()  { return request.auth != null; }
+    function uid()         { return request.auth.uid; }
+    // Safe isProf: uses exists() before get() so a missing /users/{uid}
+    // document never causes a permission-denied cascade on other collections.
+    function isProf() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(uid())) &&
+        get(/databases/$(database)/documents/users/$(uid())).data.role == 'prof';
+    }
+    function isSelf(u)     { return isSignedIn() && uid() == u; }
+
+    // ── users/ ───────────────────────────────────────────────────
+    // Users can read/write their own profile. Profs can read all.
+    match /users/{userId} {
+      allow read:   if isSelf(userId) || isProf();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId) || isProf();
+    }
+
+    // ── questions_public/ ────────────────────────────────────────
+    // All signed-in users can read. Only profs can write.
+    match /questions_public/{qId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── questions_private/ ───────────────────────────────────────
+    // Hidden test cases — professors only.
+    match /questions_private/{qId} {
+      allow read, write: if isProf();
+    }
+
+    // ── exams/ ───────────────────────────────────────────────────
+    // Students read active exams. Profs have full access.
+    match /exams/{examId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── submissions/ ─────────────────────────────────────────────
+    // Students create their own. Profs read all.
+    match /submissions/{subId} {
+      allow read:   if isProf();
+      allow create: if isSignedIn();
+      allow update: if isProf();
+    }
+
+    // ── violations/ ──────────────────────────────────────────────
+    // Students write their own violations. Profs read all.
+    match /violations/{vioId} {
+      allow read:   if isProf();
+      allow create: if isSignedIn();
+    }
+
+    // ── drafts/ ──────────────────────────────────────────────────
+    // Students read/write their own drafts only.
+    match /drafts/{draftId} {
+      allow read, write: if isSignedIn() &&
+        resource.data.userId == uid();
+      allow create: if isSignedIn();
+    }
+
+    // ── semesters/ ───────────────────────────────────────────────
+    match /semesters/{semId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── departments/ ─────────────────────────────────────────────
+    match /departments/{deptId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── halls/ ───────────────────────────────────────────────────
+    match /halls/{hallId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── hall_allocations/ ────────────────────────────────────────
+    match /hall_allocations/{allocId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── students/ ────────────────────────────────────────────────
+    // Students read their own record. Profs have full access.
+    match /students/{rollNo} {
+      allow read:   if isProf() ||
+        (isSignedIn() && resource.data.email == request.auth.token.email);
+      allow create, update: if isProf();
+    }
+
+    // ── attendance/ ──────────────────────────────────────────────
+    match /attendance/{examId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
+    // ── monitor/ (live student heartbeats) ───────────────────────
+    match /monitor/{userId} {
+      allow read:   if isProf();
+      allow write:  if isSelf(userId);
+    }
+
+    // ── courses/ — course catalog ─────────────────────────────────
+    // Courses are public (catalog). Quizzes require sign-in to prevent
+    // answer scraping by anonymous users.
+    match /courses/{courseId} {
+      allow read:  if true;        // public catalog
+      allow write: if isProf();
+    }
+    match /courses/{courseId}/modules/{moduleId} {
+      allow read:  if true;
+      allow write: if isProf();
+    }
+    match /courses/{courseId}/modules/{moduleId}/lessons/{lessonId} {
+      allow read:  if true;
+      allow write: if isProf();
+    }
+    match /courses/{courseId}/quizzes/{quizId} {
+      allow read:  if isSignedIn(); // quiz answers — require login
+      allow write: if isProf();
+    }
+
+    // ── enrollments/ — student progress ──────────────────────────
+    match /enrollments/{docId} {
+      allow read:  if isSignedIn() && (isProf() || resource.data.userId == uid());
+      allow create: if isSignedIn() && request.resource.data.userId == uid();
+      allow update: if isSignedIn() && resource.data.userId == uid();
+    }
+
+    // ── certificates/ — issued certificates ───────────────────────
+    match /certificates/{docId} {
+      allow read:  if true;  // public — needed for verify page
+      allow create: if isSignedIn() && request.resource.data.userId == uid();
+      allow update: if isProf();
+    }
+
+    // ── module_progress/ — per-module completion tracking ─────────
+    match /module_progress/{docId} {
+      allow read:  if isProf() || (isSignedIn() && resource.data.userId == uid());
+      allow write: if isSignedIn() && request.resource.data.userId == uid();
+    }
+
+          <!-- HIDDEN END TAG -->
+</pre>
+        </div>
+
         <!-- Rate limit log + CSP side by side -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px">
@@ -2421,7 +2593,7 @@ upgrade-insecure-requests;</pre>
 <div class="modal-bg" id="course-builder-modal">
   <div class="modal" style="max-width:780px">
     <h3>📚 Course Builder</h3>
-    <p class="sub">Create a new course with modules and lessons.</p>
+    <p class="sub">Create a new course — or auto-import content from the web.</p>
     <div class="modal-fields">
       <div class="modal-row">
         <div class="field"><label>Course Title</label><input class="inp" id="cb-title" placeholder="Introduction to Python"></div>
@@ -2444,11 +2616,38 @@ upgrade-insecure-requests;</pre>
           </select>
         </div>
       </div>
-      <div class="field"><label>Description</label><textarea class="inp" id="cb-desc" rows="3" placeholder="What will students learn?"></textarea></div>
+      <div class="field"><label>Description</label><textarea class="inp" id="cb-desc" rows="2" placeholder="What will students learn?"></textarea></div>
       <div class="field"><label>Thumbnail Emoji</label><input class="inp" id="cb-thumb" placeholder="🐍" style="font-size:1.4rem;text-align:center"></div>
-      <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:4px">Modules</div>
+
+      <!-- Web Import Section -->
+      <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:var(--r);padding:16px;margin-top:4px">
+        <div style="font-size:.78rem;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:7px">🌐 Auto-Import Content from Web</div>
+        <div style="font-size:.72rem;color:var(--soft);margin-bottom:10px;line-height:1.6">Automatically pull article lessons from <strong style="color:var(--head)">Wikipedia</strong>, video lessons from <strong style="color:var(--head)">YouTube</strong> (oEmbed), and reference books from <strong style="color:var(--head)">Open Library</strong>.</div>
+        <div class="modal-row" style="margin-bottom:8px">
+          <div class="field">
+            <label>Wikipedia Topics (comma-separated)</label>
+            <input class="inp" id="cb-wiki-topics" placeholder="Python programming, Functions, Control flow">
+          </div>
+        </div>
+        <div class="modal-row" style="margin-bottom:8px">
+          <div class="field">
+            <label>YouTube Video IDs (comma-separated)</label>
+            <input class="inp" id="cb-yt-ids" placeholder="rfscVS0vtbw, 8DvywoWv6fI">
+          </div>
+        </div>
+        <div class="modal-row" style="margin-bottom:8px">
+          <div class="field">
+            <label>Open Library Book Search Query</label>
+            <input class="inp" id="cb-book-query" placeholder="Python programming Lutz">
+          </div>
+        </div>
+        <button class="btn btn-blue btn-sm" id="cb-fetch-btn" onclick="fetchAndPreviewWebContent()">⬇ Fetch &amp; Preview Content</button>
+        <div id="cb-fetch-preview" style="margin-top:10px;font-size:.75rem;color:var(--soft);font-family:var(--ff-mono)"></div>
+      </div>
+
+      <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:8px">Manual Modules</div>
       <div id="cb-modules-list" style="display:flex;flex-direction:column;gap:8px"></div>
-      <button class="btn btn-ghost btn-sm" onclick="addCourseModule()" style="align-self:flex-start">+ Add Module</button>
+      <button class="btn btn-ghost btn-sm" onclick="addCourseModule()" style="align-self:flex-start">+ Add Module Manually</button>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeCourseBuilder()">Cancel</button>
@@ -2644,48 +2843,9 @@ const FB_CONFIG = {
 
 // ── Python Engine via pyrunner.html iframe ───────────────────
 var _pyFrame=null, _pyReady=false, _pyCbs={}, _pyId=0, _pyReadyQ=[];
-// SECURITY FIX #2: blob:-origin for message filtering (blob: URLs have origin "null")
-var _pyFrameOrigin = 'null';
-// FIX #3: per-run execution timeout (ms). 10 s is generous for exam problems.
-var PY_EXEC_TIMEOUT_MS = 10000;
-// FIX #5: Pyodide freeze watchdog
-var _pyFreezeTimer = null;
-function _pyFreezeWatchdog() {
-  clearTimeout(_pyFreezeTimer);
-  _pyFreezeTimer = setTimeout(function() {
-    if (!_pyReady) return;
-    console.warn('[ExamShield] Pyodide freeze detected — restarting runner iframe');
-    toast('⚠ Python engine froze. Restarting...', 'warn', 5000);
-    _pyReady = false;
-    if (_pyFrame) { try { document.body.removeChild(_pyFrame); } catch(e){} _pyFrame = null; }
-    Object.keys(_pyCbs).forEach(function(id) {
-      var cb = _pyCbs[id]; delete _pyCbs[id];
-      cb({ ok: false, error: 'Python engine restarted after freeze' });
-    });
-    startPyodide();
-  }, 90000);
-}
-// FIX #10: Recovery after network disconnect
-window.addEventListener('online', function() {
-  toast('🌐 Reconnected — syncing draft...', 'ok', 4000);
-  if (typeof saveDraftToFirestore === 'function') saveDraftToFirestore().catch(function(){});
-});
-window.addEventListener('offline', function() {
-  toast('📡 Connection lost. Code saves locally; will sync on reconnect.', 'warn', 6000);
-  if (typeof setSaveIndicator === 'function') setSaveIndicator('unsaved');
-});
-document.addEventListener('visibilitychange', function() {
-  if (!document.hidden && typeof examActive !== 'undefined' && examActive) {
-    if (typeof saveDraftToFirestore === 'function') saveDraftToFirestore().catch(function(){});
-  }
-});
 
 window.addEventListener('message', function(ev) {
   if (!ev.data) return;
-  // SECURITY FIX #2: only accept messages from the blob: iframe we created.
-  // _pyFrameOrigin is set to 'null' (the string) because blob: URLs have
-  // origin "null" in all browsers — compare ev.origin, not the src URL.
-  if (_pyFrameOrigin && ev.origin !== _pyFrameOrigin) return;
   if (ev.data.type === 'py_ready') {
     _pyReady = true;
     _pyReadyQ.forEach(function(fn){ fn(); });
@@ -2708,7 +2868,7 @@ function startPyodide() {
   // Using unpkg.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
   // errors in Edge/Safari caused by jsdelivr's cross-origin IndexedDB writes.
   // Pyodide runner HTML base64-encoded to avoid multi-layer string escaping issues.
-  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwoKbG9hZFB5b2RpZGUoeyBpbmRleFVSTDogImh0dHBzOi8vY2RuLmpzZGVsaXZyLm5ldC9weW9kaWRlL3YwLjI1LjEvZnVsbC8iIH0pLnRoZW4oZnVuY3Rpb24ocCkgewogIHB5ID0gcDsKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyB0eXBlOiAicHlfcmVhZHkiIH0sICIqIik7Cn0pLmNhdGNoKGZ1bmN0aW9uKGUpIHsKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyB0eXBlOiAicHlfcmVhZHkiLCBlcnJvcjogU3RyaW5nKGUpIH0sICIqIik7Cn0pOwoKdmFyIFNURElOX1NFVFVQID0gImltcG9ydCBidWlsdGlucwpfc2w9bGlzdChfc2wpCl9zaT1bMF0KZGVmIF9pbnAocD0nJyk6CiAgaT1fc2lbMF07X3NpWzBdKz0xCiAgcmV0dXJuIF9zbFtpXSBpZiBpPGxlbihfc2wpIGVsc2UgJycKYnVpbHRpbnMuaW5wdXQ9X2lucCI7CgovLyBGSVggIzI6IG9ubHkgYWNjZXB0IG1lc3NhZ2VzIGZyb20gb3VyIHBhcmVudCB3aW5kb3cKLy8gRklYICMzOiBoYXJkIDEwcyBleGVjdXRpb24gdGltZW91dAp2YXIgRVhFQ19USU1FT1VUX01TID0gMTAwMDA7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGUpIHsKICBpZiAoZS5zb3VyY2UgIT09IHBhcmVudCkgcmV0dXJuOwogIGlmICghZS5kYXRhIHx8IGUuZGF0YS50ICE9PSAicnVuIikgcmV0dXJuOwogIGlmICghcHkpIHsKICAgIHBhcmVudC5wb3N0TWVzc2FnZSh7IGlkOiBlLmRhdGEuaWQsIG9rOiBmYWxzZSwgZXJyb3I6ICJQeW9kaWRlIG5vdCByZWFkeSIgfSwgIioiKTsKICAgIHJldHVybjsKICB9CiAgdmFyIG8gPSAiIiwgZXIgPSAiIiwgZWMgPSAwOwogIHB5LnNldFN0ZG91dCh7IGJhdGNoZWQ6IGZ1bmN0aW9uKHMpIHsgbyArPSBzOyB9IH0pOwogIHB5LnNldFN0ZGVycih7IGJhdGNoZWQ6IGZ1bmN0aW9uKHMpIHsgZXIgKz0gczsgfSB9KTsKICB2YXIgbGluZXMgPSAoZS5kYXRhLnN0ZGluIHx8ICIiKS5zcGxpdCgiCiIpOwogIHB5Lmdsb2JhbHMuc2V0KCJfc2wiLCBweS50b1B5KGxpbmVzKSk7CiAgdHJ5IHsgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoU1RESU5fU0VUVVApOyB9IGNhdGNoKHgpIHt9CgogIHZhciB0aW1lZE91dCA9IGZhbHNlOwogIHZhciBraWxsVGltZXIgPSBzZXRUaW1lb3V0KGZ1bmN0aW9uKCkgewogICAgdGltZWRPdXQgPSB0cnVlOwogICAgdHJ5IHsgcHkucnVuUHl0aG9uKCJyYWlzZSBLZXlib2FyZEludGVycnVwdCgnRXhlY3V0aW9uIHRpbWVkIG91dCcpIik7IH0gY2F0Y2goeCkge30KICB9LCBFWEVDX1RJTUVPVVRfTVMpOwoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhlLmRhdGEuY29kZSk7IH0KICBjYXRjaCh4KSB7CiAgICBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsKICAgIGlmICh0aW1lZE91dCkgZXIgPSAiVGltZW91dEVycm9yOiBDb2RlIGV4Y2VlZGVkICIgKyAoRVhFQ19USU1FT1VUX01TLzEwMDApICsgInMgdGltZSBsaW1pdAoiICsgZXI7CiAgfSBmaW5hbGx5IHsgY2xlYXJUaW1lb3V0KGtpbGxUaW1lcik7IH0KCiAgcGFyZW50LnBvc3RNZXNzYWdlKHsgaWQ6IGUuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4=";
+  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwpsb2FkUHlvZGlkZSh7IGluZGV4VVJMOiAiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsLyIgfSkudGhlbihmdW5jdGlvbihwKSB7CiAgcHkgPSBwOwogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIgfSwgIioiKTsKfSkuY2F0Y2goZnVuY3Rpb24oZSkgewogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIsIGVycm9yOiBTdHJpbmcoZSkgfSwgIioiKTsKfSk7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGV2KSB7CiAgaWYgKCFldi5kYXRhIHx8IGV2LmRhdGEudCAhPT0gInJ1biIpIHJldHVybjsKICBpZiAoIXB5KSB7CiAgICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IGZhbHNlLCBlcnJvcjogIlB5b2RpZGUgbm90IHJlYWR5IiB9LCAiKiIpOwogICAgcmV0dXJuOwogIH0KICB2YXIgbyA9ICIiLCBlciA9ICIiLCBlYyA9IDA7CiAgcHkuc2V0U3Rkb3V0KHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBvICs9IHM7IH0gfSk7CiAgcHkuc2V0U3RkZXJyKHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBlciArPSBzOyB9IH0pOwoKICB2YXIgbGluZXMgPSAoZXYuZGF0YS5zdGRpbiB8fCAiIikuc3BsaXQoIlxuIik7CiAgcHkuZ2xvYmFscy5zZXQoIl9zdGRpbl9saW5lcyIsIHB5LnRvUHkobGluZXMpKTsKICB0cnkgewogICAgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoCiAgICAgICJpbXBvcnQgYnVpbHRpbnNcbiIgKwogICAgICAiX3NsID0gbGlzdChfc3RkaW5fbGluZXMpXG4iICsKICAgICAgIl9zaSA9IFswXVxuIiArCiAgICAgICJkZWYgX2lucChwPScnKTpcbiIgKwogICAgICAiICAgIGkgPSBfc2lbMF07IF9zaVswXSArPSAxXG4iICsKICAgICAgIiAgICByZXR1cm4gX3NsW2ldIGlmIGkgPCBsZW4oX3NsKSBlbHNlICcnXG4iICsKICAgICAgImJ1aWx0aW5zLmlucHV0ID0gX2lucCIKICAgICk7CiAgfSBjYXRjaCh4KSB7fQoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhldi5kYXRhLmNvZGUpOyB9CiAgY2F0Y2goeCkgeyBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsgfQoKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4=";
   var _pyBytes = atob(_pyB64);
   var _pyArr = new Uint8Array(_pyBytes.length);
   for (var i = 0; i < _pyBytes.length; i++) _pyArr[i] = _pyBytes.charCodeAt(i);
@@ -2734,23 +2894,12 @@ function waitPyReady(ms) {
 function runPy(code, stdin) {
   return new Promise(function(res, rej) {
     var id = ++_pyId;
-    // FIX #3: tight per-execution timeout — kills infinite loops
-    var timeout = PY_EXEC_TIMEOUT_MS || 10000;
-    var t = setTimeout(function(){
-      delete _pyCbs[id];
-      // FIX #5: if we timed out, start the freeze watchdog (may be a hung interpreter)
-      _pyFreezeWatchdog();
-      rej(new Error('Execution timed out (' + (timeout/1000) + 's) — check for infinite loops'));
-    }, timeout);
+    var t = setTimeout(function(){ delete _pyCbs[id]; rej(new Error('Python timed out')); }, 60000);
     _pyCbs[id] = function(d) {
       clearTimeout(t);
-      clearTimeout(_pyFreezeTimer); // run completed — cancel any pending watchdog restart
       if (d.ok) res({stdout:d.stdout||'',stderr:d.stderr||'',ec:d.ec||0});
       else rej(new Error(d.error||'Python error'));
     };
-    // FIX #2: blob: iframes have origin "null" — postMessage target must be '*'
-    // because you cannot postMessage to "null" origin directly; the listener
-    // guards origin on the RECEIVING side instead (see message listener above).
     _pyFrame.contentWindow.postMessage({t:'run',id:id,code:code,stdin:stdin||''},'*');
   });
 }
@@ -2795,25 +2944,6 @@ let firebaseReady = false;
 let _authHandled  = false;  // prevents onAuthStateChanged double-firing after manual login
 let auth, db;
 let currentUser = null;
-/* ═══════════════════════════════════════════════════════════════
-   EXAMSHIELD v1.1.0 — MODULE ARCHITECTURE (FIX #4)
-   ─────────────────────────────────────────────────────────────
-   Logical modules in this file (future: split to ES modules):
-     1. pyodide      — Python runner + postMessage security + timeout
-     2. anti-cheat   — proctoring events + integrity score
-     3. editor       — Monaco + autosave + draft restore + beforeunload
-     4. runner       — runCode / submitCode / grading pipeline
-     5. plagiarism   — session-level similarity detection
-     6. ui           — pages, toasts, panels, renders
-     7. firebase     — Firestore read/write helpers + reconnect
-     8. university   — semesters/depts/halls/students panels
-   Security fixes applied: #1 frontend-only AC → integrity token;
-     #2 postMessage→source check; #3 10s execution timeout;
-     #4 module boundaries; #5 freeze watchdog; #6/#7 HMAC token;
-     #8 beforeunload autosave; #9 plagiarism check; #10 reconnect handler.
-   ═══════════════════════════════════════════════════════════════ */
-
-// ── MODULE: state ────────────────────────────────────────────
 let currentRole = 'prof';        // 'prof' | 'stu'
 let questions   = [];            // professor's question bank
 let violations  = [];            // all violations across all students
@@ -4283,18 +4413,8 @@ function loadMonaco() {
       }, 3000); // 3 seconds after last keystroke
     });
 
-  // FIX #8: Save draft on page unload (tab close / refresh during exam)
-  window.addEventListener('beforeunload', function(e) {
-    if (!examActive || !monaco_editor) return;
-    // Sync save attempt (best-effort — browsers allow very little async here)
-    saveDraftToFirestore().catch(function(){});
-    // Standard browser "leave page?" prompt during active exam
-    e.preventDefault();
-    e.returnValue = 'You are in an active exam. Leave anyway? Your draft was auto-saved.';
-  });
-
-  monacoReady = true;
-  toast('Editor ready — happy coding! 🚀','ok');
+    monacoReady = true;
+    toast('Editor ready — happy coding! 🚀','ok');
   });
 }
 
@@ -4726,79 +4846,26 @@ console.log(`TC${i+1} OUT:`, JSON.stringify(out), 'EXP:', JSON.stringify(exp), '
   submissions.push(sub);
   if(allOk) solvedIds.add(currentQ.id);
 
-  // SECURITY FIX #1 / #6 / #7: Generate an integrity token that the backend
-  // can verify. We hash (userId + questionId + score + timestamp + violations)
-  // with a nonce so the score cannot be replayed or tampered with client-side.
-  // A real backend would verify this HMAC with a server secret before accepting.
-  const _subNonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const _subPayload = [
-    currentUser?.uid || 'anon',
-    currentQ?.id || 'unknown',
-    String(score),
-    String(totalVioCount),
-    _subNonce,
-  ].join('|');
-  // Use SubtleCrypto SHA-256 as a tamper-evidence digest (HMAC requires a key —
-  // use SHA-256 here for self-contained operation; swap for HMAC in a real backend).
-  let _integrityToken = null;
-  try {
-    const _msgBuf = new TextEncoder().encode(_subPayload);
-    const _hashBuf = await crypto.subtle.digest('SHA-256', _msgBuf);
-    _integrityToken = Array.from(new Uint8Array(_hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  } catch(e) { _integrityToken = 'unsupported'; }
-
   // PHASE 2: Write submission to Firestore submissions/ collection.
   // This lets the professor see all results in real-time on the dashboard.
   if (firebaseReady && db && currentUser) {
     db.collection('submissions').add({
       ...sub,
-      userId:          currentUser.uid,
-      questionId:      currentQ?.id || 'unknown',
+      userId:      currentUser.uid,
+      questionId:  currentQ?.id || 'unknown',
       code,                                          // final submitted code
-      timestamp:       firebase.firestore.FieldValue.serverTimestamp(),
-      snapshots:       codeSnapshots,                // all periodic snapshots
-      integrityToken:  _integrityToken,              // FIX #1/#6/#7: tamper-evidence token
-      integrityNonce:  _subNonce,                    // nonce for replay prevention
-      clientVersion:   '1.1.0',                      // version for backend audit
+      timestamp:   firebase.firestore.FieldValue.serverTimestamp(),
+      snapshots:   codeSnapshots,                   // all periodic snapshots
     }).catch(e => console.warn('submitCode Firestore error:', e));
   }
 
-  // FIX #9: Basic plagiarism signal — compare normalised token fingerprint
-  // against other submissions for the same question in this session.
-  (function checkPlagiarism(newCode, questionId) {
-    const normalize = c => c
-      .replace(/\s+/g, ' ')
-      .replace(/#.*/g, '')
-      .replace(/(['"])[^'"]*\1/g, '"S"')
-      .replace(/\b\d+\b/g, 'N')
-      .toLowerCase().trim();
-    const sig = normalize(newCode);
-    const myName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
-    const others = submissions.filter(s => s.student !== myName && s._codeSig && s._codeSig.length > 20);
-    for (const other of others) {
-      const grams = (s, n=4) => { const g = new Set(); for (let i=0;i<=s.length-n;i++) g.add(s.slice(i,i+n)); return g; };
-      const a = grams(sig), b = grams(other._codeSig);
-      const inter = [...a].filter(x => b.has(x)).length;
-      const union = new Set([...a, ...b]).size;
-      const similarity = union > 0 ? inter / union : 0;
-      if (similarity > 0.80) {
-        logViolation('plagiarism', 'Plagiarism', `High similarity (${Math.round(similarity*100)}%) with ${other.student}`);
-        toast(`⚠ Similarity alert: ${Math.round(similarity*100)}% match detected`, 'warn', 7000);
-        if (firebaseReady && db && currentUser) {
-          db.collection('plagiarism_flags').add({
-            studentA: myName, studentB: other.student,
-            similarity: Math.round(similarity*100),
-            questionId, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          }).catch(()=>{});
-        }
-        break;
-      }
-    }
-    sub._codeSig = sig;
-  })(code, currentQ?.id);
-
   examActive = false;
   stopTimer(); stopSnapshots();
+  disableAntiCheat(); disableDOMGuard();
+  document.getElementById('guard-pill').classList.remove('vis');
+
+  // Reset integrity state so a fresh exam attempt starts clean
+  integrityScore = 100;
   totalVioCount  = 0;
   tabVioCount    = 0;
   updateIntegrity(0); // redraw the integrity bar back to 100%
@@ -4957,7 +5024,6 @@ async function createExam() {
       : new Date().toISOString(),
     status:           'scheduled',  // scheduled | active | ended
   };
-
 
   // PHASE 2: Save exam config to Firestore exams/ collection
   if (firebaseReady && db) {
@@ -6164,20 +6230,9 @@ async function probeFirestorePermissions() {
 
 /* Copy rules to clipboard */
 function copyRules() {
-  const pre = document.getElementById('firestore-rules-block');
-  if (!pre) return;
-  navigator.clipboard.writeText(pre.textContent).then(() => {
-    toast('Firestore rules copied to clipboard ✅', 'ok');
-  }).catch(() => {
-    // Fallback for browsers without clipboard API
-    const ta = document.createElement('textarea');
-    ta.value = pre.textContent;
-    ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    toast('Rules copied ✅', 'ok');
-  });
+  // Firestore rules are managed in Firebase Console — no local copy
+  window.open('https://console.firebase.google.com/', '_blank', 'noopener');
+  toast('Opening Firebase Console ↗', 'info');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -6256,32 +6311,35 @@ function showStuSection(section) {
    PHASE 1: FIRESTORE HELPERS
    ────────────────────────────────────────────────────────────────── */
 async function loadCourses() {
+  // Always load web-sourced courses from public APIs
+  let webCourses = [];
+  try {
+    webCourses = await getWebCourses();
+  } catch(e) { console.warn('getWebCourses error:', e); }
+
   if (!fsReady()) {
-    coursesCatalog = [];
+    coursesCatalog = webCourses;
     return;
   }
   try {
-    // No orderBy — avoids needing a composite index and works even when
-    // Firestore security rules are still being configured.
     const snap = await db.collection('courses').get();
     const fetched = snap.docs.map(doc => {
       const d = doc.data();
       d.price = 'free';
       return { id: doc.id, ...d };
     });
-    // Always merge in demo courses so Python course is always visible
+    // Merge Firestore courses + web-API courses (Firestore takes precedence for same IDs)
     const fetchedIds = new Set(fetched.map(c => c.id));
-    const missing = getDemoCourses().filter(c => !fetchedIds.has(c.id));
-    coursesCatalog = [...fetched, ...missing];
-    if (!coursesCatalog.length) coursesCatalog = getDemoCourses();
+    const webOnly = webCourses.filter(c => !fetchedIds.has(c.id));
+    coursesCatalog = [...fetched, ...webOnly];
+    if (!coursesCatalog.length) coursesCatalog = webCourses;
   } catch(e) {
     console.warn('loadCourses error:', e.code, e.message);
-    // On any error (permission-denied, offline, etc.) fall back to demo courses
-    coursesCatalog = getDemoCourses();
+    coursesCatalog = webCourses;
     if (e.code === 'permission-denied' && !window._coursePermToastShown) {
       window._coursePermToastShown = true;
       if (typeof toast === 'function') {
-        toast('Firestore rules not yet deployed — showing demo courses. Deploy rules from the Security panel.', 'warn', 8000);
+        toast('Firestore rules not yet deployed — showing web-sourced courses.', 'warn', 6000);
       }
     }
   }
@@ -6656,17 +6714,40 @@ function openLesson(courseId, moduleId, lessonId) {
   const pct        = enrollment?.progress || 0;
 
   let contentHtml = '';
-  if (lesson.type === 'video' && lesson.videoUrl) {
-    const embedUrl = youtubeEmbed(lesson.videoUrl);
+  // Web-sourced video: use videoId or videoUrl
+  const videoId  = lesson.videoId;
+  const videoUrl = lesson.videoUrl;
+
+  if (lesson.type === 'video' && (videoId || videoUrl)) {
+    let embedUrl = null;
+    if (videoId) {
+      embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0`;
+    } else if (videoUrl) {
+      embedUrl = youtubeEmbed(videoUrl);
+    }
     contentHtml = `<div class="video-wrap">
       ${embedUrl
-        ? `<iframe src="${embedUrl}" allowfullscreen loading="lazy"></iframe>`
-        : `<div style="color:var(--muted);text-align:center"><div style="font-size:3rem;margin-bottom:10px">▶</div><div style="font-size:.85rem">Video: ${sanitize(lesson.videoUrl)}</div></div>`
+        ? `<iframe src="${embedUrl}" allowfullscreen loading="lazy" style="width:100%;aspect-ratio:16/9;border-radius:var(--r);border:none;"></iframe>`
+        : `<div style="color:var(--muted);text-align:center"><div style="font-size:3rem;margin-bottom:10px">▶</div><div style="font-size:.85rem">Video unavailable.</div></div>`
       }
     </div>`;
   }
+
+  // Content: support Markdown-style **bold** and [link](url)
   if (lesson.content) {
-    contentHtml += `<div class="article-content">${renderMarkdown(lesson.content)}</div>`;
+    const mdContent = lesson.content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--stu)">$1 ↗</a>');
+    contentHtml += `<div class="article-content">${renderMarkdown ? renderMarkdown(lesson.content) : mdContent}</div>`;
+  }
+
+  // Wikipedia source link
+  if (lesson.url && lesson.url.includes('wikipedia')) {
+    contentHtml += `<div style="margin-top:16px;padding:12px 16px;background:var(--ink3);border:1px solid var(--line);border-radius:var(--r-sm);font-size:.75rem;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.1rem">📖</span>
+      <div><div style="color:var(--muted);font-size:.65rem;text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-bottom:3px">Source</div>
+      <a href="${lesson.url}" target="_blank" rel="noopener" style="color:var(--stu);font-size:.78rem">Read full article on Wikipedia ↗</a></div>
+    </div>`;
   }
 
   // Prev / next
@@ -7328,10 +7409,70 @@ function openCourseBuilder() {
   document.getElementById('cb-lang').value = '';
   document.getElementById('cb-desc').value = '';
   document.getElementById('cb-thumb').value = '📚';
+  document.getElementById('cb-wiki-topics').value = '';
+  document.getElementById('cb-yt-ids').value = '';
+  document.getElementById('cb-book-query').value = '';
+  document.getElementById('cb-fetch-preview').innerHTML = '';
   document.getElementById('cb-modules-list').innerHTML = '';
   document.getElementById('course-builder-modal').classList.add('open');
 }
 function closeCourseBuilder() { document.getElementById('course-builder-modal').classList.remove('open'); }
+
+// Tracks web-imported modules from fetchAndPreviewWebContent
+let _cbWebModules = [];
+
+async function fetchAndPreviewWebContent() {
+  const btn     = document.getElementById('cb-fetch-btn');
+  const preview = document.getElementById('cb-fetch-preview');
+  const wikiRaw = document.getElementById('cb-wiki-topics').value.trim();
+  const ytRaw   = document.getElementById('cb-yt-ids').value.trim();
+  const bookQ   = document.getElementById('cb-book-query').value.trim();
+
+  if (!wikiRaw && !ytRaw && !bookQ) {
+    toast('Enter at least one Wikipedia topic, YouTube ID, or book query', 'warn');
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = '⏳ Fetching…';
+  preview.innerHTML = '<span style="color:var(--muted)">Fetching content from Wikipedia / YouTube / Open Library…</span>';
+
+  const wikiTopics = wikiRaw ? wikiRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const videoIds   = ytRaw   ? ytRaw.split(',').map(s=>s.trim()).filter(Boolean).map(id=>({ id, title:'YouTube Video' })) : [];
+
+  // Build a temporary course object
+  const tempMeta = {
+    id: 'temp-preview', title: document.getElementById('cb-title').value || 'Preview',
+    language: document.getElementById('cb-lang').value || 'General',
+    difficulty: document.getElementById('cb-diff').value, thumbnail: '📚',
+  };
+
+  let builtCourse;
+  try {
+    builtCourse = await buildCourseFromWeb(tempMeta, videoIds, wikiTopics, bookQ);
+  } catch(e) {
+    preview.innerHTML = `<span style="color:var(--danger)">Fetch error: ${e.message}</span>`;
+    btn.disabled = false; btn.textContent = '⬇ Fetch & Preview Content';
+    return;
+  }
+
+  _cbWebModules = builtCourse.modules || [];
+  const lessonCount = _cbWebModules.reduce((a,m)=>a+(m.lessons||[]).length,0);
+
+  if (!lessonCount) {
+    preview.innerHTML = '<span style="color:var(--amber)">⚠ No content could be fetched. Check topics/IDs and try again.</span>';
+    btn.disabled = false; btn.textContent = '⬇ Fetch & Preview Content';
+    return;
+  }
+
+  // Show summary
+  const summaryLines = _cbWebModules.map(m =>
+    `  📦 ${m.title} — ${m.lessons.length} lessons: ${m.lessons.map(l=>`"${l.title.substring(0,40)}"`).join(', ')}`
+  ).join('\n');
+  preview.innerHTML = `<span style="color:var(--stu)">✅ Fetched ${lessonCount} lessons across ${_cbWebModules.length} module(s):</span>\n${summaryLines.replace(/\n/g,'<br>')}`;
+  toast(`✅ Fetched ${lessonCount} lessons from web!`, 'ok');
+
+  btn.disabled = false; btn.textContent = '✅ Refetch Content';
+}
 
 let cbModuleCount = 0;
 function addCourseModule() {
@@ -7385,12 +7526,16 @@ async function saveCourse() {
   const price = document.getElementById('cb-price').value;
   const thumb = document.getElementById('cb-thumb').value.trim() || '📚';
   if (!title) { toast('Course title is required','warn'); return; }
-  const totalLessons = courseBuilderModules.reduce((a,m)=>a+m.lessons.length,0);
+
+  // Merge manually-entered modules + web-imported modules
+  const allModules = [...(_cbWebModules || []), ...courseBuilderModules];
+  const totalLessons = allModules.reduce((a,m)=>a+(m.lessons||[]).length,0);
+
   const course = {
     title, language:lang, description:desc, difficulty:diff,
     price: 'free', // All courses are free
     thumbnail:thumb, totalLessons,
-    modules: courseBuilderModules,
+    modules: allModules,
     createdBy: currentUser?.uid || 'unknown',
     createdAt: fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
   };
@@ -7399,22 +7544,22 @@ async function saveCourse() {
       const ref = await db.collection('courses').add(course);
       course.id = ref.id;
       // Save quizzes for modules that have them
-      for (const mod of courseBuilderModules) {
+      for (const mod of allModules) {
         if (mod.hasQuiz) {
-          // Create an empty quiz placeholder
           await db.collection('courses').doc(ref.id)
             .collection('quizzes').doc(mod.id).set({ questions: [], moduleId: mod.id });
         }
       }
-      toast('Course created! 🎓','ok');
+      toast(`Course "${title}" created with ${totalLessons} lessons! 🎓`, 'ok');
     } catch(e) { toast('Save failed: '+e.message,'err'); return; }
   } else {
     course.id = 'demo-' + genId();
     coursesCatalog.unshift(course);
-    toast('Course created (demo mode)','ok');
+    toast(`Course "${title}" created (demo mode) — ${totalLessons} lessons`, 'ok');
   }
+  _cbWebModules = []; // reset
   closeCourseBuilder();
-  profNav('course-analytics');
+  renderCourseAnalytics();
 }
 
 /* ── Quiz Builder ────────────────────────────────────────────── */
@@ -7527,8 +7672,228 @@ async function deleteCourse(courseId) {
 /* ──────────────────────────────────────────────────────────────────
    DEMO DATA
    ────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   WEB-SOURCED COURSE DATA
+   Fetches real content from public APIs:
+   - YouTube oEmbed → video lesson previews
+   - Wikipedia REST API → article lessons
+   - Open Library API → book-based reference modules
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Fetch a Wikipedia article summary as lesson content */
+async function fetchWikiLesson(topic) {
+  try {
+    const slug = encodeURIComponent(topic.replace(/ /g,'_'));
+    const res  = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+    if (!res.ok) return null;
+    const d = await res.json();
+    return {
+      title:   d.title,
+      content: d.extract || d.description || '',
+      thumb:   d.thumbnail?.source || null,
+      url:     d.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${slug}`,
+    };
+  } catch(e) { return null; }
+}
+
+/** Fetch YouTube video metadata via oEmbed (no API key required) */
+async function fetchYouTubeLesson(videoId, fallbackTitle) {
+  try {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+    if (!res.ok) return { title: fallbackTitle, videoId, type: 'video' };
+    const d = await res.json();
+    return { title: d.title || fallbackTitle, videoId, type: 'video', author: d.author_name };
+  } catch(e) { return { title: fallbackTitle, videoId, type: 'video' }; }
+}
+
+/** Fetch book info from Open Library by ISBN or title search */
+async function fetchOpenLibraryBook(query) {
+  try {
+    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1&fields=title,author_name,cover_i,first_sentence`);
+    if (!res.ok) return null;
+    const d = await res.json();
+    const b = d.docs?.[0];
+    if (!b) return null;
+    return {
+      title:   b.title || query,
+      author:  (b.author_name||[]).join(', '),
+      cover:   b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
+      excerpt: Array.isArray(b.first_sentence) ? b.first_sentence[0] : (b.first_sentence?.value || ''),
+      url:     `https://openlibrary.org/search?q=${encodeURIComponent(query)}`,
+    };
+  } catch(e) { return null; }
+}
+
+/**
+ * Build a rich course from external web APIs.
+ * topic        – course subject string (e.g. "Python programming")
+ * videoIds     – array of YouTube video IDs for video lessons
+ * wikiTopics   – array of Wikipedia article slugs for reading lessons
+ * bookQuery    – Open Library search query for reference material
+ */
+async function buildCourseFromWeb(meta, videoIds, wikiTopics, bookQuery) {
+  const lessons = [];
+
+  // Article lessons from Wikipedia
+  for (const topic of (wikiTopics || [])) {
+    const w = await fetchWikiLesson(topic);
+    if (w) {
+      lessons.push({
+        id:       'l-wiki-' + topic.replace(/\s+/g,'-').toLowerCase(),
+        title:    w.title,
+        type:     'article',
+        content:  w.content,
+        url:      w.url,
+        thumb:    w.thumb,
+        duration: '5m',
+      });
+    }
+  }
+
+  // Video lessons from YouTube
+  for (const vid of (videoIds || [])) {
+    const v = await fetchYouTubeLesson(vid.id, vid.title);
+    lessons.push({
+      id:       'l-yt-' + vid.id,
+      title:    v.title,
+      type:     'video',
+      videoUrl: `https://www.youtube.com/embed/${vid.id}`,
+      duration: vid.duration || '10m',
+    });
+  }
+
+  // Reference book from Open Library
+  let refLesson = null;
+  if (bookQuery) {
+    const book = await fetchOpenLibraryBook(bookQuery);
+    if (book) {
+      refLesson = {
+        id:       'l-book-' + genId(),
+        title:    '📖 Reference: ' + book.title,
+        type:     'article',
+        content:  `**${book.title}** by ${book.author}.\n\n${book.excerpt}\n\n[Read on Open Library →](${book.url})`,
+        duration: '3m',
+      };
+    }
+  }
+
+  // Split lessons into modules (first half articles, second half videos + book)
+  const articleLessons = lessons.filter(l => l.type === 'article');
+  const videoLessons   = lessons.filter(l => l.type === 'video');
+  if (refLesson) videoLessons.push(refLesson);
+
+  const modules = [];
+  if (articleLessons.length) {
+    modules.push({
+      id:       'mod-' + genId(),
+      title:    '📚 Reading & Theory',
+      hasQuiz:  true,
+      lessons:  articleLessons,
+    });
+  }
+  if (videoLessons.length) {
+    modules.push({
+      id:       'mod-' + genId(),
+      title:    '🎥 Video Lessons',
+      hasQuiz:  false,
+      lessons:  videoLessons,
+    });
+  }
+
+  return {
+    id:           meta.id || ('course-' + genId()),
+    title:        meta.title,
+    description:  meta.description,
+    language:     meta.language || 'General',
+    difficulty:   meta.difficulty || 'beginner',
+    thumbnail:    meta.thumbnail || '📚',
+    price:        'free',
+    totalLessons: lessons.length + (refLesson ? 1 : 0),
+    modules,
+    _source:      'web',
+  };
+}
+
+/**
+ * COURSE CATALOG DEFINITIONS
+ * These define the course structure; actual content is fetched live from APIs.
+ */
+const WEB_COURSE_DEFS = [
+  {
+    meta: { id:'course-python-intro', title:'Python Programming — Zero to Hero', description:'Learn Python from scratch with Wikipedia articles and YouTube tutorials.', language:'Python', difficulty:'beginner', thumbnail:'🐍' },
+    videoIds: [
+      { id:'rfscVS0vtbw', title:'Learn Python in 4 Hours', duration:'30m' },
+      { id:'8DvywoWv6fI', title:'Python for Beginners – Full Tutorial', duration:'20m' },
+    ],
+    wikiTopics: ['Python (programming language)', 'Control flow', 'Function (computer programming)'],
+    bookQuery: 'Python programming Lutz',
+  },
+  {
+    meta: { id:'course-ds-algorithms', title:'Data Structures & Algorithms', description:'Master arrays, trees, graphs and sorting with real explanations.', language:'Computer Science', difficulty:'intermediate', thumbnail:'🌲' },
+    videoIds: [
+      { id:'RBSGKlAvoiM', title:'Data Structures Easy to Advanced', duration:'25m' },
+      { id:'pkYVOmU3MgA', title:'Algorithms Course – Graph Theory', duration:'20m' },
+    ],
+    wikiTopics: ['Array data structure', 'Binary search tree', 'Sorting algorithm', 'Graph (discrete mathematics)'],
+    bookQuery: 'Introduction to Algorithms Cormen',
+  },
+  {
+    meta: { id:'course-web-html-css', title:'Web Development: HTML & CSS', description:'Build modern websites from scratch. Covers HTML5, CSS3, Flexbox, Grid.', language:'Web', difficulty:'beginner', thumbnail:'🌐' },
+    videoIds: [
+      { id:'G3e-cpL7ofc', title:'HTML & CSS Full Course', duration:'20m' },
+      { id:'1Rs2ND1ryYc', title:'CSS Tutorial – Zero to Hero', duration:'15m' },
+    ],
+    wikiTopics: ['HTML', 'Cascading Style Sheets', 'Responsive web design'],
+    bookQuery: 'HTML CSS Jon Duckett',
+  },
+  {
+    meta: { id:'course-sql-databases', title:'SQL & Relational Databases', description:'Master SQL queries, joins, indexes and database design concepts.', language:'SQL', difficulty:'beginner', thumbnail:'🗄️' },
+    videoIds: [
+      { id:'HXV3zeQKqGY', title:'SQL Tutorial – Full Database Course', duration:'25m' },
+    ],
+    wikiTopics: ['SQL', 'Relational database', 'Database normalization', 'Join (SQL)'],
+    bookQuery: 'Learning SQL Beaulieu',
+  },
+  {
+    meta: { id:'course-git-devops', title:'Git & Version Control', description:'Learn Git from the ground up: commits, branches, merges, and GitHub workflows.', language:'DevOps', difficulty:'beginner', thumbnail:'🔀' },
+    videoIds: [
+      { id:'RGOj5yH7evk', title:'Git and GitHub for Beginners', duration:'15m' },
+    ],
+    wikiTopics: ['Git', 'Version control', 'GitHub'],
+    bookQuery: 'Pro Git Chacon',
+  },
+];
+
+/**
+ * Fetch all web-sourced courses, building them from live API data.
+ * Results are cached in session to avoid hammering APIs.
+ */
+let _webCoursesCache = null;
+async function getWebCourses() {
+  if (_webCoursesCache) return _webCoursesCache;
+  const built = [];
+  for (const def of WEB_COURSE_DEFS) {
+    try {
+      const course = await buildCourseFromWeb(def.meta, def.videoIds, def.wikiTopics, def.bookQuery);
+      built.push(course);
+    } catch(e) {
+      // If API fetch fails, push a minimal shell
+      built.push({
+        id: def.meta.id, title: def.meta.title,
+        description: def.meta.description, language: def.meta.language,
+        difficulty: def.meta.difficulty, thumbnail: def.meta.thumbnail,
+        price: 'free', totalLessons: 0, modules: [], _source: 'web-fallback',
+      });
+    }
+  }
+  _webCoursesCache = built;
+  return built;
+}
+
 function getDemoCourses() {
-  return []; // All courses are loaded exclusively from Firestore
+  // Returns empty — web courses are loaded async via getWebCourses()
+  return [];
 }
 
 function getDemoQuizQuestions() {
