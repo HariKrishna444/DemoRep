@@ -90,10 +90,12 @@ body::after{
 #loader.gone{opacity:0;visibility:hidden;pointer-events:none}
 .ld-logo{
   font-family:var(--ff-head);font-weight:900;font-size:2.6rem;
-  color:var(--stu);letter-spacing:-1.5px;
+  color:var(--head);letter-spacing:-1.5px;
   text-shadow:0 0 60px rgba(0,229,160,.5);
   animation:ldpulse 1.4s ease-in-out infinite;
 }
+.ld-logo .brand-g{color:var(--stu)}
+.ld-logo .brand-w{color:#f1f5fb}
 .ld-logo em{color:var(--muted);font-style:normal}
 @keyframes ldpulse{0%,100%{text-shadow:0 0 40px rgba(0,229,160,.4)}50%{text-shadow:0 0 80px rgba(0,229,160,.9)}}
 .ld-bar{width:180px;height:2px;background:var(--line);border-radius:99px;overflow:hidden}
@@ -164,16 +166,31 @@ textarea.inp{resize:vertical;min-height:80px}
 select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
-#page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
-.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
+#page-login{
+  align-items:center;
+  justify-content:center;
+  padding:40px 20px;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);
+  min-height:100vh;
+  overflow-y:auto;
+  box-sizing:border-box;
+}
+.login-wrap{
+  width:100%;
+  max-width:440px;
+  margin:0 auto;
+  animation:fadeup .6s ease;
+  flex-shrink:0;
+}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
   font-family:var(--ff-head);font-size:2.6rem;font-weight:900;
-  color:var(--stu);letter-spacing:-1.5px;
-  text-shadow:0 0 50px rgba(0,229,160,.4);
+  color:var(--head);letter-spacing:-1.5px;
+  text-shadow:0 0 50px rgba(0,229,160,.3);
 }
-.login-brand h1 span{color:var(--muted)}
+.login-brand h1 .brand-g{color:var(--stu)}
+.login-brand h1 .brand-w{color:#f1f5fb}
 .login-brand p{font-family:var(--ff-mono);font-size:.7rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:6px}
 
 /* Role selector */
@@ -771,7 +788,7 @@ select.inp option{background:var(--ink3)}
 @media(max-width:768px){
   /* Login page: full width padding */
   #page-login{padding:20px 16px}
-  .login-wrap{max-width:100%}
+  .login-wrap{max-width:420px}
   .login-card{padding:24px 20px}
   .login-brand h1{font-size:2rem}
 
@@ -1082,18 +1099,17 @@ select.inp option{background:var(--ink3)}
 .learn-progress-bar{height:3px;background:var(--line);flex-shrink:0}
 .learn-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));transition:width .6s}
 
-/* ── Sidebar ── */
+/* ── Sidebar — pure accordion, no scroll ── */
 .learn-sidebar{
   background:var(--ink2);border-right:1px solid var(--line);
   overflow:hidden;padding:0;display:flex;flex-direction:column;
+  height:100%;
 }
 #learn-sidebar-content{
-  overflow-y:auto;
+  overflow:hidden;
   flex:1;
-  padding-bottom:16px;
+  padding-bottom:8px;
 }
-#learn-sidebar-content::-webkit-scrollbar{width:4px}
-#learn-sidebar-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
 .sb-header{
   padding:14px 16px 10px;
   font-size:.6rem;color:var(--muted);text-transform:uppercase;
@@ -1559,7 +1575,7 @@ select.inp option{background:var(--ink3)}
   .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
   /* Login page */
-  .login-wrap{max-width:100%!important}
+  .login-wrap{max-width:400px!important}
   .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
   .login-brand h1{font-size:2rem}
   .role-pills{margin-bottom:20px}
@@ -1621,7 +1637,7 @@ select.inp option{background:var(--ink3)}
 
 <!-- ═══ LOADER ═══ -->
 <div id="loader">
-  <div class="ld-logo"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
+  <div class="ld-logo"><span class="brand-g">Coding</span><span class="brand-w">Hub</span></div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
   <div class="ld-label">Initializing Secure Environment</div>
 </div>
@@ -1677,9 +1693,9 @@ select.inp option{background:var(--ink3)}
      PAGE: LOGIN
      ══════════════════════════════════════════════════ -->
 <div id="page-login" class="page">
-  <div class="login-wrap" style="margin:auto">
+  <div class="login-wrap">
     <div class="login-brand">
-      <h1><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></h1>
+      <h1><span class="brand-g">Coding</span><span class="brand-w">Hub</span></h1>
       <p>Secure College Exam Platform</p>
     </div>
 
@@ -1700,7 +1716,6 @@ select.inp option{background:var(--ink3)}
           <span id="btn-reg-txt">Create Account</span>
         </button>
       </div>
-
     </div>
   </div>
 </div>
@@ -7278,24 +7293,26 @@ async function downloadCertificatePDF(studentName, courseName, verifyId, issuedA
       ctx.beginPath(); ctx.arc(cx,cy,10,0,Math.PI*2); ctx.stroke();
     });
 
+    // Logo — CodingHub (top-left)
+    ctx.font = 'bold 34px Arial';
+    ctx.fillStyle = '#1a7a4a';
+    ctx.fillText('Coding', 70, 110);
+    const codingW = ctx.measureText('Coding').width;
+    ctx.fillStyle = '#0d1a0d';
+    ctx.fillText('Hub', 70 + codingW, 110);
+
+    // Platform label — on its own line below brand
+    ctx.font = '12px monospace'; ctx.fillStyle = '#8a6c00';
+    ctx.fillText('LEARNING PLATFORM', 70, 132);
+
     // Gold horizontal accent lines
     const lineGrad = ctx.createLinearGradient(70,0,800,0);
     lineGrad.addColorStop(0,'#c8960c'); lineGrad.addColorStop(0.6,'#f5d060'); lineGrad.addColorStop(1,'transparent');
     ctx.fillStyle = lineGrad; ctx.fillRect(70, 148, 480, 3);
     ctx.fillRect(70, 154, 300, 1);
 
-    // Logo — CodingHub
-    ctx.font = 'bold 32px Arial';
-    ctx.fillStyle = '#1a7a4a'; ctx.fillText('Coding', 70, 138);
-    const codingWidth = ctx.measureText('Coding').width;
-    ctx.fillStyle = '#0d1a0d'; ctx.fillText('Hub', 70 + codingWidth, 138);
-
-    // Platform label
-    ctx.font = '13px monospace'; ctx.fillStyle = '#8a6c00';
-    ctx.fillText('LEARNING PLATFORM', 70 + codingWidth + ctx.measureText('Hub').width + 14, 132);
-
     // Divider subtitle
-    ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#a08020'; ctx.letterSpacing='4px';
+    ctx.font = 'bold 13px monospace'; ctx.fillStyle = '#a08020';
     ctx.fillText('C E R T I F I C A T E   O F   C O M P L E T I O N', 70, 200);
 
     // "This certifies that"
@@ -7311,26 +7328,28 @@ async function downloadCertificatePDF(studentName, courseName, verifyId, issuedA
     ctx.fillText('has successfully completed the course', 70, 390);
 
     // Course name box
-    const boxGrad = ctx.createLinearGradient(70,410,790,476);
+    const boxGrad = ctx.createLinearGradient(70,408,820,478);
     boxGrad.addColorStop(0,'rgba(200,150,12,0.1)'); boxGrad.addColorStop(1,'rgba(200,150,12,0.06)');
-    ctx.fillStyle = boxGrad; roundRect(ctx,70,408,750,70,10); ctx.fill();
-    ctx.strokeStyle='rgba(200,150,12,0.4)'; ctx.lineWidth=1.5; roundRect(ctx,70,408,750,70,10); ctx.stroke();
+    ctx.fillStyle = boxGrad; roundRect(ctx,70,408,780,70,10); ctx.fill();
+    ctx.strokeStyle='rgba(200,150,12,0.4)'; ctx.lineWidth=1.5; roundRect(ctx,70,408,780,70,10); ctx.stroke();
     ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#1a3a1a';
-    ctx.fillText('🎓 ' + courseName.substring(0,44), 90, 450);
+    ctx.fillText('\uD83C\uDF93 ' + courseName.substring(0,44), 90, 452);
 
-    // Stats boxes
-    const stats = [
-      {label:'FINAL SCORE', val:score+'%', x:70},
-      {label:'ISSUED DATE', val:issuedAt, x:370},
-      {label:'GRADE', val:score>=90?'A+':score>=80?'A':score>=70?'B':'C+', x:670},
+    // Stats boxes — evenly spaced across full width
+    const statBoxW = 340, statGap = 25, statsStartX = 70;
+    const statsData = [
+      {label:'FINAL SCORE', val: (score||0)+'%'},
+      {label:'ISSUED DATE', val: issuedAt},
+      {label:'GRADE', val: score>=90?'A+':score>=80?'A':score>=70?'B':score>=60?'C+':'C'},
     ];
-    stats.forEach(({label,val,x})=>{
-      ctx.fillStyle='rgba(200,150,12,0.07)'; roundRect(ctx,x,520,270,90,8); ctx.fill();
-      ctx.strokeStyle='rgba(200,150,12,0.25)'; ctx.lineWidth=1; roundRect(ctx,x,520,270,90,8); ctx.stroke();
+    statsData.forEach(({label,val}, i) => {
+      const bx = statsStartX + i*(statBoxW + statGap);
+      ctx.fillStyle='rgba(200,150,12,0.07)'; roundRect(ctx,bx,510,statBoxW,95,8); ctx.fill();
+      ctx.strokeStyle='rgba(200,150,12,0.25)'; ctx.lineWidth=1; roundRect(ctx,bx,510,statBoxW,95,8); ctx.stroke();
       ctx.font='bold 30px Arial'; ctx.fillStyle='#1a3a1a'; ctx.textAlign='center';
-      ctx.fillText(val, x+135, 556);
-      ctx.font='11px monospace'; ctx.fillStyle='#8a6c00'; ctx.letterSpacing='1px';
-      ctx.fillText(label, x+135, 578);
+      ctx.fillText(val, bx + statBoxW/2, 548);
+      ctx.font='bold 11px Arial'; ctx.fillStyle='#8a6c00';
+      ctx.fillText(label, bx + statBoxW/2, 572);
     });
     ctx.textAlign='left';
 
@@ -7339,24 +7358,25 @@ async function downloadCertificatePDF(studentName, courseName, verifyId, issuedA
     ctx.beginPath(); ctx.moveTo(70,640); ctx.lineTo(1130,640); ctx.stroke();
 
     // Verify info
-    ctx.font='12px monospace'; ctx.fillStyle='#8a6c00';
-    ctx.fillText('Verify ID: '+verifyId, 70, 668);
-    ctx.fillText('Verify at: codinghub.app/verify?id='+verifyId, 70, 688);
+    ctx.font='13px monospace'; ctx.fillStyle='#8a6c00';
+    ctx.fillText('Verify ID: ' + verifyId, 70, 668);
+    ctx.fillText('Verify at: codinghub.app/verify?id=' + verifyId, 70, 690);
 
     // Official seal circle on right
     ctx.save();
     ctx.translate(1080, 720);
-    const sealGrad = ctx.createRadialGradient(0,0,10,0,0,52);
-    sealGrad.addColorStop(0,'rgba(245,208,96,0.3)');
-    sealGrad.addColorStop(1,'rgba(200,150,12,0.08)');
+    const sealGrad = ctx.createRadialGradient(0,0,10,0,0,54);
+    sealGrad.addColorStop(0,'rgba(245,208,96,0.35)');
+    sealGrad.addColorStop(1,'rgba(200,150,12,0.1)');
     ctx.fillStyle = sealGrad;
-    ctx.beginPath(); ctx.arc(0,0,52,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='rgba(200,150,12,0.6)'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(0,0,52,0,Math.PI*2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0,0,42,0,Math.PI*2); ctx.stroke();
-    ctx.font='28px Arial'; ctx.textAlign='center'; ctx.fillText('🏆', 0, 10);
-    ctx.font='bold 9px monospace'; ctx.fillStyle='#8a6c00';
-    ctx.fillText('CERTIFIED', 0, 30);
+    ctx.beginPath(); ctx.arc(0,0,54,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(200,150,12,0.65)'; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(0,0,54,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle='rgba(200,150,12,0.3)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(0,0,44,0,Math.PI*2); ctx.stroke();
+    ctx.font='32px Arial'; ctx.textAlign='center'; ctx.fillText('\uD83C\uDFC6', 0, 12);
+    ctx.font='bold 10px Arial'; ctx.fillStyle='#8a6c00';
+    ctx.fillText('CERTIFIED', 0, 33);
     ctx.restore();
     ctx.textAlign='left';
 
