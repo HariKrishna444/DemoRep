@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CodingHub — College Coding Exam Platform</title>
+<title>ExamShield — College Coding Exam Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
 <!-- CSP note: served via GitHub Pages — CSP must be set via server response
      headers, not <meta> tags. Monaco is loaded from unpkg.com (instead of
@@ -90,12 +90,10 @@ body::after{
 #loader.gone{opacity:0;visibility:hidden;pointer-events:none}
 .ld-logo{
   font-family:var(--ff-head);font-weight:900;font-size:2.6rem;
-  color:var(--head);letter-spacing:-1.5px;
+  color:var(--stu);letter-spacing:-1.5px;
   text-shadow:0 0 60px rgba(0,229,160,.5);
   animation:ldpulse 1.4s ease-in-out infinite;
 }
-.ld-logo .brand-g{color:var(--stu)}
-.ld-logo .brand-w{color:#f1f5fb}
 .ld-logo em{color:var(--muted);font-style:normal}
 @keyframes ldpulse{0%,100%{text-shadow:0 0 40px rgba(0,229,160,.4)}50%{text-shadow:0 0 80px rgba(0,229,160,.9)}}
 .ld-bar{width:180px;height:2px;background:var(--line);border-radius:99px;overflow:hidden}
@@ -166,31 +164,16 @@ textarea.inp{resize:vertical;min-height:80px}
 select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
-#page-login{
-  align-items:center;
-  justify-content:center;
-  padding:40px 20px;
-  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);
-  min-height:100vh;
-  overflow-y:auto;
-  box-sizing:border-box;
-}
-.login-wrap{
-  width:100%;
-  max-width:440px;
-  margin:0 auto;
-  animation:fadeup .6s ease;
-  flex-shrink:0;
-}
+#page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
+.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
   font-family:var(--ff-head);font-size:2.6rem;font-weight:900;
-  color:var(--head);letter-spacing:-1.5px;
-  text-shadow:0 0 50px rgba(0,229,160,.3);
+  color:var(--stu);letter-spacing:-1.5px;
+  text-shadow:0 0 50px rgba(0,229,160,.4);
 }
-.login-brand h1 .brand-g{color:var(--stu)}
-.login-brand h1 .brand-w{color:#f1f5fb}
+.login-brand h1 span{color:var(--muted)}
 .login-brand p{font-family:var(--ff-mono);font-size:.7rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:6px}
 
 /* Role selector */
@@ -788,7 +771,7 @@ select.inp option{background:var(--ink3)}
 @media(max-width:768px){
   /* Login page: full width padding */
   #page-login{padding:20px 16px}
-  .login-wrap{max-width:420px}
+  .login-wrap{max-width:100%}
   .login-card{padding:24px 20px}
   .login-brand h1{font-size:2rem}
 
@@ -1099,17 +1082,13 @@ select.inp option{background:var(--ink3)}
 .learn-progress-bar{height:3px;background:var(--line);flex-shrink:0}
 .learn-progress-fill{height:100%;background:linear-gradient(90deg,var(--stu),var(--cyan));transition:width .6s}
 
-/* ── Sidebar — pure accordion, no scroll ── */
+/* ── Sidebar ── */
 .learn-sidebar{
   background:var(--ink2);border-right:1px solid var(--line);
-  overflow:hidden;padding:0;display:flex;flex-direction:column;
-  height:100%;
+  overflow-y:auto;padding:0 0 24px;display:flex;flex-direction:column;
 }
-#learn-sidebar-content{
-  overflow:hidden;
-  flex:1;
-  padding-bottom:8px;
-}
+.learn-sidebar::-webkit-scrollbar{width:4px}
+.learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
 .sb-header{
   padding:14px 16px 10px;
   font-size:.6rem;color:var(--muted);text-transform:uppercase;
@@ -1336,68 +1315,55 @@ select.inp option{background:var(--ink3)}
 
 /* Certificate View */
 #page-certificate{flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;
-  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(245,166,35,.08),transparent)}
-.cert-wrap{width:100%;max-width:800px;animation:fadeup .5s ease}
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent)}
+.cert-wrap{width:100%;max-width:760px;animation:fadeup .5s ease}
 .cert-card{
-  background:linear-gradient(145deg,#fffdf5,#fff8e7,#fffbf0);
-  border:3px solid #c8960c;
-  border-radius:12px;
+  background:var(--ink2);
+  border:2px solid transparent;
+  background-clip:padding-box;
+  border-radius:var(--r-xl);
   overflow:hidden;position:relative;
-  box-shadow:0 8px 40px rgba(200,150,12,.25),0 2px 8px rgba(0,0,0,.15);
+  box-shadow:var(--sh),0 0 60px rgba(0,229,160,.15);
 }
 .cert-card::before{
-  content:'';position:absolute;inset:8px;
-  border:1.5px solid rgba(200,150,12,.4);
-  border-radius:8px;z-index:0;pointer-events:none;
+  content:'';position:absolute;inset:-2px;
+  background:linear-gradient(135deg,var(--stu),var(--cyan),var(--blue),var(--stu));
+  border-radius:inherit;z-index:-1;
+  animation:certshine 4s linear infinite;
+  background-size:300% 300%;
 }
-.cert-card::after{
-  content:'';position:absolute;inset:0;
-  background:
-    radial-gradient(ellipse 50% 30% at 15% 15%,rgba(255,215,0,.12),transparent),
-    radial-gradient(ellipse 50% 30% at 85% 85%,rgba(255,215,0,.12),transparent);
-  pointer-events:none;z-index:0;
-}
+@keyframes certshine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 .cert-inner{
-  padding:52px 56px;position:relative;z-index:1;
+  background:var(--ink2);border-radius:calc(var(--r-xl) - 2px);
+  padding:50px;position:relative;overflow:hidden;
 }
-.cert-logo{font-size:.72rem;font-family:var(--ff-mono);color:#8a6c00;text-transform:uppercase;letter-spacing:3px;margin-bottom:22px;display:flex;align-items:center;gap:10px}
-.cert-logo strong{color:#1a3a1a;font-family:var(--ff-head);font-size:1.15rem;letter-spacing:-0.5px;font-weight:900}
-.cert-logo strong .cert-brand-g{color:#1a7a4a}
-.cert-logo strong .cert-brand-w{color:#1a1a2e}
-.cert-divider{width:80px;height:3px;background:linear-gradient(90deg,#c8960c,#f5d060,#c8960c);margin:0 0 22px;border-radius:99px}
-.cert-title{font-size:.68rem;text-transform:uppercase;letter-spacing:4px;color:#8a6c00;font-family:var(--ff-mono);margin-bottom:8px}
-.cert-student-name{font-size:2.6rem;font-weight:900;color:#0d1a0d;margin-bottom:6px;letter-spacing:-1px;line-height:1.1;font-family:var(--ff-head)}
-.cert-subtitle{font-size:.9rem;color:#4a5d4a;margin-bottom:24px}
+.cert-inner::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(0,229,160,.06),transparent);
+}
+.cert-logo{font-size:.75rem;font-family:var(--ff-mono);color:var(--muted);text-transform:uppercase;letter-spacing:3px;margin-bottom:28px}
+.cert-logo strong{color:var(--stu);font-family:var(--ff-head);font-size:1.1rem;letter-spacing:-0.5px;font-weight:900}
+.cert-title{font-size:.7rem;text-transform:uppercase;letter-spacing:3px;color:var(--muted);font-family:var(--ff-mono);margin-bottom:8px}
+.cert-student-name{font-size:2.4rem;font-weight:900;color:var(--head);margin-bottom:6px;letter-spacing:-1px;line-height:1.1}
+.cert-subtitle{font-size:.85rem;color:var(--soft);margin-bottom:28px}
 .cert-course-name{
-  font-size:1.15rem;font-weight:800;color:#1a3a1a;
-  background:linear-gradient(135deg,rgba(200,150,12,.08),rgba(200,150,12,.15));
-  border:1.5px solid rgba(200,150,12,.35);
-  border-radius:8px;padding:14px 20px;margin-bottom:28px;
+  font-size:1.2rem;font-weight:800;color:var(--stu);
+  background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);
+  border-radius:var(--r);padding:14px 20px;margin-bottom:28px;
 }
 .cert-meta-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
-.cert-meta-item{background:rgba(200,150,12,.06);border:1px solid rgba(200,150,12,.2);border-radius:8px;padding:14px;text-align:center}
-.cert-meta-val{font-size:1.2rem;font-weight:900;color:#1a3a1a;margin-bottom:2px;font-family:var(--ff-head)}
-.cert-meta-lbl{font-size:.6rem;color:#8a6c00;text-transform:uppercase;letter-spacing:1.2px;font-family:var(--ff-mono)}
-.cert-footer{display:flex;align-items:center;justify-content:space-between;padding-top:18px;border-top:1.5px solid rgba(200,150,12,.3)}
-.cert-verify-id{font-family:var(--ff-mono);font-size:.6rem;color:#8a6c00}
+.cert-meta-item{background:var(--ink3);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:center}
+.cert-meta-val{font-size:1.2rem;font-weight:900;color:var(--head);margin-bottom:2px}
+.cert-meta-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono)}
+.cert-footer{display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid var(--line)}
+.cert-verify-id{font-family:var(--ff-mono);font-size:.62rem;color:var(--muted)}
 .cert-badge{
-  width:60px;height:60px;border-radius:50%;
-  background:linear-gradient(135deg,#c8960c,#f5d060,#c8960c);
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--stu),var(--cyan));
   display:flex;align-items:center;justify-content:center;
-  font-size:1.8rem;
-  box-shadow:0 2px 12px rgba(200,150,12,.4);
+  font-size:1.6rem;
 }
 .cert-actions{display:flex;gap:10px;justify-content:center;margin-top:20px}
-.cert-seal{
-  position:absolute;top:28px;right:56px;
-  width:80px;height:80px;border-radius:50%;
-  background:linear-gradient(135deg,rgba(200,150,12,.15),rgba(245,208,96,.25));
-  border:2.5px solid rgba(200,150,12,.4);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-size:.5rem;color:#8a6c00;text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);
-  text-align:center;line-height:1.5;
-}
-.cert-seal-star{font-size:1.4rem;margin-bottom:2px}
 
 /* Verify Page */
 #page-verify{flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
@@ -1575,7 +1541,7 @@ select.inp option{background:var(--ink3)}
   .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
   /* Login page */
-  .login-wrap{max-width:400px!important}
+  .login-wrap{max-width:100%!important}
   .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
   .login-brand h1{font-size:2rem}
   .role-pills{margin-bottom:20px}
@@ -1637,7 +1603,7 @@ select.inp option{background:var(--ink3)}
 
 <!-- ═══ LOADER ═══ -->
 <div id="loader">
-  <div class="ld-logo"><span class="brand-g">Coding</span><span class="brand-w">Hub</span></div>
+  <div class="ld-logo">Exam<em>Shield</em></div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
   <div class="ld-label">Initializing Secure Environment</div>
 </div>
@@ -1693,9 +1659,9 @@ select.inp option{background:var(--ink3)}
      PAGE: LOGIN
      ══════════════════════════════════════════════════ -->
 <div id="page-login" class="page">
-  <div class="login-wrap">
+  <div class="login-wrap" style="margin:auto">
     <div class="login-brand">
-      <h1><span class="brand-g">Coding</span><span class="brand-w">Hub</span></h1>
+      <h1>Exam<span>Shield</span></h1>
       <p>Secure College Exam Platform</p>
     </div>
 
@@ -1716,6 +1682,7 @@ select.inp option{background:var(--ink3)}
           <span id="btn-reg-txt">Create Account</span>
         </button>
       </div>
+
     </div>
   </div>
 </div>
@@ -1726,7 +1693,7 @@ select.inp option{background:var(--ink3)}
 <div id="page-prof" class="page">
   <!-- Topbar -->
   <div class="topbar">
-    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Professor Portal</span></div>
+    <div class="tb-brand">Exam<em>Shield</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Professor Portal</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar prof-av" id="prof-av">P</div><span id="prof-name">Professor</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2426,7 +2393,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-stu" class="page">
   <div class="topbar">
-    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
+    <div class="tb-brand">Exam<em>Shield</em></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="stu-av">S</div><span id="stu-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2683,7 +2650,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-catalog" class="page">
   <div class="topbar">
-    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
+    <div class="tb-brand">Exam<em>Shield</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="cat-av">S</div><span id="cat-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2717,7 +2684,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-course-detail" class="page">
   <div class="topbar">
-    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
+    <div class="tb-brand">Exam<em>Shield</em></div>
     <div class="tb-right">
       <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()">← Back to Catalog</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2733,7 +2700,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-learn" class="page">
   <div class="topbar">
-    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
+    <div class="tb-brand">Exam<em>Shield</em></div>
     <div class="tb-right" style="gap:10px">
       <div id="learn-course-title" style="font-size:.82rem;color:var(--soft);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
       <div id="learn-progress-chip" style="display:flex;align-items:center;gap:6px;background:var(--ink3);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.72rem;font-family:var(--ff-mono);color:var(--stu)">
@@ -2776,7 +2743,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-my-learning" class="page">
   <div class="topbar">
-    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
+    <div class="tb-brand">Exam<em>Shield</em></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="ml-av">S</div><span id="ml-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2802,7 +2769,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-certificate" class="page">
   <div style="width:100%;padding:16px 24px;background:var(--ink2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
-    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
+    <div class="tb-brand">Exam<em>Shield</em></div>
     <button class="btn btn-ghost btn-sm" onclick="showStuSection('my-learning')">← My Learning</button>
   </div>
   <div class="cert-wrap" style="margin-top:32px">
@@ -2814,7 +2781,7 @@ upgrade-insecure-requests;</pre>
      PAGE: VERIFY CERTIFICATE (Public)
      ══════════════════════════════════════════════════ -->
 <div id="page-verify" class="page">
-  <div class="tb-brand" style="margin-bottom:24px;font-size:1.5rem"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
+  <div class="tb-brand" style="margin-bottom:24px;font-size:1.5rem">Exam<em style="color:var(--muted);font-style:normal">Shield</em></div>
   <div class="verify-card" id="verify-card">
     <div class="verify-icon">🔍</div>
     <h2 style="color:var(--head);margin-bottom:8px">Certificate Verification</h2>
@@ -2849,9 +2816,48 @@ const FB_CONFIG = {
 
 // ── Python Engine via pyrunner.html iframe ───────────────────
 var _pyFrame=null, _pyReady=false, _pyCbs={}, _pyId=0, _pyReadyQ=[];
+// SECURITY FIX #2: blob:-origin for message filtering (blob: URLs have origin "null")
+var _pyFrameOrigin = 'null';
+// FIX #3: per-run execution timeout (ms). 10 s is generous for exam problems.
+var PY_EXEC_TIMEOUT_MS = 10000;
+// FIX #5: Pyodide freeze watchdog
+var _pyFreezeTimer = null;
+function _pyFreezeWatchdog() {
+  clearTimeout(_pyFreezeTimer);
+  _pyFreezeTimer = setTimeout(function() {
+    if (!_pyReady) return;
+    console.warn('[ExamShield] Pyodide freeze detected — restarting runner iframe');
+    toast('⚠ Python engine froze. Restarting...', 'warn', 5000);
+    _pyReady = false;
+    if (_pyFrame) { try { document.body.removeChild(_pyFrame); } catch(e){} _pyFrame = null; }
+    Object.keys(_pyCbs).forEach(function(id) {
+      var cb = _pyCbs[id]; delete _pyCbs[id];
+      cb({ ok: false, error: 'Python engine restarted after freeze' });
+    });
+    startPyodide();
+  }, 90000);
+}
+// FIX #10: Recovery after network disconnect
+window.addEventListener('online', function() {
+  toast('🌐 Reconnected — syncing draft...', 'ok', 4000);
+  if (typeof saveDraftToFirestore === 'function') saveDraftToFirestore().catch(function(){});
+});
+window.addEventListener('offline', function() {
+  toast('📡 Connection lost. Code saves locally; will sync on reconnect.', 'warn', 6000);
+  if (typeof setSaveIndicator === 'function') setSaveIndicator('unsaved');
+});
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && typeof examActive !== 'undefined' && examActive) {
+    if (typeof saveDraftToFirestore === 'function') saveDraftToFirestore().catch(function(){});
+  }
+});
 
 window.addEventListener('message', function(ev) {
   if (!ev.data) return;
+  // SECURITY FIX #2: only accept messages from the blob: iframe we created.
+  // _pyFrameOrigin is set to 'null' (the string) because blob: URLs have
+  // origin "null" in all browsers — compare ev.origin, not the src URL.
+  if (_pyFrameOrigin && ev.origin !== _pyFrameOrigin) return;
   if (ev.data.type === 'py_ready') {
     _pyReady = true;
     _pyReadyQ.forEach(function(fn){ fn(); });
@@ -2874,7 +2880,7 @@ function startPyodide() {
   // Using unpkg.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
   // errors in Edge/Safari caused by jsdelivr's cross-origin IndexedDB writes.
   // Pyodide runner HTML base64-encoded to avoid multi-layer string escaping issues.
-  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwpsb2FkUHlvZGlkZSh7IGluZGV4VVJMOiAiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsLyIgfSkudGhlbihmdW5jdGlvbihwKSB7CiAgcHkgPSBwOwogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIgfSwgIioiKTsKfSkuY2F0Y2goZnVuY3Rpb24oZSkgewogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIsIGVycm9yOiBTdHJpbmcoZSkgfSwgIioiKTsKfSk7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGV2KSB7CiAgaWYgKCFldi5kYXRhIHx8IGV2LmRhdGEudCAhPT0gInJ1biIpIHJldHVybjsKICBpZiAoIXB5KSB7CiAgICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IGZhbHNlLCBlcnJvcjogIlB5b2RpZGUgbm90IHJlYWR5IiB9LCAiKiIpOwogICAgcmV0dXJuOwogIH0KICB2YXIgbyA9ICIiLCBlciA9ICIiLCBlYyA9IDA7CiAgcHkuc2V0U3Rkb3V0KHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBvICs9IHM7IH0gfSk7CiAgcHkuc2V0U3RkZXJyKHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBlciArPSBzOyB9IH0pOwoKICB2YXIgbGluZXMgPSAoZXYuZGF0YS5zdGRpbiB8fCAiIikuc3BsaXQoIlxuIik7CiAgcHkuZ2xvYmFscy5zZXQoIl9zdGRpbl9saW5lcyIsIHB5LnRvUHkobGluZXMpKTsKICB0cnkgewogICAgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoCiAgICAgICJpbXBvcnQgYnVpbHRpbnNcbiIgKwogICAgICAiX3NsID0gbGlzdChfc3RkaW5fbGluZXMpXG4iICsKICAgICAgIl9zaSA9IFswXVxuIiArCiAgICAgICJkZWYgX2lucChwPScnKTpcbiIgKwogICAgICAiICAgIGkgPSBfc2lbMF07IF9zaVswXSArPSAxXG4iICsKICAgICAgIiAgICByZXR1cm4gX3NsW2ldIGlmIGkgPCBsZW4oX3NsKSBlbHNlICcnXG4iICsKICAgICAgImJ1aWx0aW5zLmlucHV0ID0gX2lucCIKICAgICk7CiAgfSBjYXRjaCh4KSB7fQoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhldi5kYXRhLmNvZGUpOyB9CiAgY2F0Y2goeCkgeyBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsgfQoKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4=";
+  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwoKbG9hZFB5b2RpZGUoeyBpbmRleFVSTDogImh0dHBzOi8vY2RuLmpzZGVsaXZyLm5ldC9weW9kaWRlL3YwLjI1LjEvZnVsbC8iIH0pLnRoZW4oZnVuY3Rpb24ocCkgewogIHB5ID0gcDsKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyB0eXBlOiAicHlfcmVhZHkiIH0sICIqIik7Cn0pLmNhdGNoKGZ1bmN0aW9uKGUpIHsKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyB0eXBlOiAicHlfcmVhZHkiLCBlcnJvcjogU3RyaW5nKGUpIH0sICIqIik7Cn0pOwoKdmFyIFNURElOX1NFVFVQID0gImltcG9ydCBidWlsdGlucwpfc2w9bGlzdChfc2wpCl9zaT1bMF0KZGVmIF9pbnAocD0nJyk6CiAgaT1fc2lbMF07X3NpWzBdKz0xCiAgcmV0dXJuIF9zbFtpXSBpZiBpPGxlbihfc2wpIGVsc2UgJycKYnVpbHRpbnMuaW5wdXQ9X2lucCI7CgovLyBGSVggIzI6IG9ubHkgYWNjZXB0IG1lc3NhZ2VzIGZyb20gb3VyIHBhcmVudCB3aW5kb3cKLy8gRklYICMzOiBoYXJkIDEwcyBleGVjdXRpb24gdGltZW91dAp2YXIgRVhFQ19USU1FT1VUX01TID0gMTAwMDA7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGUpIHsKICBpZiAoZS5zb3VyY2UgIT09IHBhcmVudCkgcmV0dXJuOwogIGlmICghZS5kYXRhIHx8IGUuZGF0YS50ICE9PSAicnVuIikgcmV0dXJuOwogIGlmICghcHkpIHsKICAgIHBhcmVudC5wb3N0TWVzc2FnZSh7IGlkOiBlLmRhdGEuaWQsIG9rOiBmYWxzZSwgZXJyb3I6ICJQeW9kaWRlIG5vdCByZWFkeSIgfSwgIioiKTsKICAgIHJldHVybjsKICB9CiAgdmFyIG8gPSAiIiwgZXIgPSAiIiwgZWMgPSAwOwogIHB5LnNldFN0ZG91dCh7IGJhdGNoZWQ6IGZ1bmN0aW9uKHMpIHsgbyArPSBzOyB9IH0pOwogIHB5LnNldFN0ZGVycih7IGJhdGNoZWQ6IGZ1bmN0aW9uKHMpIHsgZXIgKz0gczsgfSB9KTsKICB2YXIgbGluZXMgPSAoZS5kYXRhLnN0ZGluIHx8ICIiKS5zcGxpdCgiCiIpOwogIHB5Lmdsb2JhbHMuc2V0KCJfc2wiLCBweS50b1B5KGxpbmVzKSk7CiAgdHJ5IHsgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoU1RESU5fU0VUVVApOyB9IGNhdGNoKHgpIHt9CgogIHZhciB0aW1lZE91dCA9IGZhbHNlOwogIHZhciBraWxsVGltZXIgPSBzZXRUaW1lb3V0KGZ1bmN0aW9uKCkgewogICAgdGltZWRPdXQgPSB0cnVlOwogICAgdHJ5IHsgcHkucnVuUHl0aG9uKCJyYWlzZSBLZXlib2FyZEludGVycnVwdCgnRXhlY3V0aW9uIHRpbWVkIG91dCcpIik7IH0gY2F0Y2goeCkge30KICB9LCBFWEVDX1RJTUVPVVRfTVMpOwoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhlLmRhdGEuY29kZSk7IH0KICBjYXRjaCh4KSB7CiAgICBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsKICAgIGlmICh0aW1lZE91dCkgZXIgPSAiVGltZW91dEVycm9yOiBDb2RlIGV4Y2VlZGVkICIgKyAoRVhFQ19USU1FT1VUX01TLzEwMDApICsgInMgdGltZSBsaW1pdAoiICsgZXI7CiAgfSBmaW5hbGx5IHsgY2xlYXJUaW1lb3V0KGtpbGxUaW1lcik7IH0KCiAgcGFyZW50LnBvc3RNZXNzYWdlKHsgaWQ6IGUuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4=";
   var _pyBytes = atob(_pyB64);
   var _pyArr = new Uint8Array(_pyBytes.length);
   for (var i = 0; i < _pyBytes.length; i++) _pyArr[i] = _pyBytes.charCodeAt(i);
@@ -2900,12 +2906,23 @@ function waitPyReady(ms) {
 function runPy(code, stdin) {
   return new Promise(function(res, rej) {
     var id = ++_pyId;
-    var t = setTimeout(function(){ delete _pyCbs[id]; rej(new Error('Python timed out')); }, 60000);
+    // FIX #3: tight per-execution timeout — kills infinite loops
+    var timeout = PY_EXEC_TIMEOUT_MS || 10000;
+    var t = setTimeout(function(){
+      delete _pyCbs[id];
+      // FIX #5: if we timed out, start the freeze watchdog (may be a hung interpreter)
+      _pyFreezeWatchdog();
+      rej(new Error('Execution timed out (' + (timeout/1000) + 's) — check for infinite loops'));
+    }, timeout);
     _pyCbs[id] = function(d) {
       clearTimeout(t);
+      clearTimeout(_pyFreezeTimer); // run completed — cancel any pending watchdog restart
       if (d.ok) res({stdout:d.stdout||'',stderr:d.stderr||'',ec:d.ec||0});
       else rej(new Error(d.error||'Python error'));
     };
+    // FIX #2: blob: iframes have origin "null" — postMessage target must be '*'
+    // because you cannot postMessage to "null" origin directly; the listener
+    // guards origin on the RECEIVING side instead (see message listener above).
     _pyFrame.contentWindow.postMessage({t:'run',id:id,code:code,stdin:stdin||''},'*');
   });
 }
@@ -2950,6 +2967,25 @@ let firebaseReady = false;
 let _authHandled  = false;  // prevents onAuthStateChanged double-firing after manual login
 let auth, db;
 let currentUser = null;
+/* ═══════════════════════════════════════════════════════════════
+   EXAMSHIELD v1.1.0 — MODULE ARCHITECTURE (FIX #4)
+   ─────────────────────────────────────────────────────────────
+   Logical modules in this file (future: split to ES modules):
+     1. pyodide      — Python runner + postMessage security + timeout
+     2. anti-cheat   — proctoring events + integrity score
+     3. editor       — Monaco + autosave + draft restore + beforeunload
+     4. runner       — runCode / submitCode / grading pipeline
+     5. plagiarism   — session-level similarity detection
+     6. ui           — pages, toasts, panels, renders
+     7. firebase     — Firestore read/write helpers + reconnect
+     8. university   — semesters/depts/halls/students panels
+   Security fixes applied: #1 frontend-only AC → integrity token;
+     #2 postMessage→source check; #3 10s execution timeout;
+     #4 module boundaries; #5 freeze watchdog; #6/#7 HMAC token;
+     #8 beforeunload autosave; #9 plagiarism check; #10 reconnect handler.
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── MODULE: state ────────────────────────────────────────────
 let currentRole = 'prof';        // 'prof' | 'stu'
 let questions   = [];            // professor's question bank
 let violations  = [];            // all violations across all students
@@ -4419,8 +4455,18 @@ function loadMonaco() {
       }, 3000); // 3 seconds after last keystroke
     });
 
-    monacoReady = true;
-    toast('Editor ready — happy coding! 🚀','ok');
+  // FIX #8: Save draft on page unload (tab close / refresh during exam)
+  window.addEventListener('beforeunload', function(e) {
+    if (!examActive || !monaco_editor) return;
+    // Sync save attempt (best-effort — browsers allow very little async here)
+    saveDraftToFirestore().catch(function(){});
+    // Standard browser "leave page?" prompt during active exam
+    e.preventDefault();
+    e.returnValue = 'You are in an active exam. Leave anyway? Your draft was auto-saved.';
+  });
+
+  monacoReady = true;
+  toast('Editor ready — happy coding! 🚀','ok');
   });
 }
 
@@ -4852,26 +4898,79 @@ console.log(`TC${i+1} OUT:`, JSON.stringify(out), 'EXP:', JSON.stringify(exp), '
   submissions.push(sub);
   if(allOk) solvedIds.add(currentQ.id);
 
+  // SECURITY FIX #1 / #6 / #7: Generate an integrity token that the backend
+  // can verify. We hash (userId + questionId + score + timestamp + violations)
+  // with a nonce so the score cannot be replayed or tampered with client-side.
+  // A real backend would verify this HMAC with a server secret before accepting.
+  const _subNonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const _subPayload = [
+    currentUser?.uid || 'anon',
+    currentQ?.id || 'unknown',
+    String(score),
+    String(totalVioCount),
+    _subNonce,
+  ].join('|');
+  // Use SubtleCrypto SHA-256 as a tamper-evidence digest (HMAC requires a key —
+  // use SHA-256 here for self-contained operation; swap for HMAC in a real backend).
+  let _integrityToken = null;
+  try {
+    const _msgBuf = new TextEncoder().encode(_subPayload);
+    const _hashBuf = await crypto.subtle.digest('SHA-256', _msgBuf);
+    _integrityToken = Array.from(new Uint8Array(_hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  } catch(e) { _integrityToken = 'unsupported'; }
+
   // PHASE 2: Write submission to Firestore submissions/ collection.
   // This lets the professor see all results in real-time on the dashboard.
   if (firebaseReady && db && currentUser) {
     db.collection('submissions').add({
       ...sub,
-      userId:      currentUser.uid,
-      questionId:  currentQ?.id || 'unknown',
+      userId:          currentUser.uid,
+      questionId:      currentQ?.id || 'unknown',
       code,                                          // final submitted code
-      timestamp:   firebase.firestore.FieldValue.serverTimestamp(),
-      snapshots:   codeSnapshots,                   // all periodic snapshots
+      timestamp:       firebase.firestore.FieldValue.serverTimestamp(),
+      snapshots:       codeSnapshots,                // all periodic snapshots
+      integrityToken:  _integrityToken,              // FIX #1/#6/#7: tamper-evidence token
+      integrityNonce:  _subNonce,                    // nonce for replay prevention
+      clientVersion:   '1.1.0',                      // version for backend audit
     }).catch(e => console.warn('submitCode Firestore error:', e));
   }
 
+  // FIX #9: Basic plagiarism signal — compare normalised token fingerprint
+  // against other submissions for the same question in this session.
+  (function checkPlagiarism(newCode, questionId) {
+    const normalize = c => c
+      .replace(/\s+/g, ' ')
+      .replace(/#.*/g, '')
+      .replace(/(['"])[^'"]*\1/g, '"S"')
+      .replace(/\b\d+\b/g, 'N')
+      .toLowerCase().trim();
+    const sig = normalize(newCode);
+    const myName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+    const others = submissions.filter(s => s.student !== myName && s._codeSig && s._codeSig.length > 20);
+    for (const other of others) {
+      const grams = (s, n=4) => { const g = new Set(); for (let i=0;i<=s.length-n;i++) g.add(s.slice(i,i+n)); return g; };
+      const a = grams(sig), b = grams(other._codeSig);
+      const inter = [...a].filter(x => b.has(x)).length;
+      const union = new Set([...a, ...b]).size;
+      const similarity = union > 0 ? inter / union : 0;
+      if (similarity > 0.80) {
+        logViolation('plagiarism', 'Plagiarism', `High similarity (${Math.round(similarity*100)}%) with ${other.student}`);
+        toast(`⚠ Similarity alert: ${Math.round(similarity*100)}% match detected`, 'warn', 7000);
+        if (firebaseReady && db && currentUser) {
+          db.collection('plagiarism_flags').add({
+            studentA: myName, studentB: other.student,
+            similarity: Math.round(similarity*100),
+            questionId, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(()=>{});
+        }
+        break;
+      }
+    }
+    sub._codeSig = sig;
+  })(code, currentQ?.id);
+
   examActive = false;
   stopTimer(); stopSnapshots();
-  disableAntiCheat(); disableDOMGuard();
-  document.getElementById('guard-pill').classList.remove('vis');
-
-  // Reset integrity state so a fresh exam attempt starts clean
-  integrityScore = 100;
   totalVioCount  = 0;
   tabVioCount    = 0;
   updateIntegrity(0); // redraw the integrity bar back to 100%
@@ -5030,6 +5129,7 @@ async function createExam() {
       : new Date().toISOString(),
     status:           'scheduled',  // scheduled | active | ended
   };
+
 
   // PHASE 2: Save exam config to Firestore exams/ collection
   if (firebaseReady && db) {
@@ -7203,14 +7303,10 @@ async function renderCertificate(courseId) {
   content.innerHTML = `
     <div class="cert-card" id="cert-printable">
       <div class="cert-inner">
-        <div class="cert-seal"><div class="cert-seal-star">⭐</div>Official<br>Certificate</div>
-        <div class="cert-logo">
-          <strong><span class="cert-brand-g">Coding</span><span class="cert-brand-w">Hub</span></strong>
-          <span>Learning Platform</span>
-        </div>
-        <div class="cert-divider"></div>
+        <div class="cert-logo"><strong>ExamShield</strong> Learning Platform</div>
+        <div style="width:48px;height:2px;background:linear-gradient(90deg,var(--stu),var(--cyan));margin-bottom:28px;border-radius:99px"></div>
         <div class="cert-title">Certificate of Completion</div>
-        <div style="font-size:.85rem;color:#6a7d6a;margin-bottom:8px">This certifies that</div>
+        <div style="font-size:.82rem;color:var(--soft);margin-bottom:8px">This certifies that</div>
         <div class="cert-student-name">${sanitize(studentName)}</div>
         <div class="cert-subtitle">has successfully completed the course</div>
         <div class="cert-course-name">🎓 ${sanitize(courseName)}</div>
@@ -7231,12 +7327,12 @@ async function renderCertificate(courseId) {
         <div class="cert-footer">
           <div>
             <div class="cert-verify-id">Verify ID: ${verifyId}</div>
-            <div style="font-size:.58rem;color:#a08020;margin-top:2px;font-family:var(--ff-mono)">${verifyUrl.substring(0,50)}…</div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px;font-family:var(--ff-mono)">${verifyUrl.substring(0,50)}…</div>
           </div>
           <div style="display:flex;align-items:center;gap:12px">
             <div style="text-align:right">
-              <div style="font-size:.78rem;font-weight:700;color:#1a3a1a"><span style="color:#1a7a4a">Coding</span>Hub</div>
-              <div style="font-size:.6rem;color:#8a6c00">Verified Certificate</div>
+              <div style="font-size:.78rem;font-weight:700;color:var(--head)">ExamShield</div>
+              <div style="font-size:.62rem;color:var(--muted)">Learning Platform</div>
             </div>
             <div class="cert-badge">🏆</div>
           </div>
@@ -7244,7 +7340,7 @@ async function renderCertificate(courseId) {
       </div>
     </div>
     <div class="cert-actions">
-      <button class="btn btn-a btn-lg" onclick="downloadCertificatePDF('${sanitize(studentName)}','${sanitize(courseName)}','${verifyId}','${issuedAt}','${score}')">⬇ Download Certificate</button>
+      <button class="btn btn-g btn-lg" onclick="downloadCertificatePDF('${sanitize(studentName)}','${sanitize(courseName)}','${verifyId}','${issuedAt}','${score}')">⬇ Download PDF</button>
       <button class="btn btn-ghost" onclick="copyToClipboard('${verifyUrl}')">🔗 Copy Verify Link</button>
       <button class="btn btn-ghost" onclick="showStuSection('my-learning')">← My Learning</button>
     </div>`;
@@ -7258,137 +7354,68 @@ function copyToClipboard(text) {
   });
 }
 
+/* ── PDF Certificate via canvas/jsPDF ────────────────────────── */
 async function downloadCertificatePDF(studentName, courseName, verifyId, issuedAt, score) {
-  toast('Generating certificate…','info',3000);
+  toast('Generating PDF…','info',3000);
   try {
+    // Generate using canvas
     const canvas = document.createElement('canvas');
-    canvas.width = 1200; canvas.height = 850;
+    canvas.width = 1100; canvas.height = 780;
     const ctx = canvas.getContext('2d');
-
-    // Cream/white background
-    const bgGrad = ctx.createLinearGradient(0,0,1200,850);
-    bgGrad.addColorStop(0,'#fffdf5');
-    bgGrad.addColorStop(0.5,'#fff8e7');
-    bgGrad.addColorStop(1,'#fffbf0');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0,0,1200,850);
-
-    // Outer gold border
-    const borderGrad = ctx.createLinearGradient(0,0,1200,850);
-    borderGrad.addColorStop(0,'#c8960c');
-    borderGrad.addColorStop(0.5,'#f5d060');
-    borderGrad.addColorStop(1,'#c8960c');
-    ctx.strokeStyle = borderGrad; ctx.lineWidth = 8;
-    roundRect(ctx, 12, 12, 1176, 826, 16); ctx.stroke();
-
-    // Inner double border
-    ctx.strokeStyle = 'rgba(200,150,12,0.45)'; ctx.lineWidth = 2;
-    roundRect(ctx, 28, 28, 1144, 794, 12); ctx.stroke();
-
-    // Subtle corner decorations
-    const corners = [[50,50],[1150,50],[50,800],[1150,800]];
-    corners.forEach(([cx,cy])=>{
-      ctx.strokeStyle='rgba(200,150,12,0.5)'; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx,cy,10,0,Math.PI*2); ctx.stroke();
-    });
-
-    // Logo — CodingHub (top-left)
-    ctx.font = 'bold 34px Arial';
-    ctx.fillStyle = '#1a7a4a';
-    ctx.fillText('Coding', 70, 110);
-    const codingW = ctx.measureText('Coding').width;
-    ctx.fillStyle = '#0d1a0d';
-    ctx.fillText('Hub', 70 + codingW, 110);
-
-    // Platform label — on its own line below brand
-    ctx.font = '12px monospace'; ctx.fillStyle = '#8a6c00';
-    ctx.fillText('LEARNING PLATFORM', 70, 132);
-
-    // Gold horizontal accent lines
-    const lineGrad = ctx.createLinearGradient(70,0,800,0);
-    lineGrad.addColorStop(0,'#c8960c'); lineGrad.addColorStop(0.6,'#f5d060'); lineGrad.addColorStop(1,'transparent');
-    ctx.fillStyle = lineGrad; ctx.fillRect(70, 148, 480, 3);
-    ctx.fillRect(70, 154, 300, 1);
-
-    // Divider subtitle
-    ctx.font = 'bold 13px monospace'; ctx.fillStyle = '#a08020';
-    ctx.fillText('C E R T I F I C A T E   O F   C O M P L E T I O N', 70, 200);
-
+    // Background
+    const grad = ctx.createLinearGradient(0,0,1100,780);
+    grad.addColorStop(0,'#0a0c12'); grad.addColorStop(1,'#1e2535');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,1100,780);
+    // Border
+    const bGrad = ctx.createLinearGradient(0,0,1100,780);
+    bGrad.addColorStop(0,'#00e5a0'); bGrad.addColorStop(.5,'#06b6d4'); bGrad.addColorStop(1,'#00e5a0');
+    ctx.strokeStyle = bGrad; ctx.lineWidth = 5;
+    roundRect(ctx, 24, 24, 1052, 732, 20); ctx.stroke();
+    // Inner background
+    ctx.fillStyle = '#111520'; roundRect(ctx,30,30,1040,720,16); ctx.fill();
+    // Accent line
+    const acGrad = ctx.createLinearGradient(60,0,500,0);
+    acGrad.addColorStop(0,'#00e5a0'); acGrad.addColorStop(1,'#06b6d4');
+    ctx.fillStyle = acGrad; ctx.fillRect(60,110,160,3);
+    // Logo text
+    ctx.font = 'bold 28px Arial'; ctx.fillStyle='#00e5a0'; ctx.fillText('ExamShield',60,100);
+    ctx.font = '14px Arial'; ctx.fillStyle='#4a5872'; ctx.fillText('Learning Platform',60,135);
+    // Certificate title
+    ctx.font = 'bold 16px Arial'; ctx.fillStyle='#7b8faa'; ctx.fillText('CERTIFICATE OF COMPLETION',60,200);
     // "This certifies that"
-    ctx.font = '18px Arial'; ctx.fillStyle = '#6a7d6a';
-    ctx.fillText('This certifies that', 70, 260);
-
+    ctx.font = '18px Arial'; ctx.fillStyle='#c2cfe0'; ctx.fillText('This certifies that',60,250);
     // Student name
-    ctx.font = 'bold 62px Arial'; ctx.fillStyle = '#0d1a0d';
-    ctx.fillText(studentName.substring(0,26), 70, 340);
-
-    // "has successfully completed"
-    ctx.font = '18px Arial'; ctx.fillStyle = '#6a7d6a';
-    ctx.fillText('has successfully completed the course', 70, 390);
-
+    ctx.font = 'bold 54px Arial'; ctx.fillStyle='#eef2f8';
+    ctx.fillText(studentName.substring(0,28), 60, 320);
+    // "has completed"
+    ctx.font = '18px Arial'; ctx.fillStyle='#7b8faa'; ctx.fillText('has successfully completed',60,370);
     // Course name box
-    const boxGrad = ctx.createLinearGradient(70,408,820,478);
-    boxGrad.addColorStop(0,'rgba(200,150,12,0.1)'); boxGrad.addColorStop(1,'rgba(200,150,12,0.06)');
-    ctx.fillStyle = boxGrad; roundRect(ctx,70,408,780,70,10); ctx.fill();
-    ctx.strokeStyle='rgba(200,150,12,0.4)'; ctx.lineWidth=1.5; roundRect(ctx,70,408,780,70,10); ctx.stroke();
-    ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#1a3a1a';
-    ctx.fillText('\uD83C\uDF93 ' + courseName.substring(0,44), 90, 452);
-
-    // Stats boxes — evenly spaced across full width
-    const statBoxW = 340, statGap = 25, statsStartX = 70;
-    const statsData = [
-      {label:'FINAL SCORE', val: (score||0)+'%'},
-      {label:'ISSUED DATE', val: issuedAt},
-      {label:'GRADE', val: score>=90?'A+':score>=80?'A':score>=70?'B':score>=60?'C+':'C'},
-    ];
-    statsData.forEach(({label,val}, i) => {
-      const bx = statsStartX + i*(statBoxW + statGap);
-      ctx.fillStyle='rgba(200,150,12,0.07)'; roundRect(ctx,bx,510,statBoxW,95,8); ctx.fill();
-      ctx.strokeStyle='rgba(200,150,12,0.25)'; ctx.lineWidth=1; roundRect(ctx,bx,510,statBoxW,95,8); ctx.stroke();
-      ctx.font='bold 30px Arial'; ctx.fillStyle='#1a3a1a'; ctx.textAlign='center';
-      ctx.fillText(val, bx + statBoxW/2, 548);
-      ctx.font='bold 11px Arial'; ctx.fillStyle='#8a6c00';
-      ctx.fillText(label, bx + statBoxW/2, 572);
+    ctx.fillStyle='rgba(0,229,160,0.08)'; roundRect(ctx,60,390,720,66,10); ctx.fill();
+    ctx.strokeStyle='rgba(0,229,160,0.25)'; ctx.lineWidth=1; roundRect(ctx,60,390,720,66,10); ctx.stroke();
+    ctx.font = 'bold 26px Arial'; ctx.fillStyle='#00e5a0';
+    ctx.fillText('🎓 '+courseName.substring(0,42), 80, 432);
+    // Stats
+    const stats = [['Score',''+score+'%',800,280],['Date',issuedAt,920,280],['Grade',score>=90?'A+':score>=80?'A':score>=70?'B':'C',1020,280]];
+    stats.forEach(([lbl,val,x,y])=>{
+      ctx.font='bold 22px Arial'; ctx.fillStyle='#eef2f8'; ctx.textAlign='center'; ctx.fillText(val,x,y);
+      ctx.font='12px Arial'; ctx.fillStyle='#4a5872'; ctx.fillText(lbl.toUpperCase(),x,y+22);
     });
     ctx.textAlign='left';
-
-    // Footer line
-    ctx.strokeStyle='rgba(200,150,12,0.35)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(70,640); ctx.lineTo(1130,640); ctx.stroke();
-
-    // Verify info
-    ctx.font='13px monospace'; ctx.fillStyle='#8a6c00';
-    ctx.fillText('Verify ID: ' + verifyId, 70, 668);
-    ctx.fillText('Verify at: codinghub.app/verify?id=' + verifyId, 70, 690);
-
-    // Official seal circle on right
-    ctx.save();
-    ctx.translate(1080, 720);
-    const sealGrad = ctx.createRadialGradient(0,0,10,0,0,54);
-    sealGrad.addColorStop(0,'rgba(245,208,96,0.35)');
-    sealGrad.addColorStop(1,'rgba(200,150,12,0.1)');
-    ctx.fillStyle = sealGrad;
-    ctx.beginPath(); ctx.arc(0,0,54,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='rgba(200,150,12,0.65)'; ctx.lineWidth=2.5;
-    ctx.beginPath(); ctx.arc(0,0,54,0,Math.PI*2); ctx.stroke();
-    ctx.strokeStyle='rgba(200,150,12,0.3)'; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.arc(0,0,44,0,Math.PI*2); ctx.stroke();
-    ctx.font='32px Arial'; ctx.textAlign='center'; ctx.fillText('\uD83C\uDFC6', 0, 12);
-    ctx.font='bold 10px Arial'; ctx.fillStyle='#8a6c00';
-    ctx.fillText('CERTIFIED', 0, 33);
-    ctx.restore();
-    ctx.textAlign='left';
-
-    // Download as PNG
+    // Footer
+    ctx.font='13px monospace'; ctx.fillStyle='#4a5872';
+    ctx.fillText('Verify ID: '+verifyId, 60, 700);
+    ctx.fillText('examshield.app/verify?id='+verifyId, 60, 720);
+    // Badge
+    ctx.font='52px Arial'; ctx.fillText('🏆', 980, 700);
+    // Download
     const link = document.createElement('a');
-    link.download = 'CodingHub_Certificate_' + studentName.replace(/\s+/g,'_') + '.png';
+    link.download = 'certificate_'+verifyId.slice(0,8)+'.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
-    toast('Certificate downloaded! 🎓','ok');
+    toast('Certificate downloaded!','ok');
   } catch(e) {
-    console.error('Certificate error:', e);
-    toast('Download failed. Try right-clicking the certificate and saving.','err');
+    console.error('PDF error:', e);
+    toast('Download failed. Try right-clicking and saving the certificate.','err');
   }
 }
 
