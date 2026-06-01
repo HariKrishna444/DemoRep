@@ -1111,9 +1111,9 @@ select.inp option{background:var(--ink3)}
 .sb-mod-group.open .sb-mod-chevron{transform:rotate(90deg)}
 .sb-mod-lessons{display:none;padding-left:4px}
 .sb-mod-group.open .sb-mod-lessons{display:block}
-/* Auto-expand all modules in sidebar */
-.learn-sidebar .sb-mod-group .sb-mod-lessons{display:block}
-.learn-sidebar .sb-mod-group .sb-mod-chevron{transform:rotate(90deg)}
+/* Auto-expand all modules in sidebar — !important beats display:none */
+.learn-sidebar .sb-mod-group .sb-mod-lessons{display:block!important}
+.learn-sidebar .sb-mod-group .sb-mod-chevron{transform:rotate(90deg)!important}
 /* mini progress under module label */
 .sb-mod-prog{height:2px;background:var(--line);border-radius:1px;margin:0 10px 6px}
 .sb-mod-prog-fill{height:100%;background:var(--stu);border-radius:1px;transition:width .4s}
@@ -6675,8 +6675,8 @@ function renderLearnSidebar(course) {
 }
 
 function toggleSbMod(modId) {
-  const el = document.getElementById('sbmod-' + modId);
-  if (el) el.classList.toggle('open');
+  // Modules are always expanded — clicking the label does nothing
+  // (expand-on-view mode, no collapse)
 }
 
 function openLesson(courseId, moduleId, lessonId) {
