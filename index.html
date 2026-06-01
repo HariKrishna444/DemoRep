@@ -165,7 +165,7 @@ select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
 #page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
-.login-wrap{width:440px;max-width:calc(100% - 32px);animation:fadeup .6s ease}
+.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
@@ -1085,10 +1085,15 @@ select.inp option{background:var(--ink3)}
 /* ── Sidebar ── */
 .learn-sidebar{
   background:var(--ink2);border-right:1px solid var(--line);
-  overflow-y:auto;padding:0 0 24px;display:flex;flex-direction:column;
+  overflow:hidden;padding:0;display:flex;flex-direction:column;
 }
-.learn-sidebar::-webkit-scrollbar{width:4px}
-.learn-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
+#learn-sidebar-content{
+  overflow-y:auto;
+  flex:1;
+  padding-bottom:16px;
+}
+#learn-sidebar-content::-webkit-scrollbar{width:4px}
+#learn-sidebar-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
 .sb-header{
   padding:14px 16px 10px;
   font-size:.6rem;color:var(--muted);text-transform:uppercase;
@@ -1111,9 +1116,6 @@ select.inp option{background:var(--ink3)}
 .sb-mod-group.open .sb-mod-chevron{transform:rotate(90deg)}
 .sb-mod-lessons{display:none;padding-left:4px}
 .sb-mod-group.open .sb-mod-lessons{display:block}
-/* Auto-expand all modules in sidebar — !important beats display:none */
-.learn-sidebar .sb-mod-group .sb-mod-lessons{display:block!important}
-.learn-sidebar .sb-mod-group .sb-mod-chevron{transform:rotate(90deg)!important}
 /* mini progress under module label */
 .sb-mod-prog{height:2px;background:var(--line);border-radius:1px;margin:0 10px 6px}
 .sb-mod-prog-fill{height:100%;background:var(--stu);border-radius:1px;transition:width .4s}
@@ -1316,135 +1318,70 @@ select.inp option{background:var(--ink3)}
 .my-course-pct{font-size:.82rem;font-weight:700;color:var(--stu);margin-bottom:6px}
 .my-course-actions{display:flex;gap:8px;margin-top:14px}
 
-/* Certificate View — Gold Theme (CodeChef style) */
+/* Certificate View */
 #page-certificate{flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;
-  background:linear-gradient(135deg,#fdf8ee 0%,#fef3d0 50%,#fdf8ee 100%)}
-.cert-wrap{width:100%;max-width:820px;animation:fadeup .5s ease}
-
-/* Outer gold border card */
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(245,166,35,.08),transparent)}
+.cert-wrap{width:100%;max-width:800px;animation:fadeup .5s ease}
 .cert-card{
-  background:#fffdf5;
-  border:3px solid #c8922a;
-  border-radius:4px;
-  overflow:visible;position:relative;
-  box-shadow:0 8px 40px rgba(180,130,30,.25), 0 2px 8px rgba(180,130,30,.15);
+  background:linear-gradient(145deg,#fffdf5,#fff8e7,#fffbf0);
+  border:3px solid #c8960c;
+  border-radius:12px;
+  overflow:hidden;position:relative;
+  box-shadow:0 8px 40px rgba(200,150,12,.25),0 2px 8px rgba(0,0,0,.15);
 }
-/* Inner double border effect */
 .cert-card::before{
-  content:'';position:absolute;inset:6px;
-  border:1.5px solid #e8b84b;
-  border-radius:2px;pointer-events:none;z-index:1;
+  content:'';position:absolute;inset:8px;
+  border:1.5px solid rgba(200,150,12,.4);
+  border-radius:8px;z-index:0;pointer-events:none;
 }
-.cert-card::after{content:none}
-@keyframes certshine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-
+.cert-card::after{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 50% 30% at 15% 15%,rgba(255,215,0,.12),transparent),
+    radial-gradient(ellipse 50% 30% at 85% 85%,rgba(255,215,0,.12),transparent);
+  pointer-events:none;z-index:0;
+}
 .cert-inner{
-  background:#fffdf5;
-  padding:0;position:relative;overflow:hidden;
-  display:grid;grid-template-columns:1fr 320px;
-  min-height:480px;
+  padding:52px 56px;position:relative;z-index:1;
 }
-
-/* Left panel — cream */
-.cert-left{
-  padding:44px 40px 36px;
-  display:flex;flex-direction:column;justify-content:space-between;
-  border-right:1px solid #e8d5a3;
-  position:relative;
-}
-/* Subtle code brackets watermark */
-.cert-left::before{
-  content:'< >';position:absolute;bottom:60px;left:20px;
-  font-size:7rem;font-weight:900;color:rgba(200,146,42,.07);
-  font-family:monospace;line-height:1;pointer-events:none;letter-spacing:-10px;
-}
-
-/* Right panel — gold gradient badge */
-.cert-right{
-  background:linear-gradient(160deg,#f7e8b8 0%,#e8c660 35%,#c8922a 65%,#8b5e0a 100%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:36px 28px;
-  position:relative;
-  clip-path:polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
-  min-height:100%;
-}
-.cert-right::before{
-  content:'PRO';position:absolute;top:28px;left:50%;transform:translateX(-50%);
-  font-size:.65rem;font-weight:900;letter-spacing:5px;color:rgba(255,255,255,.8);
-  font-family:'Outfit',sans-serif;
-}
-
-/* Logo in right panel */
-.cert-logo{
-  text-align:center;margin-bottom:16px;margin-top:16px;
-}
-.cert-logo strong{
-  font-family:'Outfit',sans-serif;font-size:1.6rem;letter-spacing:-0.5px;font-weight:900;
-  color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.3);
-  display:flex;align-items:center;gap:6px;justify-content:center;
-}
-.cert-logo-icon{font-size:2.2rem}
-
-/* Right panel headings */
-.cert-title{
-  font-size:1.7rem;font-weight:900;color:#fff;text-align:center;
-  font-family:'Outfit',sans-serif;letter-spacing:-0.5px;margin-bottom:4px;
-  text-shadow:0 2px 6px rgba(0,0,0,.25);
-}
-.cert-subtitle-right{
-  font-size:1.25rem;font-weight:600;color:rgba(255,255,255,.9);text-align:center;
-  font-family:'Outfit',sans-serif;margin-bottom:0;
-}
-
-/* Left panel text */
-.cert-date{font-size:.82rem;color:#8b7040;margin-bottom:20px;font-family:'Outfit',sans-serif}
-.cert-student-name{font-size:2.6rem;font-weight:300;color:#1a1208;margin-bottom:16px;letter-spacing:-1px;line-height:1.1;font-family:'Outfit',sans-serif}
-.cert-body-text{font-size:1rem;color:#5c4a1e;line-height:1.7;margin-bottom:20px;font-family:'Outfit',sans-serif}
+.cert-logo{font-size:.72rem;font-family:var(--ff-mono);color:#8a6c00;text-transform:uppercase;letter-spacing:3px;margin-bottom:22px;display:flex;align-items:center;gap:10px}
+.cert-logo strong{color:#1a3a1a;font-family:var(--ff-head);font-size:1.15rem;letter-spacing:-0.5px;font-weight:900}
+.cert-logo strong .cert-brand-g{color:#1a7a4a}
+.cert-logo strong .cert-brand-w{color:#1a1a2e}
+.cert-divider{width:80px;height:3px;background:linear-gradient(90deg,#c8960c,#f5d060,#c8960c);margin:0 0 22px;border-radius:99px}
+.cert-title{font-size:.68rem;text-transform:uppercase;letter-spacing:4px;color:#8a6c00;font-family:var(--ff-mono);margin-bottom:8px}
+.cert-student-name{font-size:2.6rem;font-weight:900;color:#0d1a0d;margin-bottom:6px;letter-spacing:-1px;line-height:1.1;font-family:var(--ff-head)}
+.cert-subtitle{font-size:.9rem;color:#4a5d4a;margin-bottom:24px}
 .cert-course-name{
-  font-size:1.1rem;font-weight:800;color:#1a1208;
-  font-family:'Outfit',sans-serif;margin-bottom:4px;
+  font-size:1.15rem;font-weight:800;color:#1a3a1a;
+  background:linear-gradient(135deg,rgba(200,150,12,.08),rgba(200,150,12,.15));
+  border:1.5px solid rgba(200,150,12,.35);
+  border-radius:8px;padding:14px 20px;margin-bottom:28px;
 }
-.cert-course-by{font-size:.85rem;color:#8b7040;font-family:'Outfit',sans-serif}
-.cert-subtitle{display:none} /* hidden, replaced by cert-body-text */
-
-/* Signature area */
-.cert-sig-area{margin-top:auto;padding-top:20px}
-.cert-sig-img{
-  width:90px;height:42px;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 42'%3E%3Cpath d='M5,30 C15,10 25,35 35,20 C45,5 50,32 60,22 C68,14 75,28 85,20' stroke='%23333' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='87' cy='20' r='1.5' fill='%23333'/%3E%3C/svg%3E") no-repeat center;
-  background-size:contain;margin-bottom:8px;
-}
-.cert-sig-name{font-size:.85rem;font-weight:800;color:#1a1208;font-family:'Outfit',sans-serif}
-.cert-sig-title{font-size:.72rem;color:#8b7040;font-family:'Outfit',sans-serif}
-
-/* Footer verification */
-.cert-footer{
-  display:flex;align-items:flex-end;justify-content:space-between;
-  padding-top:16px;border-top:1px solid #e8d5a3;margin-top:12px;
-}
-.cert-verify-id{font-family:'DM Mono',monospace;font-size:.6rem;color:#8b7040;line-height:1.6}
+.cert-meta-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+.cert-meta-item{background:rgba(200,150,12,.06);border:1px solid rgba(200,150,12,.2);border-radius:8px;padding:14px;text-align:center}
+.cert-meta-val{font-size:1.2rem;font-weight:900;color:#1a3a1a;margin-bottom:2px;font-family:var(--ff-head)}
+.cert-meta-lbl{font-size:.6rem;color:#8a6c00;text-transform:uppercase;letter-spacing:1.2px;font-family:var(--ff-mono)}
+.cert-footer{display:flex;align-items:center;justify-content:space-between;padding-top:18px;border-top:1.5px solid rgba(200,150,12,.3)}
+.cert-verify-id{font-family:var(--ff-mono);font-size:.6rem;color:#8a6c00}
 .cert-badge{
-  width:48px;height:48px;border-radius:50%;
-  background:linear-gradient(135deg,#e8c660,#c8922a);
-  border:2px solid #c8922a;
+  width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(135deg,#c8960c,#f5d060,#c8960c);
   display:flex;align-items:center;justify-content:center;
-  font-size:1.3rem;
-  box-shadow:0 2px 8px rgba(180,130,30,.4);
+  font-size:1.8rem;
+  box-shadow:0 2px 12px rgba(200,150,12,.4);
 }
-/* Meta row */
-.cert-meta-row{display:none} /* hidden in new layout — info shown inline */
-.cert-meta-item{display:none}
-.cert-meta-val{display:none}
-.cert-meta-lbl{display:none}
 .cert-actions{display:flex;gap:10px;justify-content:center;margin-top:20px}
-
-/* Gold-themed buttons for cert page */
-#page-certificate .btn-g{
-  background:linear-gradient(135deg,#e8c660,#c8922a)!important;
-  color:#1a1208!important;border-color:#c8922a!important;
-  box-shadow:0 4px 16px rgba(180,130,30,.35)!important;
+.cert-seal{
+  position:absolute;top:28px;right:56px;
+  width:80px;height:80px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(200,150,12,.15),rgba(245,208,96,.25));
+  border:2.5px solid rgba(200,150,12,.4);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:.5rem;color:#8a6c00;text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);
+  text-align:center;line-height:1.5;
 }
-#page-certificate .btn-g:hover{background:linear-gradient(135deg,#f0d070,#d4a030)!important}
+.cert-seal-star{font-size:1.4rem;margin-bottom:2px}
 
 /* Verify Page */
 #page-verify{flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
@@ -1684,7 +1621,7 @@ select.inp option{background:var(--ink3)}
 
 <!-- ═══ LOADER ═══ -->
 <div id="loader">
-  <div class="ld-logo">Coding<em>Hub</em></div>
+  <div class="ld-logo"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
   <div class="ld-label">Initializing Secure Environment</div>
 </div>
@@ -1742,8 +1679,8 @@ select.inp option{background:var(--ink3)}
 <div id="page-login" class="page">
   <div class="login-wrap" style="margin:auto">
     <div class="login-brand">
-      <h1>Coding<span>Hub</span></h1>
-      <p>SECURE CODING LEARNING PLATFORM</p>
+      <h1><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></h1>
+      <p>Secure College Exam Platform</p>
     </div>
 
     <div class="role-pills">
@@ -1774,7 +1711,7 @@ select.inp option{background:var(--ink3)}
 <div id="page-prof" class="page">
   <!-- Topbar -->
   <div class="topbar">
-    <div class="tb-brand">Coding<em>Hub</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Professor Portal</span></div>
+    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Professor Portal</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar prof-av" id="prof-av">P</div><span id="prof-name">Professor</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2474,7 +2411,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-stu" class="page">
   <div class="topbar">
-    <div class="tb-brand">Coding<em>Hub</em></div>
+    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="stu-av">S</div><span id="stu-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2586,7 +2523,7 @@ upgrade-insecure-requests;</pre>
           </div>
         </div>
         <div class="con-out" id="con-out">
-          <div class="out-l info"><span class="op">$</span><span class="ot">CodingHub execution engine ready.</span></div>
+          <div class="out-l info"><span class="op">$</span><span class="ot">ExamShield execution engine ready.</span></div>
         </div>
         <div class="custom-in" id="custom-in">
           <label style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px">Custom STDIN</label>
@@ -2731,7 +2668,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-catalog" class="page">
   <div class="topbar">
-    <div class="tb-brand">Coding<em>Hub</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
+    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="cat-av">S</div><span id="cat-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2765,7 +2702,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-course-detail" class="page">
   <div class="topbar">
-    <div class="tb-brand">Coding<em>Hub</em></div>
+    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
     <div class="tb-right">
       <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()">← Back to Catalog</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2781,7 +2718,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-learn" class="page">
   <div class="topbar">
-    <div class="tb-brand">Coding<em>Hub</em></div>
+    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
     <div class="tb-right" style="gap:10px">
       <div id="learn-course-title" style="font-size:.82rem;color:var(--soft);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
       <div id="learn-progress-chip" style="display:flex;align-items:center;gap:6px;background:var(--ink3);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.72rem;font-family:var(--ff-mono);color:var(--stu)">
@@ -2824,7 +2761,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-my-learning" class="page">
   <div class="topbar">
-    <div class="tb-brand">Coding<em>Hub</em></div>
+    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="ml-av">S</div><span id="ml-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2850,7 +2787,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-certificate" class="page">
   <div style="width:100%;padding:16px 24px;background:var(--ink2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
-    <div class="tb-brand">Coding<em>Hub</em></div>
+    <div class="tb-brand"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
     <button class="btn btn-ghost btn-sm" onclick="showStuSection('my-learning')">← My Learning</button>
   </div>
   <div class="cert-wrap" style="margin-top:32px">
@@ -2862,7 +2799,7 @@ upgrade-insecure-requests;</pre>
      PAGE: VERIFY CERTIFICATE (Public)
      ══════════════════════════════════════════════════ -->
 <div id="page-verify" class="page">
-  <div class="tb-brand" style="margin-bottom:24px;font-size:1.5rem">Coding<em style="color:var(--muted);font-style:normal">Hub</em></div>
+  <div class="tb-brand" style="margin-bottom:24px;font-size:1.5rem"><span style="color:var(--stu)">Coding</span><span style="color:#f1f5fb">Hub</span></div>
   <div class="verify-card" id="verify-card">
     <div class="verify-icon">🔍</div>
     <h2 style="color:var(--head);margin-bottom:8px">Certificate Verification</h2>
@@ -3891,7 +3828,7 @@ async function startExam(qId) {
   document.getElementById('guard-pill').classList.add('vis');
 
   clearConsole();
-  outLine('info','CodingHub secure execution environment ready.');
+  outLine('info','ExamShield secure execution environment ready.');
   outLine('warn','⚠ This session is monitored. No paste, no tab switching, no AI tools.');
 }
 
@@ -6713,7 +6650,7 @@ function renderLearnSidebar(course) {
     const doneCount = lessons.filter(l => completed.includes(l.id)).length;
     const progPct   = lessons.length ? Math.round(doneCount / lessons.length * 100) : 0;
     const hasActive = lessons.some(l => l.id === currentLessonId);
-    const isOpen    = true; // Always expand all modules for better visibility
+    const isOpen    = hasActive || mi === 0;
 
     const lessonRows = lessons.map(lesson => {
       const isDone    = completed.includes(lesson.id);
@@ -6753,8 +6690,8 @@ function renderLearnSidebar(course) {
 }
 
 function toggleSbMod(modId) {
-  // Modules are always expanded — clicking the label does nothing
-  // (expand-on-view mode, no collapse)
+  const el = document.getElementById('sbmod-' + modId);
+  if (el) el.classList.toggle('open');
 }
 
 function openLesson(courseId, moduleId, lessonId) {
@@ -6851,107 +6788,6 @@ function openLesson(courseId, moduleId, lessonId) {
   if (lc) lc.scrollTop = 0;
 }
 
-function showCertPreviewInLesson(courseId) {
-  const area = document.getElementById('lesson-content-area');
-  if (!area) { showPage('certificate'); renderCertificate(courseId); return; }
-  const course = coursesCatalog.find(c=>c.id===courseId);
-  const studentName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
-  const courseName  = course?.title || courseId;
-  const today = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-
-  area.innerHTML = `
-    <div style="text-align:center;margin-bottom:32px">
-      <div style="font-size:2.5rem;margin-bottom:8px">🎉</div>
-      <div style="font-size:1.4rem;font-weight:900;color:#1a1208;margin-bottom:6px">Course Complete!</div>
-      <div style="font-size:.88rem;color:#8b7040">Your certificate has been generated below</div>
-    </div>
-
-    <!-- Gold Certificate Preview -->
-    <div style="
-      background:#fffdf5;border:3px solid #c8922a;border-radius:4px;
-      position:relative;overflow:hidden;
-      box-shadow:0 8px 40px rgba(180,130,30,.3);
-      max-width:780px;margin:0 auto 32px;
-    ">
-      <!-- inner double border -->
-      <div style="position:absolute;inset:6px;border:1.5px solid #e8b84b;border-radius:2px;pointer-events:none;z-index:1"></div>
-      <!-- two-column layout -->
-      <div style="display:grid;grid-template-columns:1fr 280px;min-height:400px">
-
-        <!-- LEFT -->
-        <div style="padding:40px 36px 32px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid #e8d5a3;position:relative;overflow:hidden">
-          <!-- code bracket watermark -->
-          <div style="position:absolute;bottom:50px;left:16px;font-size:6rem;font-weight:900;color:rgba(200,146,42,.06);font-family:monospace;letter-spacing:-8px;pointer-events:none">{ }</div>
-          <!-- dot-grid top-left -->
-          <div style="position:absolute;top:16px;left:16px;display:grid;grid-template-columns:repeat(8,6px);gap:4px;opacity:.18">
-            ${Array(32).fill('<div style="width:4px;height:4px;border-radius:50%;background:#c8922a"></div>').join('')}
-          </div>
-
-          <div style="position:relative;z-index:2">
-            <div style="font-size:.78rem;color:#8b7040;margin-bottom:18px;font-family:'Outfit',sans-serif">${today}</div>
-            <div style="font-size:2.4rem;font-weight:300;color:#1a1208;letter-spacing:-1px;line-height:1.1;font-family:'Outfit',sans-serif;margin-bottom:14px">${sanitize(studentName)}</div>
-            <div style="font-size:.95rem;color:#5c4a1e;line-height:1.75;margin-bottom:16px;font-family:'Outfit',sans-serif">
-              has completed all the lessons<br>and projects of
-            </div>
-            <div style="font-size:1rem;font-weight:800;color:#1a1208;font-family:'Outfit',sans-serif;margin-bottom:4px">${sanitize(courseName)}</div>
-            <div style="font-size:.78rem;color:#8b7040;font-family:'Outfit',sans-serif">by CodingHub</div>
-          </div>
-
-          <!-- Signature -->
-          <div style="position:relative;z-index:2;margin-top:auto;padding-top:18px">
-            <svg width="90" height="40" viewBox="0 0 90 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin-bottom:8px">
-              <path d="M5,30 C15,10 25,35 35,20 C45,5 50,32 60,22 C68,14 75,28 85,20" stroke="#333" stroke-width="1.6" stroke-linecap="round"/>
-              <circle cx="87" cy="20" r="1.5" fill="#333"/>
-            </svg>
-            <div style="font-size:.82rem;font-weight:800;color:#1a1208;font-family:'Outfit',sans-serif">CodingHub Team</div>
-            <div style="font-size:.7rem;color:#8b7040;font-family:'Outfit',sans-serif">Learning Platform · CodingHub</div>
-          </div>
-
-          <!-- Verify footer -->
-          <div style="border-top:1px solid #e8d5a3;padding-top:12px;margin-top:14px;font-size:.6rem;color:#8b7040;font-family:'DM Mono',monospace;line-height:1.7;position:relative;z-index:2">
-            For certificate verification, please visit:<br>
-            codinghub.app/certificates/verify<br>
-            Username: ${sanitize(studentName)}
-          </div>
-        </div>
-
-        <!-- RIGHT — gold badge panel -->
-        <div style="
-          background:linear-gradient(160deg,#f7e8b8 0%,#e8c660 35%,#c8922a 65%,#8b5e0a 100%);
-          display:flex;flex-direction:column;align-items:center;justify-content:center;
-          padding:32px 24px;
-          clip-path:polygon(0 0,100% 0,100% 85%,50% 100%,0 85%);
-          position:relative;
-        ">
-          <div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);font-size:.6rem;font-weight:900;letter-spacing:5px;color:rgba(255,255,255,.8);font-family:'Outfit',sans-serif">PRO</div>
-          <div style="font-size:2rem;margin-bottom:10px;margin-top:16px">💻</div>
-          <div style="font-size:1.7rem;font-weight:900;color:#fff;text-align:center;font-family:'Outfit',sans-serif;text-shadow:0 2px 6px rgba(0,0,0,.25);margin-bottom:4px">CERTIFICATE</div>
-          <div style="font-size:1.15rem;font-weight:600;color:rgba(255,255,255,.9);text-align:center;font-family:'Outfit',sans-serif">of Completion</div>
-          <!-- CodingHub logo badge -->
-          <div style="margin-top:24px;background:rgba(255,255,255,.15);border-radius:8px;padding:10px 18px;backdrop-filter:blur(4px)">
-            <div style="font-size:1.1rem;font-weight:900;color:#fff;font-family:'Outfit',sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.3)">CodingHub</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Action buttons -->
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-lg" onclick="showPage('certificate');renderCertificate('${courseId}')"
-        style="background:linear-gradient(135deg,#e8c660,#c8922a);color:#1a1208;border:none;font-weight:700;box-shadow:0 4px 16px rgba(180,130,30,.4)">
-        🏆 View Full Certificate
-      </button>
-      <button class="btn btn-ghost btn-lg" onclick="showStuSection('my-learning')">← My Learning</button>
-      <button class="btn btn-ghost btn-lg" onclick="showStuSection('catalog')">Browse More Courses</button>
-    </div>`;
-
-  // Also issue the certificate in the background
-  issueCertificate(courseId).catch(()=>{});
-  // Scroll to top of content
-  const lc = document.querySelector('.learn-content');
-  if (lc) lc.scrollTop = 0;
-}
-
 async function completeLessonAndNext(courseId, moduleId, lessonId, nextLessonId, nextModuleId) {
   await markLessonComplete(courseId, moduleId, lessonId);
   toast('✅ Lesson complete!','ok',2000);
@@ -6964,9 +6800,9 @@ async function completeLessonAndNext(courseId, moduleId, lessonId, nextLessonId,
     if (mod?.hasQuiz) {
       openQuiz(courseId, moduleId);
     } else {
-      // Show inline certificate preview inside lesson area before navigating away
-      toast('🎉 You have completed the course! Your certificate is ready.','ok',5000);
-      showCertPreviewInLesson(courseId);
+      toast('🎉 You have completed the course!','ok',5000);
+      showPage('certificate');
+      await renderCertificate(courseId);
     }
   }
 }
@@ -7352,50 +7188,48 @@ async function renderCertificate(courseId) {
   content.innerHTML = `
     <div class="cert-card" id="cert-printable">
       <div class="cert-inner">
-
-        <!-- LEFT PANEL -->
-        <div class="cert-left">
+        <div class="cert-seal"><div class="cert-seal-star">⭐</div>Official<br>Certificate</div>
+        <div class="cert-logo">
+          <strong><span class="cert-brand-g">Coding</span><span class="cert-brand-w">Hub</span></strong>
+          <span>Learning Platform</span>
+        </div>
+        <div class="cert-divider"></div>
+        <div class="cert-title">Certificate of Completion</div>
+        <div style="font-size:.85rem;color:#6a7d6a;margin-bottom:8px">This certifies that</div>
+        <div class="cert-student-name">${sanitize(studentName)}</div>
+        <div class="cert-subtitle">has successfully completed the course</div>
+        <div class="cert-course-name">🎓 ${sanitize(courseName)}</div>
+        <div class="cert-meta-row">
+          <div class="cert-meta-item">
+            <div class="cert-meta-val">${score}%</div>
+            <div class="cert-meta-lbl">Final Score</div>
+          </div>
+          <div class="cert-meta-item">
+            <div class="cert-meta-val">${issuedAt}</div>
+            <div class="cert-meta-lbl">Issued Date</div>
+          </div>
+          <div class="cert-meta-item">
+            <div class="cert-meta-val">${course?.totalLessons||0}</div>
+            <div class="cert-meta-lbl">Lessons</div>
+          </div>
+        </div>
+        <div class="cert-footer">
           <div>
-            <div class="cert-date">${issuedAt}</div>
-            <div class="cert-student-name">${sanitize(studentName)}</div>
-            <div class="cert-body-text">
-              has completed all the lessons<br>and projects of
-            </div>
-            <div class="cert-course-name">${sanitize(courseName)}</div>
-            <div class="cert-course-by">by CodingHub</div>
+            <div class="cert-verify-id">Verify ID: ${verifyId}</div>
+            <div style="font-size:.58rem;color:#a08020;margin-top:2px;font-family:var(--ff-mono)">${verifyUrl.substring(0,50)}…</div>
           </div>
-
-          <!-- Signature -->
-          <div class="cert-sig-area">
-            <div class="cert-sig-img"></div>
-            <div class="cert-sig-name">CodingHub Team</div>
-            <div class="cert-sig-title">Learning Platform · CodingHub</div>
-          </div>
-
-          <!-- Footer verify -->
-          <div class="cert-footer">
-            <div class="cert-verify-id">
-              For certificate verification, please visit:<br>
-              codinghub.app/certificates/verify<br>
-              Certificate id: ${verifyId.substring(0,8)} &nbsp; Username: ${sanitize(studentName)}
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="text-align:right">
+              <div style="font-size:.78rem;font-weight:700;color:#1a3a1a"><span style="color:#1a7a4a">Coding</span>Hub</div>
+              <div style="font-size:.6rem;color:#8a6c00">Verified Certificate</div>
             </div>
+            <div class="cert-badge">🏆</div>
           </div>
         </div>
-
-        <!-- RIGHT PANEL — gold badge -->
-        <div class="cert-right">
-          <div class="cert-logo">
-            <span class="cert-logo-icon">💻</span>
-            <strong>CodingHub</strong>
-          </div>
-          <div class="cert-title">CERTIFICATE</div>
-          <div class="cert-subtitle-right">of Completion</div>
-        </div>
-
       </div>
     </div>
     <div class="cert-actions">
-      <button class="btn btn-g btn-lg" onclick="downloadCertificatePDF('${sanitize(studentName)}','${sanitize(courseName)}','${verifyId}','${issuedAt}','${score}')">⬇ Download Certificate</button>
+      <button class="btn btn-a btn-lg" onclick="downloadCertificatePDF('${sanitize(studentName)}','${sanitize(courseName)}','${verifyId}','${issuedAt}','${score}')">⬇ Download Certificate</button>
       <button class="btn btn-ghost" onclick="copyToClipboard('${verifyUrl}')">🔗 Copy Verify Link</button>
       <button class="btn btn-ghost" onclick="showStuSection('my-learning')">← My Learning</button>
     </div>`;
@@ -7409,68 +7243,132 @@ function copyToClipboard(text) {
   });
 }
 
-/* ── PDF Certificate via canvas/jsPDF ────────────────────────── */
 async function downloadCertificatePDF(studentName, courseName, verifyId, issuedAt, score) {
-  toast('Generating PDF…','info',3000);
+  toast('Generating certificate…','info',3000);
   try {
-    // Generate using canvas
     const canvas = document.createElement('canvas');
-    canvas.width = 1100; canvas.height = 780;
+    canvas.width = 1200; canvas.height = 850;
     const ctx = canvas.getContext('2d');
-    // Background
-    const grad = ctx.createLinearGradient(0,0,1100,780);
-    grad.addColorStop(0,'#0a0c12'); grad.addColorStop(1,'#1e2535');
-    ctx.fillStyle = grad; ctx.fillRect(0,0,1100,780);
-    // Border
-    const bGrad = ctx.createLinearGradient(0,0,1100,780);
-    bGrad.addColorStop(0,'#00e5a0'); bGrad.addColorStop(.5,'#06b6d4'); bGrad.addColorStop(1,'#00e5a0');
-    ctx.strokeStyle = bGrad; ctx.lineWidth = 5;
-    roundRect(ctx, 24, 24, 1052, 732, 20); ctx.stroke();
-    // Inner background
-    ctx.fillStyle = '#111520'; roundRect(ctx,30,30,1040,720,16); ctx.fill();
-    // Accent line
-    const acGrad = ctx.createLinearGradient(60,0,500,0);
-    acGrad.addColorStop(0,'#00e5a0'); acGrad.addColorStop(1,'#06b6d4');
-    ctx.fillStyle = acGrad; ctx.fillRect(60,110,160,3);
-    // Logo text
-    ctx.font = 'bold 28px Arial'; ctx.fillStyle='#00e5a0'; ctx.fillStyle='#c8922a'; ctx.fillText('CodingHub',60,100);
-    ctx.font = '14px Arial'; ctx.fillStyle='#4a5872'; ctx.fillText('Learning Platform',60,135);
-    // Certificate title
-    ctx.font = 'bold 16px Arial'; ctx.fillStyle='#7b8faa'; ctx.fillText('CERTIFICATE OF COMPLETION',60,200);
+
+    // Cream/white background
+    const bgGrad = ctx.createLinearGradient(0,0,1200,850);
+    bgGrad.addColorStop(0,'#fffdf5');
+    bgGrad.addColorStop(0.5,'#fff8e7');
+    bgGrad.addColorStop(1,'#fffbf0');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0,0,1200,850);
+
+    // Outer gold border
+    const borderGrad = ctx.createLinearGradient(0,0,1200,850);
+    borderGrad.addColorStop(0,'#c8960c');
+    borderGrad.addColorStop(0.5,'#f5d060');
+    borderGrad.addColorStop(1,'#c8960c');
+    ctx.strokeStyle = borderGrad; ctx.lineWidth = 8;
+    roundRect(ctx, 12, 12, 1176, 826, 16); ctx.stroke();
+
+    // Inner double border
+    ctx.strokeStyle = 'rgba(200,150,12,0.45)'; ctx.lineWidth = 2;
+    roundRect(ctx, 28, 28, 1144, 794, 12); ctx.stroke();
+
+    // Subtle corner decorations
+    const corners = [[50,50],[1150,50],[50,800],[1150,800]];
+    corners.forEach(([cx,cy])=>{
+      ctx.strokeStyle='rgba(200,150,12,0.5)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy,10,0,Math.PI*2); ctx.stroke();
+    });
+
+    // Gold horizontal accent lines
+    const lineGrad = ctx.createLinearGradient(70,0,800,0);
+    lineGrad.addColorStop(0,'#c8960c'); lineGrad.addColorStop(0.6,'#f5d060'); lineGrad.addColorStop(1,'transparent');
+    ctx.fillStyle = lineGrad; ctx.fillRect(70, 148, 480, 3);
+    ctx.fillRect(70, 154, 300, 1);
+
+    // Logo — CodingHub
+    ctx.font = 'bold 32px Arial';
+    ctx.fillStyle = '#1a7a4a'; ctx.fillText('Coding', 70, 138);
+    const codingWidth = ctx.measureText('Coding').width;
+    ctx.fillStyle = '#0d1a0d'; ctx.fillText('Hub', 70 + codingWidth, 138);
+
+    // Platform label
+    ctx.font = '13px monospace'; ctx.fillStyle = '#8a6c00';
+    ctx.fillText('LEARNING PLATFORM', 70 + codingWidth + ctx.measureText('Hub').width + 14, 132);
+
+    // Divider subtitle
+    ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#a08020'; ctx.letterSpacing='4px';
+    ctx.fillText('C E R T I F I C A T E   O F   C O M P L E T I O N', 70, 200);
+
     // "This certifies that"
-    ctx.font = '18px Arial'; ctx.fillStyle='#c2cfe0'; ctx.fillText('This certifies that',60,250);
+    ctx.font = '18px Arial'; ctx.fillStyle = '#6a7d6a';
+    ctx.fillText('This certifies that', 70, 260);
+
     // Student name
-    ctx.font = 'bold 54px Arial'; ctx.fillStyle='#eef2f8';
-    ctx.fillText(studentName.substring(0,28), 60, 320);
-    // "has completed"
-    ctx.font = '18px Arial'; ctx.fillStyle='#7b8faa'; ctx.fillText('has successfully completed',60,370);
+    ctx.font = 'bold 62px Arial'; ctx.fillStyle = '#0d1a0d';
+    ctx.fillText(studentName.substring(0,26), 70, 340);
+
+    // "has successfully completed"
+    ctx.font = '18px Arial'; ctx.fillStyle = '#6a7d6a';
+    ctx.fillText('has successfully completed the course', 70, 390);
+
     // Course name box
-    ctx.fillStyle='rgba(0,229,160,0.08)'; roundRect(ctx,60,390,720,66,10); ctx.fill();
-    ctx.strokeStyle='rgba(0,229,160,0.25)'; ctx.lineWidth=1; roundRect(ctx,60,390,720,66,10); ctx.stroke();
-    ctx.font = 'bold 26px Arial'; ctx.fillStyle='#00e5a0';
-    ctx.fillText('🎓 '+courseName.substring(0,42), 80, 432);
-    // Stats
-    const stats = [['Score',''+score+'%',800,280],['Date',issuedAt,920,280],['Grade',score>=90?'A+':score>=80?'A':score>=70?'B':'C',1020,280]];
-    stats.forEach(([lbl,val,x,y])=>{
-      ctx.font='bold 22px Arial'; ctx.fillStyle='#eef2f8'; ctx.textAlign='center'; ctx.fillText(val,x,y);
-      ctx.font='12px Arial'; ctx.fillStyle='#4a5872'; ctx.fillText(lbl.toUpperCase(),x,y+22);
+    const boxGrad = ctx.createLinearGradient(70,410,790,476);
+    boxGrad.addColorStop(0,'rgba(200,150,12,0.1)'); boxGrad.addColorStop(1,'rgba(200,150,12,0.06)');
+    ctx.fillStyle = boxGrad; roundRect(ctx,70,408,750,70,10); ctx.fill();
+    ctx.strokeStyle='rgba(200,150,12,0.4)'; ctx.lineWidth=1.5; roundRect(ctx,70,408,750,70,10); ctx.stroke();
+    ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#1a3a1a';
+    ctx.fillText('🎓 ' + courseName.substring(0,44), 90, 450);
+
+    // Stats boxes
+    const stats = [
+      {label:'FINAL SCORE', val:score+'%', x:70},
+      {label:'ISSUED DATE', val:issuedAt, x:370},
+      {label:'GRADE', val:score>=90?'A+':score>=80?'A':score>=70?'B':'C+', x:670},
+    ];
+    stats.forEach(({label,val,x})=>{
+      ctx.fillStyle='rgba(200,150,12,0.07)'; roundRect(ctx,x,520,270,90,8); ctx.fill();
+      ctx.strokeStyle='rgba(200,150,12,0.25)'; ctx.lineWidth=1; roundRect(ctx,x,520,270,90,8); ctx.stroke();
+      ctx.font='bold 30px Arial'; ctx.fillStyle='#1a3a1a'; ctx.textAlign='center';
+      ctx.fillText(val, x+135, 556);
+      ctx.font='11px monospace'; ctx.fillStyle='#8a6c00'; ctx.letterSpacing='1px';
+      ctx.fillText(label, x+135, 578);
     });
     ctx.textAlign='left';
-    // Footer
-    ctx.font='13px monospace'; ctx.fillStyle='#4a5872';
-    ctx.fillText('Verify ID: '+verifyId, 60, 700);
-    ctx.fillText('codinghub.app/verify?id='+verifyId, 60, 720);
-    // Badge
-    ctx.font='52px Arial'; ctx.fillText('🏆', 980, 700);
-    // Download
+
+    // Footer line
+    ctx.strokeStyle='rgba(200,150,12,0.35)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(70,640); ctx.lineTo(1130,640); ctx.stroke();
+
+    // Verify info
+    ctx.font='12px monospace'; ctx.fillStyle='#8a6c00';
+    ctx.fillText('Verify ID: '+verifyId, 70, 668);
+    ctx.fillText('Verify at: codinghub.app/verify?id='+verifyId, 70, 688);
+
+    // Official seal circle on right
+    ctx.save();
+    ctx.translate(1080, 720);
+    const sealGrad = ctx.createRadialGradient(0,0,10,0,0,52);
+    sealGrad.addColorStop(0,'rgba(245,208,96,0.3)');
+    sealGrad.addColorStop(1,'rgba(200,150,12,0.08)');
+    ctx.fillStyle = sealGrad;
+    ctx.beginPath(); ctx.arc(0,0,52,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(200,150,12,0.6)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,52,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,42,0,Math.PI*2); ctx.stroke();
+    ctx.font='28px Arial'; ctx.textAlign='center'; ctx.fillText('🏆', 0, 10);
+    ctx.font='bold 9px monospace'; ctx.fillStyle='#8a6c00';
+    ctx.fillText('CERTIFIED', 0, 30);
+    ctx.restore();
+    ctx.textAlign='left';
+
+    // Download as PNG
     const link = document.createElement('a');
-    link.download = 'certificate_'+verifyId.slice(0,8)+'.png';
+    link.download = 'CodingHub_Certificate_' + studentName.replace(/\s+/g,'_') + '.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
-    toast('Certificate downloaded!','ok');
+    toast('Certificate downloaded! 🎓','ok');
   } catch(e) {
-    console.error('PDF error:', e);
-    toast('Download failed. Try right-clicking and saving the certificate.','err');
+    console.error('Certificate error:', e);
+    toast('Download failed. Try right-clicking the certificate and saving.','err');
   }
 }
 
