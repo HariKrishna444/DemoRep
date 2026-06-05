@@ -3325,8 +3325,11 @@ const LANG_MONACO = {
   python:'python', javascript:'javascript', cpp:'cpp', java:'java', c:'c'
 };
 
-// Judge0 language IDs (using the free public CE API)
-// https://ce.judge0.com/languages
+// ─── Judge0 Sandbox Compiler ────────────────────────────────────────────────
+// Uses the official free Judge0 CE public instance (no API key required).
+// Submit → poll → result pattern for reliability.
+// Docs: https://ce.judge0.com  |  Language list: https://ce.judge0.com/languages
+
 const JUDGE0_LANG_IDS = {
   javascript: 63,   // Node.js 12.14.0
   cpp:        54,   // C++ (GCC 9.2.0)
@@ -3334,64 +3337,131 @@ const JUDGE0_LANG_IDS = {
   c:          50,   // C (GCC 9.2.0)
 };
 
-// Judge0 free public API — no key needed for low-volume usage
-const JUDGE0_API = 'https://judge0-ce.p.rapidapi.com';
+// Judge0 status IDs — https://ce.judge0.com/statuses
+const J0_STATUS = {
+  1:  'In Queue',
+  2:  'Processing',
+  3:  'Accepted',
+  4:  'Wrong Answer',
+  5:  'Time Limit Exceeded',
+  6:  'Compilation Error',
+  7:  'Runtime Error (SIGSEGV)',
+  8:  'Runtime Error (SIGXFSZ)',
+  9:  'Runtime Error (SIGFPE)',
+  10: 'Runtime Error (SIGABRT)',
+  11: 'Runtime Error (NZEC)',
+  12: 'Runtime Error (Other)',
+  13: 'Internal Error',
+  14: 'Exec Format Error',
+};
+
+// Primary: official free CE instance. Fallback: extra-ce instance.
+const JUDGE0_HOSTS = [
+  'https://ce.judge0.com',
+  'https://extra-ce.judge0.com',
+];
 
 async function judge0Execute(code, lang, stdin) {
   const langId = JUDGE0_LANG_IDS[lang];
-  if (!langId) throw new Error('Language not supported: ' + lang);
+  if (!langId) throw new Error('Language "' + lang + '" is not supported.');
 
-  // Encode to base64
-  const encode = s => btoa(unescape(encodeURIComponent(s)));
+  const encode = s => btoa(unescape(encodeURIComponent(s || '')));
+  const decode = s => {
+    if (!s) return '';
+    try { return decodeURIComponent(escape(atob(s))); } catch(e) { return atob(s); }
+  };
 
-  // Try RapidAPI Judge0 CE (free tier, no key for demo)
-  // Falls back to judge0.sojj.it public instance
-  const HOSTS = [
-    'https://judge0-ce.p.rapidapi.com',
-    'https://api.judge0.com',
-  ];
+  const headers = { 'Content-Type': 'application/json' };
+  const body = JSON.stringify({
+    language_id:    langId,
+    source_code:    encode(code),
+    stdin:          encode(stdin),
+    cpu_time_limit: 10,          // seconds
+    memory_limit:   256000,      // KB (~256 MB)
+    wall_time_limit: 15,
+  });
 
+  let token = null;
   let lastErr = null;
-  for (const host of HOSTS) {
+
+  // ── Step 1: Submit to whichever host responds ────────────────
+  for (const host of JUDGE0_HOSTS) {
     try {
-      const headers = { 'Content-Type': 'application/json' };
-      if (host.includes('rapidapi')) {
-        // Public demo key — replace with your own RapidAPI key for production
-        headers['X-RapidAPI-Key'] = 'demo';
-        headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
-      }
-
-      // Submit
-      const subRes = await fetch(`${host}/submissions?base64_encoded=true&wait=true`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          language_id: langId,
-          source_code: encode(code),
-          stdin:        encode(stdin || ''),
-          cpu_time_limit: 5,
-          memory_limit: 128000,
-        }),
+      const res = await fetch(`${host}/submissions?base64_encoded=true`, {
+        method: 'POST', headers, body,
       });
-
-      if (!subRes.ok) { lastErr = new Error('Judge0 HTTP ' + subRes.status); continue; }
-      const result = await subRes.json();
-
-      const decode = s => s ? decodeURIComponent(escape(atob(s))) : '';
-      const stdout = decode(result.stdout);
-      const stderr = decode(result.stderr) || decode(result.compile_output);
-      const exitCode = result.exit_code ?? (result.status?.id > 3 ? 1 : 0);
-
-      return {
-        run: { stdout, stderr, code: exitCode, output: stdout },
-        compile: {}
-      };
-    } catch(e) {
-      lastErr = e;
-    }
+      if (!res.ok) { lastErr = new Error(`Judge0 submit HTTP ${res.status}`); continue; }
+      const data = await res.json();
+      if (data.token) { token = { value: data.token, host }; break; }
+    } catch(e) { lastErr = e; }
   }
-  throw lastErr || new Error('Judge0 unavailable');
+
+  if (!token) {
+    throw new Error(
+      (lastErr?.message || 'All Judge0 endpoints unreachable.') +
+      '\n\nTip: Judge0 free instances have rate limits. Try again in a moment.'
+    );
+  }
+
+  // ── Step 2: Poll until finished (status.id > 2 means done) ──
+  const MAX_POLLS  = 20;
+  const POLL_MS    = 1000;   // 1 s between polls
+  let result       = null;
+
+  for (let i = 0; i < MAX_POLLS; i++) {
+    await new Promise(r => setTimeout(r, POLL_MS));
+    try {
+      const res = await fetch(
+        `${token.host}/submissions/${token.value}?base64_encoded=true&fields=status,stdout,stderr,compile_output,exit_code,time,memory`,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.status && data.status.id > 2) { result = data; break; }
+    } catch(e) { /* keep polling */ }
+  }
+
+  if (!result) throw new Error('Judge0 timed out waiting for result (>20s).');
+
+  // ── Step 3: Parse result ──────────────────────────────────────
+  const statusId   = result.status?.id ?? 0;
+  const statusName = J0_STATUS[statusId] || result.status?.description || 'Unknown';
+  const stdout     = decode(result.stdout);
+  const compileOut = decode(result.compile_output);
+  const stderrOut  = decode(result.stderr);
+  const exitCode   = statusId === 3 ? 0 : 1;
+
+  // Build a helpful stderr/error message based on status
+  let stderr = '';
+  if (statusId === 6) {
+    stderr = '🔴 Compilation Error:\n' + (compileOut || 'No details.');
+  } else if (statusId === 5) {
+    stderr = '⏱ Time Limit Exceeded (limit: 10s)';
+  } else if (statusId >= 7 && statusId <= 12) {
+    stderr = `💥 ${statusName}` + (stderrOut ? ':\n' + stderrOut : '');
+  } else if (statusId === 4) {
+    stderr = '❌ Wrong Answer' + (stderrOut ? '\n' + stderrOut : '');
+  } else {
+    stderr = stderrOut || compileOut || '';
+  }
+
+  // Timing info shown in console
+  const timeInfo = result.time ? `  [${result.time}s, ${Math.round((result.memory||0)/1024)}KB]` : '';
+
+  return {
+    run: {
+      stdout:   stdout,
+      stderr:   stderr,
+      code:     exitCode,
+      output:   stdout,
+      timeInfo,
+      statusId,
+      statusName,
+    },
+    compile: { output: compileOut }
+  };
 }
+// ────────────────────────────────────────────────────────────────────────────
 
 // ── Platform constants ───────────────────────────────────────
 const EXAM_DURATION_MINS = 90;
@@ -5046,7 +5116,10 @@ function outRunning() {
   ln.innerHTML='<div class="spin"></div><span>Running Python (Pyodide)…</span>';
   el.appendChild(ln); el.scrollTop=el.scrollHeight;
 }
-function removeRunning() { document.getElementById('run-ind')?.remove(); }
+function removeRunning() {
+  clearInterval(window._j0Interval);
+  document.getElementById('run-ind')?.remove();
+}
 
 /* ═══════════════════════════════════════════════════════════════
    CODE EXECUTION (Pyodide for Python)
@@ -5158,22 +5231,33 @@ async function runCode() {
   } else {
     const ri = document.createElement('div');
     ri.className='run-ind'; ri.id='run-ind';
-    ri.innerHTML='<div class="spin"></div><span>Compiling & running via Judge0…</span>';
+    ri.innerHTML='<div class="spin"></div><span id="j0-status-txt">Submitting to Judge0 sandbox…</span>';
     document.getElementById('con-out').appendChild(ri);
     document.getElementById('con-out').scrollTop = 9999;
+    // Animate status text while polling
+    let dots = 0;
+    const msgs = ['Submitting to Judge0 sandbox…','In queue…','Compiling…','Running…','Waiting for result…'];
+    window._j0Interval = setInterval(() => {
+      const el = document.getElementById('j0-status-txt');
+      if (el) el.textContent = msgs[Math.min(dots, msgs.length-1)];
+      dots++;
+    }, 1200);
   }
 
   try {
     const result = await pistonExecute(code, currentLang, rawStdin);
     removeRunning();
 
-    const run     = result.run || {};
-    const compile = result.compile || {};
-    const stdout  = (run.stdout || '').trim();
-    const stderr  = (run.stderr || '').trim();
-    const ce      = (compile.stderr || compile.output || '').trim();
+    const run      = result.run || {};
+    const compile  = result.compile || {};
+    const stdout   = (run.stdout || '').trim();
+    const stderr   = (run.stderr || '').trim();
+    const ce       = (compile.output || '').trim();
     const exitCode = run.code;
-    const status  = exitCode === 0 ? 'Accepted' : `Exit Code ${exitCode}`;
+    const isJudge0 = PISTON_LANGS[currentLang] === 'judge0';
+    const statusLabel = isJudge0
+      ? (run.statusName || (exitCode === 0 ? 'Accepted' : 'Error')) + (run.timeInfo || '')
+      : (exitCode === 0 ? 'OK' : `Exit Code ${exitCode}`);
 
     if (usingExample) {
       if (rawStdin) {
@@ -5183,7 +5267,7 @@ async function runCode() {
       outLine('info', '── Your Output ────────────────────');
       if (stdout) {
         stdout.split('\n').forEach(l => outLine('ok', l));
-      } else {
+      } else if (!stderr) {
         outLine('warn', '(no output)');
       }
       if (rawExpected) {
@@ -5196,22 +5280,22 @@ async function runCode() {
       outLine('info', '── Your Output ────────────────────');
       if (stdout) {
         stdout.split('\n').forEach(l => outLine('ok', l));
-      } else {
+      } else if (!stderr) {
         outLine('warn', '(no output)');
       }
     }
 
-    outLine('info', `── Status: ${status} ──`);
-    if (stderr) { outLine('info', '── Errors ─────────────'); stderr.split('\n').forEach(l=>outLine('err',l)); }
-    if (ce)     ce.split('\n').forEach(l=>outLine('err','[CE] '+l));
+    const statusType = exitCode === 0 ? 'ok' : 'err';
+    outLine(statusType, `── Status: ${statusLabel} ──`);
+    if (stderr) { outLine('info', '── Errors / Stderr ────────────────'); stderr.split('\n').forEach(l => outLine('err', l)); }
+    if (ce && !stderr) { ce.split('\n').forEach(l => outLine('err', '[CE] ' + l)); }
   } catch(e) {
     removeRunning();
-    outLine('err', '⛔ Execution failed: ' + e.message);
+    outLine('err', '⛔ ' + e.message);
     if (currentLang === 'python') {
-      outLine('warn', 'Python engine issue — reload the page and wait for it to load.');
+      outLine('warn', 'Python engine issue — reload and wait for it to load.');
     } else {
-      outLine('warn', 'Judge0 compiler error — check your internet connection or try Python.');
-      outLine('info', 'Tip: Judge0 is a free cloud compiler. Occasional slowdowns are normal.');
+      outLine('warn', 'Judge0 sandbox error. Check internet connection or try again in a moment.');
     }
   }
 
