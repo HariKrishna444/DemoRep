@@ -3478,10 +3478,8 @@ async function initApp() {
         if (u) {
           if (_authHandled) { _authHandled = false; return; } // manual login already called onAuthSuccess
           currentUser = u;
-          // PHASE 2: Load role from Firestore users/{uid}
-          await loadUserRole(u.uid);
-          // PHASE 2: Load live questions from questions_public/
-          await loadQuestionsFromFirestore();
+          try { await loadUserRole(u.uid); }              catch(e) { console.warn('loadUserRole:', e); }
+          try { await loadQuestionsFromFirestore(); }     catch(e) { console.warn('loadQuestions:', e); }
           onAuthSuccess();
         } else {
           _authHandled = false;
@@ -3655,31 +3653,47 @@ function setRole(r) {
 }
 
 async function handleLogin() {
+  if (typeof RateLimiter !== 'undefined' && !RateLimiter.check('login')) {
+    toast('Too many login attempts. Wait 60 seconds.','err',6000); return;
+  }
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
   if (!email) { toast('Enter your email','warn'); return; }
+  if (!pass)  { toast('Enter your password','warn'); return; }
 
   const btn = document.getElementById('btn-login');
   document.getElementById('btn-login-txt').textContent = 'Signing in...';
   btn.disabled = true;
 
   if (!firebaseReady) {
-    // Demo mode
+    // Demo mode — no Firebase configured
     await sleep(700);
     currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0] + (currentRole==='prof'?' (Prof)':'')};
-    onAuthSuccess();
     btn.disabled = false;
     document.getElementById('btn-login-txt').textContent = 'Sign In';
+    onAuthSuccess();
     return;
   }
+
   try {
     const c = await auth.signInWithEmailAndPassword(email, pass);
     currentUser = c.user;
-    await loadUserRole(currentUser.uid);
-    await loadQuestionsFromFirestore();
-    _authHandled = true;  // tell onAuthStateChanged not to double-fire
+    _authHandled = true; // prevent onAuthStateChanged from double-firing
+
+    // Load role and questions — but NEVER block dashboard if these fail
+    try { await loadUserRole(currentUser.uid); } catch(e) { console.warn('loadUserRole failed:', e); }
+    try { await loadQuestionsFromFirestore(); }  catch(e) { console.warn('loadQuestions failed:', e); }
+
     onAuthSuccess();
-  } catch(e) { toast('Login failed: '+e.message,'err'); }
+  } catch(e) {
+    const msg = e.code === 'auth/wrong-password'    ? 'Incorrect password.'
+              : e.code === 'auth/user-not-found'    ? 'No account found with that email.'
+              : e.code === 'auth/invalid-email'     ? 'Invalid email address.'
+              : e.code === 'auth/too-many-requests' ? 'Too many attempts — try again later.'
+              : 'Login failed: ' + e.message;
+    toast(msg, 'err');
+  }
+
   btn.disabled = false;
   document.getElementById('btn-login-txt').textContent = 'Sign In';
 }
@@ -3688,19 +3702,37 @@ async function handleRegister() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value || 'demo123';
   if (!email) { toast('Enter your email','warn'); return; }
+  if (pass.length < 6) { toast('Password must be at least 6 characters','warn'); return; }
+
+  const btn = document.getElementById('btn-reg');
+  document.getElementById('btn-reg-txt').textContent = 'Creating...';
+  btn.disabled = true;
 
   if (!firebaseReady) {
     currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0]};
-    onAuthSuccess(); return;
+    btn.disabled = false;
+    document.getElementById('btn-reg-txt').textContent = 'Create Account';
+    onAuthSuccess();
+    return;
   }
+
   try {
     const c = await auth.createUserWithEmailAndPassword(email, pass);
     currentUser = c.user;
-    await loadUserRole(currentUser.uid);
-    await loadQuestionsFromFirestore();
-    _authHandled = true;  // tell onAuthStateChanged not to double-fire
+    _authHandled = true;
+    try { await loadUserRole(currentUser.uid); } catch(e) { console.warn('loadUserRole failed:', e); }
+    try { await loadQuestionsFromFirestore(); }  catch(e) { console.warn('loadQuestions failed:', e); }
     onAuthSuccess();
-  } catch(e) { toast('Register failed: '+e.message,'err'); }
+  } catch(e) {
+    const msg = e.code === 'auth/email-already-in-use' ? 'An account with this email already exists.'
+              : e.code === 'auth/weak-password'        ? 'Password is too weak (min 6 chars).'
+              : e.code === 'auth/invalid-email'        ? 'Invalid email address.'
+              : 'Register failed: ' + e.message;
+    toast(msg, 'err');
+  }
+
+  btn.disabled = false;
+  document.getElementById('btn-reg-txt').textContent = 'Create Account';
 }
 
 function onAuthSuccess() {
@@ -6755,12 +6787,7 @@ window.toast=function(msg,type,dur){
   setTimeout(()=>el.remove(),dur||3500);
 };
 
-/* Patch handleLogin with rate limiting */
-const _origHandleLogin=window.handleLogin;
-window.handleLogin=async function(){
-  if(!RateLimiter.check('login')){toast('Too many login attempts. Wait 60 seconds.','err',6000);return;}
-  return _origHandleLogin.apply(this,arguments);
-};
+/* Rate limiting for login is handled inside handleLogin() directly */
 
 
 
