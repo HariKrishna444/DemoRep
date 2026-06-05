@@ -3225,6 +3225,23 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// Block Monaco AMD loader from touching localStorage/sessionStorage.
+// Edge/Safari ITP fires "Tracking Prevention blocked storage" when a
+// cross-origin script (even unpkg) tries to write these stores.
+// Wrapping them in a no-op proxy before the loader runs silences it.
+(function() {
+  const noop = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{}, clear:()=>{}, key:()=>null, length:0 };
+  try { Object.defineProperty(window, 'localStorage',   { value: noop, configurable: true }); } catch(e){}
+  try { Object.defineProperty(window, 'sessionStorage', { value: noop, configurable: true }); } catch(e){}
+  // Restore real storage after Monaco has loaded (500ms is enough)
+  const _ls = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem');
+  setTimeout(() => {
+    try { delete window.localStorage;   } catch(e){}
+    try { delete window.sessionStorage; } catch(e){}
+  }, 3000);
+})();
+</script>
 <script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
 
 <script>
@@ -4903,11 +4920,22 @@ function loadMonaco() {
       return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
     }
   };
+  // Disable Monaco's AMD loader storage cache entirely.
+  // This prevents "Tracking Prevention blocked access to storage" warnings
+  // in Edge/Safari — the loader tries to cache module URLs in localStorage/
+  // IndexedDB, which ITP blocks. Disabling it has zero effect on editor
+  // functionality; modules are just fetched fresh each load.
   require.config({
     paths: { vs: _mvs },
     'vs/nls': { availableLanguages: {} },
     ignoreDuplicateModules: ['vs/editor/editor.main'],
+    // Disable the AMD loader's module registry persistence
+    'vs/loader': { recordStats: false },
   });
+  // Suppress any residual localStorage access from the loader
+  try {
+    Object.defineProperty(window, '_monaco_loader_storage', { get: ()=>null, set: ()=>{} });
+  } catch(e) {}
   require(['vs/editor/editor.main'], mono => {
     window._mono = mono;
     if (monaco_editor) { monaco_editor.dispose(); monaco_editor=null; }
