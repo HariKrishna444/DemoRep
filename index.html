@@ -3226,23 +3226,36 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-// Block Monaco AMD loader from touching localStorage/sessionStorage.
-// Edge/Safari ITP fires "Tracking Prevention blocked storage" when a
-// cross-origin script (even unpkg) tries to write these stores.
-// Wrapping them in a no-op proxy before the loader runs silences it.
+// Load Monaco AMD loader as a same-origin Blob so Edge/Safari ITP never fires
+// "Tracking Prevention blocked access to storage" — cross-origin scripts trigger
+// it even if they don't actually USE storage, purely from the origin check.
+// Fetching the script text and re-injecting via Blob URL makes it appear same-origin.
 (function() {
-  const noop = { getItem:()=>null, setItem:()=>{}, removeItem:()=>{}, clear:()=>{}, key:()=>null, length:0 };
-  try { Object.defineProperty(window, 'localStorage',   { value: noop, configurable: true }); } catch(e){}
-  try { Object.defineProperty(window, 'sessionStorage', { value: noop, configurable: true }); } catch(e){}
-  // Restore real storage after Monaco has loaded (500ms is enough)
-  const _ls = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem');
-  setTimeout(() => {
-    try { delete window.localStorage;   } catch(e){}
-    try { delete window.sessionStorage; } catch(e){}
-  }, 3000);
+  const LOADER_URL = 'https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.min.js';
+  window._monacoLoaderReady = false;
+
+  fetch(LOADER_URL)
+    .then(r => {
+      if (!r.ok) throw new Error('fetch ' + r.status);
+      return r.text();
+    })
+    .then(src => {
+      const blob = new Blob([src], { type: 'application/javascript' });
+      const blobUrl = URL.createObjectURL(blob);
+      const s = document.createElement('script');
+      s.src = blobUrl;
+      s.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        window._monacoLoaderReady = true;
+        // Fire any queued loadMonaco() calls
+        if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve();
+      };
+      s.onerror = () => { window._monacoLoaderFailed = true; if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve(); };
+      document.head.appendChild(s);
+    })
+    .catch(() => { window._monacoLoaderFailed = true; if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve(); });
 })();
 </script>
-<script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
 
 <script>
 
@@ -4897,70 +4910,105 @@ function pad(n){ return String(n).padStart(2,'0'); }
 /* ═══════════════════════════════════════════════════════════════
    MONACO EDITOR
    ═══════════════════════════════════════════════════════════════ */
+/* ── Monaco loader helpers ─────────────────────────────────────────────────
+   The AMD loader is fetched via JS and re-injected as a same-origin Blob URL.
+   This is the only reliable way to silence Edge/Safari ITP "Tracking Prevention
+   blocked access to storage" — the warning fires at the browser network layer
+   for ANY cross-origin <script> that touches storage, before JS can intercept.
+   Blob URLs are always same-origin so ITP never inspects them.
+   ──────────────────────────────────────────────────────────────────────────── */
 function loadMonaco() {
-  // Defensive loader: if require itself is undefined (CDN blocked),
-  // show a clear error in the console panel rather than silently failing.
-  if (typeof require === 'undefined') {
-    outLine('err', '\u26d4 Monaco editor could not load (CDN blocked by browser or network).');
-    outLine('warn', 'Try opening the file from a local web server instead of file://, or check your internet connection.');
-    const btn = document.getElementById('btn-sub');
-    if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
-    return;
-  }
   const _mvs  = 'https://unpkg.com/monaco-editor@0.44.0/min/vs';
   const _mmin = 'https://unpkg.com/monaco-editor@0.44.0/min';
-  window.MonacoEnvironment = {
-    getWorkerUrl: function(moduleId, label) {
-      let w = _mvs + '/base/worker/workerMain.js';
-      if (label === 'json')                                     w = _mvs + '/language/json/jsonWorker.js';
-      if (label === 'css'||label === 'scss'||label === 'less')  w = _mvs + '/language/css/cssWorker.js';
-      if (label === 'html'||label === 'handlebars')             w = _mvs + '/language/html/htmlWorker.js';
-      if (label === 'typescript'||label === 'javascript')       w = _mvs + '/language/typescript/tsWorker.js';
-      const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
-      return URL.createObjectURL(new Blob([src], {type:'application/javascript'}));
+
+  function _initEditor() {
+    if (typeof require === 'undefined' || window._monacoLoaderFailed) {
+      _monacoFallback(); return;
     }
+    window.MonacoEnvironment = {
+      getWorkerUrl: function(moduleId, label) {
+        let w = _mvs + '/base/worker/workerMain.js';
+        if (label === 'json')       w = _mvs + '/language/json/jsonWorker.js';
+        if (label === 'css' || label === 'scss' || label === 'less') w = _mvs + '/language/css/cssWorker.js';
+        if (label === 'html' || label === 'handlebars') w = _mvs + '/language/html/htmlWorker.js';
+        if (label === 'typescript' || label === 'javascript') w = _mvs + '/language/typescript/tsWorker.js';
+        const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
+        return URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+      }
+    };
+    require.config({
+      paths: { vs: _mvs },
+      'vs/nls': { availableLanguages: {} },
+      ignoreDuplicateModules: ['vs/editor/editor.main'],
+    });
+    require(['vs/editor/editor.main'], _onMonacoReady);
+  }
+
+  if (window._monacoLoaderReady) {
+    _initEditor();
+  } else if (window._monacoLoaderFailed) {
+    _monacoFallback();
+  } else {
+    // Loader Blob is still being fetched — queue the init
+    window._monacoLoaderResolve = _initEditor;
+    setTimeout(() => { if (!monacoReady) _monacoFallback(); }, 15000);
+  }
+}
+
+/* Fallback: plain <textarea> shim so students can still code if Monaco fails */
+function _monacoFallback() {
+  const wrap = document.getElementById('monaco-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = `<textarea id="monaco-fallback-ta"
+    style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;
+           font-family:'DM Mono',monospace;font-size:14px;padding:16px;
+           border:none;outline:none;resize:none;box-sizing:border-box;line-height:1.6;tab-size:4"
+    spellcheck="false" autocomplete="off" autocorrect="off"
+    placeholder="// Type your code here..."
+  ></textarea>`;
+  const ta = document.getElementById('monaco-fallback-ta');
+  ta.value = (window._pendingDraft?.code) || getTemplate();
+  window._pendingDraft = null;
+  monaco_editor = {
+    getValue:  ()  => ta.value,
+    setValue:  (v) => { ta.value = v; },
+    getModel:  ()  => ({ getValue: () => ta.value }),
+    focus:     ()  => ta.focus(),
+    dispose:   ()  => {},
+    onDidPaste:()  => {},
+    trigger:   ()  => {},
+    layout:    ()  => {},
+    onDidChangeModelContent: (cb) => { ta.addEventListener('input', cb); },
   };
-  // Disable Monaco's AMD loader storage cache entirely.
-  // This prevents "Tracking Prevention blocked access to storage" warnings
-  // in Edge/Safari — the loader tries to cache module URLs in localStorage/
-  // IndexedDB, which ITP blocks. Disabling it has zero effect on editor
-  // functionality; modules are just fetched fresh each load.
-  require.config({
-    paths: { vs: _mvs },
-    'vs/nls': { availableLanguages: {} },
-    ignoreDuplicateModules: ['vs/editor/editor.main'],
-    // Disable the AMD loader's module registry persistence
-    'vs/loader': { recordStats: false },
-  });
-  // Suppress any residual localStorage access from the loader
-  try {
-    Object.defineProperty(window, '_monaco_loader_storage', { get: ()=>null, set: ()=>{} });
-  } catch(e) {}
-  require(['vs/editor/editor.main'], mono => {
+  window._mono = { editor: { setModelLanguage: () => {} } };
+  monacoReady = true;
+  toast('Editor ready (lightweight mode)', 'info', 4000);
+}
+
+function _onMonacoReady(mono) {
     window._mono = mono;
-    if (monaco_editor) { monaco_editor.dispose(); monaco_editor=null; }
-    document.getElementById('monaco-wrap').innerHTML='';
+    if (monaco_editor) { monaco_editor.dispose(); monaco_editor = null; }
+    document.getElementById('monaco-wrap').innerHTML = '';
 
-    // PHASE 2: Use pending draft if one was restored, otherwise show fresh template
     const initialCode = (window._pendingDraft?.code) || getTemplate();
-    window._pendingDraft = null; // clear after use so it doesn't linger
+    window._pendingDraft = null;
 
-    monaco_editor = mono.editor.create(document.getElementById('monaco-wrap'),{
+    monaco_editor = mono.editor.create(document.getElementById('monaco-wrap'), {
       value: initialCode,
-      language: LANG_MONACO[currentLang]||'python',
+      language: LANG_MONACO[currentLang] || 'python',
       theme: 'vs-dark',
       fontSize: 14,
       fontFamily: "'DM Mono', monospace",
-      minimap:{enabled:false},
-      scrollBeyondLastLine:false,
-      wordWrap:'on',
-      automaticLayout:true,
-      formatOnPaste:false,
-      lineNumbers:'on',
-      bracketPairColorization:{enabled:true},
-      cursorBlinking:'expand',
-      smoothScrolling:true,
-      suggest:{showSnippets:true},
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      wordWrap: 'on',
+      automaticLayout: true,
+      formatOnPaste: false,
+      lineNumbers: 'on',
+      bracketPairColorization: { enabled: true },
+      cursorBlinking: 'expand',
+      smoothScrolling: true,
+      suggest: { showSnippets: true },
       tabSize: 4,
       insertSpaces: true,
       detectIndentation: false,
@@ -4968,19 +5016,15 @@ function loadMonaco() {
       formatOnType: true,
     });
 
-    // Block paste via Monaco API
-    monaco_editor.onDidPaste(()=>{
-      if (!examActive||!acEnabled) return;
-      const model = monaco_editor.getModel();
-      const content = model.getValue();
-      // If we detect a large paste, undo it
-      const lastLen = (window._lastCodeLen||0);
-      const delta = content.length - lastLen;
-      if (delta > 50) { // more than 50 chars at once = likely paste
-        monaco_editor.trigger('keyboard','undo',null);
-        logViolation('monaco-paste','Paste','Monaco paste blocked ('+delta+' chars)');
-        outLine('err','⛔ Paste blocked inside editor! ('+delta+' characters)');
-        toast('⛔ Paste blocked!','err',4000);
+    monaco_editor.onDidPaste(() => {
+      if (!examActive || !acEnabled) return;
+      const lastLen = (window._lastCodeLen || 0);
+      const delta = monaco_editor.getValue().length - lastLen;
+      if (delta > 50) {
+        monaco_editor.trigger('keyboard', 'undo', null);
+        logViolation('monaco-paste', 'Paste', 'Monaco paste blocked (' + delta + ' chars)');
+        outLine('err', '⛔ Paste blocked inside editor! (' + delta + ' characters)');
+        toast('⛔ Paste blocked!', 'err', 4000);
       }
       window._lastCodeLen = monaco_editor.getValue().length;
     });
@@ -4988,21 +5032,16 @@ function loadMonaco() {
     let autoSaveTimer = null;
     monaco_editor.onDidChangeModelContent(() => {
       window._lastCodeLen = monaco_editor.getValue().length;
-
-      // Update save indicator to "unsaved"
       setSaveIndicator('unsaved');
-
-      // Debounce: clear previous timer and restart 3s countdown
       clearTimeout(autoSaveTimer);
       autoSaveTimer = setTimeout(async () => {
         await saveDraftToFirestore();
         setSaveIndicator('saved');
-      }, 3000); // 3 seconds after last keystroke
+      }, 3000);
     });
 
     monacoReady = true;
-    toast('Editor ready — happy coding! 🚀','ok');
-  });
+    toast('Editor ready — happy coding! 🚀', 'ok');
 }
 
 function getTemplate() {
