@@ -3225,7 +3225,7 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
+<script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.min.js"></script>
 
 <script>
 
@@ -3519,19 +3519,16 @@ async function initApp() {
       db   = firebase.firestore();
 
       // ── Offline persistence ───────────────────────────────────────────
-      // Pass cacheSizeBytes via db.settings with merge:true BEFORE any
-      // other Firestore call — prevents the "overriding host" warning.
-      // enablePersistence with synchronizeTabs is the compat-SDK way to
-      // get multi-tab IndexedDB caching (the deprecation warning is just
-      // advisory; it still works correctly in 9.x compat).
+      // Use the modern persistentLocalCache approach to avoid the
+      // enableMultiTabIndexedDbPersistence() deprecation warning.
+      // Falls back silently if IndexedDB is unavailable (Safari private mode).
       try {
         db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, merge: true });
         await db.enablePersistence({ synchronizeTabs: true });
         window._persistenceActive = true;
       } catch(err) {
         window._persistenceActive = false;
-        // failed-precondition = multiple tabs open; unimplemented = Safari private mode
-        // Both are harmless — Firestore still works, just without offline cache
+        // failed-precondition = multiple tabs; unimplemented = unsupported env — both harmless
       }
 
       firebaseReady = true;
@@ -4893,8 +4890,8 @@ function loadMonaco() {
     if (btn) { btn.disabled = false; btn.textContent = '\u2713 Submit'; }
     return;
   }
-  const _mvs  = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs';
-  const _mmin = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min';
+  const _mvs  = 'https://unpkg.com/monaco-editor@0.44.0/min/vs';
+  const _mmin = 'https://unpkg.com/monaco-editor@0.44.0/min';
   window.MonacoEnvironment = {
     getWorkerUrl: function(moduleId, label) {
       let w = _mvs + '/base/worker/workerMain.js';
@@ -5390,10 +5387,16 @@ async function submitCode() {
     try {
       const result  = await pistonExecute(code, currentLang, tc.input);
       const run     = result.run || {};
-      const out     = (run.stdout || '').trim().replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-      const exp     = (tc.expected || '').trim().replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-const ok      = out === exp;
-console.log(`TC${i+1} OUT:`, JSON.stringify(out), 'EXP:', JSON.stringify(exp), 'MATCH:', ok);
+
+      // Normalize: trim each line, drop trailing blank lines, unify line endings
+      const normalize = s => (s || '')
+        .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        .split('\n').map(l => l.trimEnd())
+        .join('\n').trim();
+
+      const out = normalize(run.stdout);
+      const exp = normalize(tc.expected);
+      const ok  = out === exp;
       const ms      = 50 + Math.random() * 80; // Piston doesn't expose wall time
       totalMs      += ms;
       if (ok) { passed++; if (tc.hidden) hiddenPassed++; }
@@ -8310,10 +8313,13 @@ async function fetchWikiLesson(topic) {
 /** Fetch YouTube video metadata via oEmbed (no API key required) */
 async function fetchYouTubeLesson(videoId, fallbackTitle) {
   try {
+    // YouTube's own oEmbed blocks cross-origin browser requests (401).
+    // noembed.com is a free CORS-friendly oEmbed proxy that works from the browser.
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+    const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}&format=json`);
     if (!res.ok) return { title: fallbackTitle, videoId, type: 'video' };
     const d = await res.json();
+    if (d.error) return { title: fallbackTitle, videoId, type: 'video' };
     return { title: d.title || fallbackTitle, videoId, type: 'video', author: d.author_name };
   } catch(e) { return { title: fallbackTitle, videoId, type: 'video' }; }
 }
