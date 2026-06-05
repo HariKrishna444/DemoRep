@@ -167,11 +167,13 @@ select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
 #page-login{
-  display:grid!important;
-  place-items:center;
   padding:40px 20px;
   background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);
   min-height:100vh;box-sizing:border-box;overflow-y:auto;
+}
+#page-login.active{
+  display:grid!important;
+  place-items:center;
 }
 .login-wrap{
   width:min(420px, 100%);
