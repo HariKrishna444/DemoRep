@@ -64,12 +64,14 @@ body{
   -webkit-text-size-adjust:100%;
 }
 
-/* animated noise grain overlay */
+/* animated noise grain overlay — disabled on mobile for performance */
+@media(min-width:769px){
 body::after{
   content:'';
   position:fixed;inset:0;pointer-events:none;z-index:9999;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
   opacity:.18;
+}
 }
 
 /* ═══════════════════════════════════════════════════
@@ -164,8 +166,17 @@ textarea.inp{resize:vertical;min-height:80px}
 select.inp{cursor:pointer}
 select.inp option{background:var(--ink3)}
 
-#page-login{align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);height:100vh;overflow-y:auto;box-sizing:border-box;}
-.login-wrap{width:100%;max-width:440px;animation:fadeup .6s ease}
+#page-login{
+  display:grid!important;
+  place-items:center;
+  padding:40px 20px;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,229,160,.06),transparent);
+  min-height:100vh;box-sizing:border-box;overflow-y:auto;
+}
+.login-wrap{
+  width:min(420px, 100%);
+  animation:fadeup .6s ease;
+}
 @keyframes fadeup{from{opacity:0;transform:translateY(28px)}}
 .login-brand{text-align:center;margin-bottom:36px}
 .login-brand h1{
@@ -189,7 +200,7 @@ select.inp option{background:var(--ink3)}
 .login-card{
   background:var(--ink2);border:1px solid var(--line);
   border-radius:var(--r-xl);padding:36px;
-  box-shadow:var(--sh);
+  box-shadow:0 8px 40px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3);
 }
 .login-card.prof-mode{border-color:rgba(245,166,35,.2);box-shadow:var(--sh)}
 .login-card.stu-mode{border-color:rgba(0,229,160,.15);box-shadow:var(--sh)}
@@ -769,9 +780,8 @@ select.inp option{background:var(--ink3)}
    Breakpoint: 768px and below
    ═══════════════════════════════════════════════════ */
 @media(max-width:768px){
-  /* Login page: full width padding */
+  /* Login page: comfortable padding on tablet, keep max-width */
   #page-login{padding:20px 16px}
-  .login-wrap{max-width:100%}
   .login-card{padding:24px 20px}
   .login-brand h1{font-size:2rem}
 
@@ -1541,7 +1551,7 @@ select.inp option{background:var(--ink3)}
   .data-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
   /* Login page */
-  .login-wrap{max-width:100%!important}
+  .login-wrap{width:min(420px,calc(100vw - 32px))}
   .login-card{padding:22px 18px!important;border-radius:var(--r-lg)!important}
   .login-brand h1{font-size:2rem}
   .role-pills{margin-bottom:20px}
@@ -1956,7 +1966,7 @@ select.inp option{background:var(--ink3)}
      PAGE: LOGIN
      ══════════════════════════════════════════════════ -->
 <div id="page-login" class="page">
-  <div class="login-wrap" style="margin:auto">
+  <div class="login-wrap">
     <div class="login-brand">
       <h1>Exam<span>Shield</span></h1>
       <p>Secure College Exam Platform</p>
@@ -2767,13 +2777,17 @@ upgrade-insecure-requests;</pre>
     <div class="code-half">
       <div class="code-tb">
         <div class="code-tb-l">
-          <select class="sel" id="lang-sel" onchange="changeLang(this.value)">
+          <select class="sel" id="lang-sel" onchange="changeLang(this.value);updateLangBadge(this.value)">
             <option value="python">Python 3</option>
             <option value="javascript">JavaScript (Node.js)</option>
             <option value="cpp">C++ 17</option>
             <option value="java">Java 11</option>
             <option value="c">C</option>
           </select>
+          <span id="lang-badge" title="Python runs in-browser via Pyodide"
+            style="font-size:.65rem;font-family:var(--ff-mono);padding:2px 8px;border-radius:99px;
+                   background:rgba(0,229,160,.12);color:var(--stu);border:1px solid rgba(0,229,160,.25);
+                   white-space:nowrap;">🐍 In-Browser</span>
           <select class="sel" id="theme-sel" onchange="changeTheme(this.value)">
             <option value="vs-dark">Dark</option>
             <option value="vs">Light</option>
@@ -3300,19 +3314,82 @@ function _animatePyLoader() {
 }
 const PISTON_LANGS = {
   python:     "pyodide",
-  javascript: null,
-  cpp:        null,
-  java:       null,
-  c:          null,
-  sql:        null,
-  r:          null,
-  html:       null,
-  css:        null,
-  xml:        null,
+  javascript: "judge0",
+  cpp:        "judge0",
+  java:       "judge0",
+  c:          "judge0",
 };
 const LANG_MONACO = {
   python:'python', javascript:'javascript', cpp:'cpp', java:'java', c:'c'
 };
+
+// Judge0 language IDs (using the free public CE API)
+// https://ce.judge0.com/languages
+const JUDGE0_LANG_IDS = {
+  javascript: 63,   // Node.js 12.14.0
+  cpp:        54,   // C++ (GCC 9.2.0)
+  java:       62,   // Java (OpenJDK 13.0.1)
+  c:          50,   // C (GCC 9.2.0)
+};
+
+// Judge0 free public API — no key needed for low-volume usage
+const JUDGE0_API = 'https://judge0-ce.p.rapidapi.com';
+
+async function judge0Execute(code, lang, stdin) {
+  const langId = JUDGE0_LANG_IDS[lang];
+  if (!langId) throw new Error('Language not supported: ' + lang);
+
+  // Encode to base64
+  const encode = s => btoa(unescape(encodeURIComponent(s)));
+
+  // Try RapidAPI Judge0 CE (free tier, no key for demo)
+  // Falls back to judge0.sojj.it public instance
+  const HOSTS = [
+    'https://judge0-ce.p.rapidapi.com',
+    'https://api.judge0.com',
+  ];
+
+  let lastErr = null;
+  for (const host of HOSTS) {
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (host.includes('rapidapi')) {
+        // Public demo key — replace with your own RapidAPI key for production
+        headers['X-RapidAPI-Key'] = 'demo';
+        headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+      }
+
+      // Submit
+      const subRes = await fetch(`${host}/submissions?base64_encoded=true&wait=true`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          language_id: langId,
+          source_code: encode(code),
+          stdin:        encode(stdin || ''),
+          cpu_time_limit: 5,
+          memory_limit: 128000,
+        }),
+      });
+
+      if (!subRes.ok) { lastErr = new Error('Judge0 HTTP ' + subRes.status); continue; }
+      const result = await subRes.json();
+
+      const decode = s => s ? decodeURIComponent(escape(atob(s))) : '';
+      const stdout = decode(result.stdout);
+      const stderr = decode(result.stderr) || decode(result.compile_output);
+      const exitCode = result.exit_code ?? (result.status?.id > 3 ? 1 : 0);
+
+      return {
+        run: { stdout, stderr, code: exitCode, output: stdout },
+        compile: {}
+      };
+    } catch(e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('Judge0 unavailable');
+}
 
 // ── Platform constants ───────────────────────────────────────
 const EXAM_DURATION_MINS = 90;
@@ -4025,10 +4102,10 @@ async function saveQuestion() {
     testcases: tcs.length ? tcs : [{input:'1',expected:'1'}],
     templates: {
       python: `# ${title}\n# Write your solution here\n\n`,
-      javascript: `// ${title}\n// Write your solution here\n`,
-      cpp: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  // Write your solution\n}`,
-      java: `import java.util.*;\npublic class Main{\n  public static void main(String[] a){\n    // Write your solution\n  }\n}`,
-      c: `#include<stdio.h>\nint main(){\n  // Write your solution\n  return 0;\n}`,
+      javascript: `// ${title}\n// Write your solution here\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin });\nconst lines = [];\nrl.on('line', l => lines.push(l.trim()));\nrl.on('close', () => {\n  // lines[0] = first input line\n  console.log('Hello');\n});\n`,
+      cpp: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  ios_base::sync_with_stdio(false);\n  cin.tie(NULL);\n  // Write your solution\n  return 0;\n}`,
+      java: `import java.util.*;\nimport java.io.*;\npublic class Main{\n  public static void main(String[] args) throws Exception {\n    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n    // Write your solution\n  }\n}`,
+      c: `#include<stdio.h>\n#include<stdlib.h>\nint main(){\n  // Write your solution\n  return 0;\n}`,
     }
   };
 
@@ -4826,6 +4903,24 @@ function changeLang(lang) {
   }
 }
 
+function updateLangBadge(lang) {
+  const badge = document.getElementById('lang-badge');
+  if (!badge) return;
+  if (lang === 'python') {
+    badge.textContent = '🐍 In-Browser';
+    badge.title = 'Runs locally via Pyodide — no internet needed';
+    badge.style.background = 'rgba(0,229,160,.12)';
+    badge.style.color = 'var(--stu)';
+    badge.style.borderColor = 'rgba(0,229,160,.25)';
+  } else {
+    badge.textContent = '☁ Judge0 API';
+    badge.title = 'Compiled & run on Judge0 cloud — requires internet';
+    badge.style.background = 'rgba(59,130,246,.12)';
+    badge.style.color = 'var(--blue)';
+    badge.style.borderColor = 'rgba(59,130,246,.25)';
+  }
+}
+
 function changeTheme(t) { if(window._mono) window._mono.editor.setTheme(t); }
 function changeFS(s)     { if(monaco_editor) monaco_editor.updateOptions({fontSize:parseInt(s)}); }
 function resetCode() {
@@ -4914,7 +5009,7 @@ function outRunning() {
   const el = document.getElementById('con-out');
   const ln = document.createElement('div');
   ln.className='run-ind'; ln.id='run-ind';
-  ln.innerHTML='<div class="spin"></div><span>Running Python...</span>';
+  ln.innerHTML='<div class="spin"></div><span>Running Python (Pyodide)…</span>';
   el.appendChild(ln); el.scrollTop=el.scrollHeight;
 }
 function removeRunning() { document.getElementById('run-ind')?.remove(); }
@@ -4931,12 +5026,22 @@ function sanitizePythonCode(code) {
 
 async function pistonExecute(code, lang, stdin) {
   var engine = PISTON_LANGS[lang];
-  if (engine === null) throw new Error('BROWSER_RENDER');
-  if (engine !== 'pyodide') throw new Error('Language not supported in browser mode: ' + lang);
-  if (!_pyFrame) startPyodide();
-  await waitPyReady(60000);
-  var r = await runPy(sanitizePythonCode(code), stdin || '');
-  return { run: { stdout: r.stdout, stderr: r.stderr, code: r.ec, output: r.stdout }, compile: {} };
+
+  // Python → Pyodide (runs in-browser, no external API)
+  if (engine === 'pyodide') {
+    if (!_pyFrame) startPyodide();
+    await waitPyReady(60000);
+    var r = await runPy(sanitizePythonCode(code), stdin || '');
+    return { run: { stdout: r.stdout, stderr: r.stderr, code: r.ec, output: r.stdout }, compile: {} };
+  }
+
+  // All other languages → Judge0 cloud compiler
+  if (engine === 'judge0') {
+    outLine('info', '☁ Sending to Judge0 compiler…');
+    return await judge0Execute(code, lang, stdin);
+  }
+
+  throw new Error('Language "' + lang + '" is not supported yet.');
 }
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
@@ -5013,8 +5118,16 @@ async function runCode() {
     exampleInput.split('\n').filter(l => /^output\s*:/i.test(l.trim())).join('\n')
   ));
 
-  outLine('info',`▶ Running ${currentLang}...`);
-  outRunning();
+  outLine('info',`▶ Running ${currentLang}…`);
+  if (currentLang === 'python') {
+    outRunning();
+  } else {
+    const ri = document.createElement('div');
+    ri.className='run-ind'; ri.id='run-ind';
+    ri.innerHTML='<div class="spin"></div><span>Compiling & running via Judge0…</span>';
+    document.getElementById('con-out').appendChild(ri);
+    document.getElementById('con-out').scrollTop = 9999;
+  }
 
   try {
     const result = await pistonExecute(code, currentLang, rawStdin);
@@ -5059,9 +5172,13 @@ async function runCode() {
     if (ce)     ce.split('\n').forEach(l=>outLine('err','[CE] '+l));
   } catch(e) {
     removeRunning();
-    outLine('err', '⛔ Code execution failed: ' + e.message);
-    outLine('warn', 'Code execution failed. Check your internet connection (Pyodide needs to load once).');
-    outLine('info', 'Tip: Reload the page and wait a few seconds for Python engine to load.');
+    outLine('err', '⛔ Execution failed: ' + e.message);
+    if (currentLang === 'python') {
+      outLine('warn', 'Python engine issue — reload the page and wait for it to load.');
+    } else {
+      outLine('warn', 'Judge0 compiler error — check your internet connection or try Python.');
+      outLine('info', 'Tip: Judge0 is a free cloud compiler. Occasional slowdowns are normal.');
+    }
   }
 
   btn.disabled=false; btn.textContent='▶ Run';
