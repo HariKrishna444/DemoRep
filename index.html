@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ExamShield — College Coding Exam Platform</title>
+<title>CodingHub — College Coding Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
 <!-- CSP note: served via GitHub Pages — CSP must be set via server response
-     headers, not <meta> tags. Monaco is loaded from unpkg.com (instead of
+     headers, not <meta> tags. Monaco is loaded from cdnjs.cloudflare.com (instead of
      jsDelivr) to avoid "Tracking Prevention blocked access to storage" errors
      that Edge/Safari ITP fire when jsDelivr tries cross-origin IndexedDB writes.
      If self-hosting, add CSP as an HTTP response header instead of a meta tag. -->
@@ -2818,7 +2818,7 @@ upgrade-insecure-requests;</pre>
           </div>
         </div>
         <div class="con-out" id="con-out">
-          <div class="out-l info"><span class="op">$</span><span class="ot">ExamShield execution engine ready.</span></div>
+          <div class="out-l info"><span class="op">$</span><span class="ot">CodingHub execution engine ready.</span></div>
         </div>
         <div class="custom-in" id="custom-in">
           <label style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px">Custom STDIN</label>
@@ -3231,7 +3231,7 @@ upgrade-insecure-requests;</pre>
 // it even if they don't actually USE storage, purely from the origin check.
 // Fetching the script text and re-injecting via Blob URL makes it appear same-origin.
 (function() {
-  const LOADER_URL = 'https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.min.js';
+  const LOADER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js';
   window._monacoLoaderReady = false;
 
   fetch(LOADER_URL)
@@ -3292,7 +3292,7 @@ window.addEventListener('message', function(ev) {
 function startPyodide() {
   if (_pyFrame) return;
   // Build the Pyodide runner as an inline blob so no external iframe src is needed.
-  // Using unpkg.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
+  // Using cdnjs.cloudflare.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
   // errors in Edge/Safari caused by jsdelivr's cross-origin IndexedDB writes.
   // Pyodide runner HTML base64-encoded to avoid multi-layer string escaping issues.
   var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwpsb2FkUHlvZGlkZSh7IGluZGV4VVJMOiAiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsLyIgfSkudGhlbihmdW5jdGlvbihwKSB7CiAgcHkgPSBwOwogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIgfSwgIioiKTsKfSkuY2F0Y2goZnVuY3Rpb24oZSkgewogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIsIGVycm9yOiBTdHJpbmcoZSkgfSwgIioiKTsKfSk7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGV2KSB7CiAgaWYgKCFldi5kYXRhIHx8IGV2LmRhdGEudCAhPT0gInJ1biIpIHJldHVybjsKICBpZiAoIXB5KSB7CiAgICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IGZhbHNlLCBlcnJvcjogIlB5b2RpZGUgbm90IHJlYWR5IiB9LCAiKiIpOwogICAgcmV0dXJuOwogIH0KICB2YXIgbyA9ICIiLCBlciA9ICIiLCBlYyA9IDA7CiAgcHkuc2V0U3Rkb3V0KHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBvICs9IHM7IH0gfSk7CiAgcHkuc2V0U3RkZXJyKHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBlciArPSBzOyB9IH0pOwoKICB2YXIgbGluZXMgPSAoZXYuZGF0YS5zdGRpbiB8fCAiIikuc3BsaXQoIlxuIik7CiAgcHkuZ2xvYmFscy5zZXQoIl9zdGRpbl9saW5lcyIsIHB5LnRvUHkobGluZXMpKTsKICB0cnkgewogICAgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoCiAgICAgICJpbXBvcnQgYnVpbHRpbnNcbiIgKwogICAgICAiX3NsID0gbGlzdChfc3RkaW5fbGluZXMpXG4iICsKICAgICAgIl9zaSA9IFswXVxuIiArCiAgICAgICJkZWYgX2lucChwPScnKTpcbiIgKwogICAgICAiICAgIGkgPSBfc2lbMF07IF9zaVswXSArPSAxXG4iICsKICAgICAgIiAgICByZXR1cm4gX3NsW2ldIGlmIGkgPCBsZW4oX3NsKSBlbHNlICcnXG4iICsKICAgICAgImJ1aWx0aW5zLmlucHV0ID0gX2lucCIKICAgICk7CiAgfSBjYXRjaCh4KSB7fQoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhldi5kYXRhLmNvZGUpOyB9CiAgY2F0Y2goeCkgeyBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsgfQoKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4=";
@@ -3305,6 +3305,8 @@ function startPyodide() {
   f.id = 'pyodide-runner-frame';          // whitelisted by DOM guard
   f.setAttribute('data-pyodide', 'true'); // secondary whitelist marker
   f.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px;';
+  f.setAttribute('allow', 'storage-access');
+  f.setAttribute('sandbox', 'allow-scripts allow-same-origin');
   f.src = blobUrl;
   document.body.appendChild(f);
   _pyFrame = f;
@@ -4426,7 +4428,7 @@ async function startExam(qId) {
   document.getElementById('guard-pill').classList.add('vis');
 
   clearConsole();
-  outLine('info','ExamShield secure execution environment ready.');
+  outLine('info','CodingHub secure execution environment ready.');
   outLine('warn','⚠ This session is monitored. No paste, no tab switching, no AI tools.');
 }
 
@@ -4918,8 +4920,8 @@ function pad(n){ return String(n).padStart(2,'0'); }
    Blob URLs are always same-origin so ITP never inspects them.
    ──────────────────────────────────────────────────────────────────────────── */
 function loadMonaco() {
-  const _mvs  = 'https://unpkg.com/monaco-editor@0.44.0/min/vs';
-  const _mmin = 'https://unpkg.com/monaco-editor@0.44.0/min';
+  const _mvs  = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+  const _mmin = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
 
   function _initEditor() {
     if (typeof require === 'undefined' || window._monacoLoaderFailed) {
@@ -7893,7 +7895,7 @@ async function renderCertificate(courseId) {
   content.innerHTML = `
     <div class="cert-card" id="cert-printable">
       <div class="cert-inner">
-        <div class="cert-logo"><strong>ExamShield</strong> Learning Platform</div>
+        <div class="cert-logo"><strong>CodingHub</strong> Learning Platform</div>
         <div style="width:48px;height:2px;background:linear-gradient(90deg,var(--stu),var(--cyan));margin-bottom:28px;border-radius:99px"></div>
         <div class="cert-title">Certificate of Completion</div>
         <div style="font-size:.82rem;color:var(--soft);margin-bottom:8px">This certifies that</div>
@@ -7921,7 +7923,7 @@ async function renderCertificate(courseId) {
           </div>
           <div style="display:flex;align-items:center;gap:12px">
             <div style="text-align:right">
-              <div style="font-size:.78rem;font-weight:700;color:var(--head)">ExamShield</div>
+              <div style="font-size:.78rem;font-weight:700;color:var(--head)">CodingHub</div>
               <div style="font-size:.62rem;color:var(--muted)">Learning Platform</div>
             </div>
             <div class="cert-badge">🏆</div>
@@ -7968,7 +7970,7 @@ async function downloadCertificatePDF(studentName, courseName, verifyId, issuedA
     acGrad.addColorStop(0,'#00e5a0'); acGrad.addColorStop(1,'#06b6d4');
     ctx.fillStyle = acGrad; ctx.fillRect(60,110,160,3);
     // Logo text
-    ctx.font = 'bold 28px Arial'; ctx.fillStyle='#00e5a0'; ctx.fillText('ExamShield',60,100);
+    ctx.font = 'bold 28px Arial'; ctx.fillStyle='#00e5a0'; ctx.fillText('CodingHub',60,100);
     ctx.font = '14px Arial'; ctx.fillStyle='#4a5872'; ctx.fillText('Learning Platform',60,135);
     // Certificate title
     ctx.font = 'bold 16px Arial'; ctx.fillStyle='#7b8faa'; ctx.fillText('CERTIFICATE OF COMPLETION',60,200);
@@ -7994,7 +7996,7 @@ async function downloadCertificatePDF(studentName, courseName, verifyId, issuedA
     // Footer
     ctx.font='13px monospace'; ctx.fillStyle='#4a5872';
     ctx.fillText('Verify ID: '+verifyId, 60, 700);
-    ctx.fillText('examshield.app/verify?id='+verifyId, 60, 720);
+    ctx.fillText('codinghub.app/verify?id='+verifyId, 60, 720);
     // Badge
     ctx.font='52px Arial'; ctx.fillText('🏆', 980, 700);
     // Download
@@ -9032,7 +9034,7 @@ print(total(10, 20))        # 30` },
   'default': {
     hint: 'Edit the code on the right and press ▶ Run to execute it!',
     starterCode: `# Python Playground — edit and run!
-print("Hello from ExamShield! 🛡️")
+print("Hello from CodingHub! 💻")
 
 for i in range(1, 6):
     print(f"Line {i}: {'⭐' * i}")`,
@@ -9041,6 +9043,120 @@ for i in range(1, 6):
 };
 
 /* ── Render helpers ── */
+
+/* ── Smart lesson content formatter ──────────────────────────────────────────
+   Converts plain-text lesson content into structured HTML:
+   numbered lists, bullet lists, headings (emoji-led or colon-terminated),
+   code blocks (triple-quote or 4-space indent), and note callouts.
+   ─────────────────────────────────────────────────────────────────────────── */
+function formatLessonContent(raw) {
+  if (!raw) return '';
+  const lines = raw.split(/\n/);
+  let html = '';
+  let inList = false, listType = '', inCode = false, codeLines = [];
+
+  const closeList = () => {
+    if (inList) { html += '</' + listType + '>'; inList = false; listType = ''; }
+  };
+  const closeCode = () => {
+    if (!inCode) return;
+    const joined = codeLines.join('\n');
+    html += '<div class="w3-example-box">'
+          + '<div class="w3-example-label"><span>Code Example</span>'
+          + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(joined) + ')">&#9654; Try it</button>'
+          + '</div><div class="w3-example-code">' + sanitize(joined) + '</div></div>';
+    inCode = false; codeLines = [];
+  };
+
+  const reHeadEmoji  = /^([\u{1F300}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FEFF}]+)\s+(.+)/u;
+  const reSection    = /^([A-Z][A-Za-z ]{3,}):$/;
+  const reNumbered   = /^(\d+)[.)\s]\s*(.+)/;
+  const reBullet     = /^[\u2022\u2023\u2043\u204C\u204D\u2212\*\-\u2192\u27A4\u25BA\u25C6\u25C7\u25AA\u25B8]+\s+(.+)/u;
+  const reCodeOpen   = /^['"]{3}(PYTHON|python|py|code|CODE)?\s*$/i;
+  const reCodeClose  = /^['"]{3}\s*$/;
+  const reIndent     = /^( {4}|\t)(.+)/;
+  const reNote       = /^[\u26A0\u2757\u{1F4A1}\u{1F4CC}\u{1F514}]/u;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw_line = lines[i];
+    const line = raw_line.trim();
+    if (!line) { if (!inCode) closeList(); continue; }
+
+    if (!inCode && reCodeOpen.test(line)) { closeList(); inCode = true; continue; }
+    if (inCode) {
+      if (reCodeClose.test(line)) closeCode();
+      else codeLines.push(raw_line);
+      continue;
+    }
+
+    if (reIndent.test(raw_line)) {
+      closeList();
+      const block = [];
+      while (i < lines.length && (reIndent.test(lines[i]) || lines[i].trim() === '')) {
+        if (lines[i].trim()) block.push(lines[i].replace(/^( {4}|\t)/, ''));
+        i++;
+      }
+      i--;
+      const bjoined = block.join('\n');
+      html += '<div class="w3-example-box">'
+            + '<div class="w3-example-label"><span>Code Example</span>'
+            + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(bjoined) + ')">&#9654; Try it</button>'
+            + '</div><div class="w3-example-code">' + sanitize(bjoined) + '</div></div>';
+      continue;
+    }
+
+    const hm = line.match(reHeadEmoji);
+    if (hm) {
+      closeList();
+      html += '<h2 style="font-size:1.05rem;font-weight:800;color:var(--head);margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)">'
+            + hm[1] + ' ' + sanitize(hm[2]) + '</h2>';
+      continue;
+    }
+    if (reSection.test(line)) {
+      closeList();
+      html += '<h2 style="font-size:1.05rem;font-weight:800;color:var(--head);margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)">'
+            + sanitize(line) + '</h2>';
+      continue;
+    }
+
+    const nm = line.match(reNumbered);
+    if (nm) {
+      if (!inList || listType !== 'ol') {
+        closeList();
+        html += '<ol style="margin:10px 0 16px;padding-left:24px;color:var(--soft);font-size:.92rem;line-height:1.85">';
+        inList = true; listType = 'ol';
+      }
+      html += '<li style="margin-bottom:6px">' + sanitize(nm[2]) + '</li>';
+      continue;
+    }
+
+    const bm = line.match(reBullet);
+    if (bm) {
+      if (!inList || listType !== 'ul') {
+        closeList();
+        html += '<ul style="margin:10px 0 16px;padding-left:18px;color:var(--soft);font-size:.92rem;line-height:1.85;list-style:none">';
+        inList = true; listType = 'ul';
+      }
+      html += '<li style="margin-bottom:6px"><span style="color:var(--stu);margin-right:8px">&#9658;</span>' + sanitize(bm[1]) + '</li>';
+      continue;
+    }
+
+    if (reNote.test(line)) {
+      closeList();
+      html += '<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-left:3px solid var(--cyan);'
+            + 'border-radius:0 var(--r-sm) var(--r-sm) 0;padding:12px 16px;margin:16px 0;font-size:.84rem;color:var(--soft);line-height:1.65">'
+            + '<span style="color:var(--cyan);font-weight:700;margin-right:6px">&#128204; Note:</span>' + sanitize(line) + '</div>';
+      continue;
+    }
+
+    closeList();
+    html += '<p style="font-size:.92rem;color:var(--soft);line-height:1.85;margin-bottom:14px">' + sanitize(line) + '</p>';
+  }
+
+  closeList(); closeCode();
+  return html;
+}
+
 function w3RenderSections(sections) {
   return sections.map(sec => {
     switch(sec.type) {
@@ -9240,10 +9356,11 @@ window.openLesson = function(courseId, moduleId, lessonId) {
     if (w3Data.sections && w3Data.sections.length) {
       articleHtml = `<div class="article-content">${w3RenderSections(w3Data.sections)}</div>`;
     } else if (lesson.content) {
-      const mdContent = lesson.content
+      const mdContent = (lesson.content || '')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code style="background:var(--ink2);color:#a5f3c0;padding:1px 6px;border-radius:4px;font-family:var(--ff-mono);font-size:.85em">$1</code>')
         .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--stu)">$1 ↗</a>');
-      articleHtml = `<div class="article-content">${mdContent}</div>`;
+      articleHtml = `<div class="article-content">${formatLessonContent(mdContent)}</div>`;
     }
   }
 
