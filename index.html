@@ -6,7 +6,7 @@
 <title>CodingHub — College Coding Platform</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛡️</text></svg>">
 <!-- CSP note: served via GitHub Pages — CSP must be set via server response
-     headers, not <meta> tags. Monaco is loaded from cdnjs.cloudflare.com (instead of
+     headers, not <meta> tags. Monaco is loaded from cdnjs (instead of
      jsDelivr) to avoid "Tracking Prevention blocked access to storage" errors
      that Edge/Safari ITP fire when jsDelivr tries cross-origin IndexedDB writes.
      If self-hosting, add CSP as an HTTP response header instead of a meta tag. -->
@@ -1912,9 +1912,9 @@ select.inp option{background:var(--ink3)}
 
 <!-- ═══ LOADER ═══ -->
 <div id="loader">
-  <div class="ld-logo">Exam<em>Shield</em></div>
+  <div class="ld-logo">Coding<em>Hub</em></div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
-  <div class="ld-label">Initializing Secure Environment</div>
+  <div class="ld-label">Initializing CodingHub</div>
 </div>
 
 <!-- ═══ TOASTS ═══ -->
@@ -1970,8 +1970,8 @@ select.inp option{background:var(--ink3)}
 <div id="page-login" class="page">
   <div class="login-wrap">
     <div class="login-brand">
-      <h1>Exam<span>Shield</span></h1>
-      <p>Secure College Exam Platform</p>
+      <h1>Coding<span>Hub</span></h1>
+      <p>College Coding Platform</p>
     </div>
 
     <div class="role-pills">
@@ -2002,7 +2002,7 @@ select.inp option{background:var(--ink3)}
 <div id="page-prof" class="page">
   <!-- Topbar -->
   <div class="topbar">
-    <div class="tb-brand">Exam<em>Shield</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Professor Portal</span></div>
+    <div class="tb-brand">Coding<em>Hub</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Professor Portal</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar prof-av" id="prof-av">P</div><span id="prof-name">Professor</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2702,7 +2702,10 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-stu" class="page">
   <div class="topbar">
-    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn btn-ghost btn-sm" onclick="showStuSection('catalog')" style="padding:5px 12px;font-size:.78rem">← Courses</button>
+      <div class="tb-brand">Coding<em>Hub</em></div>
+    </div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="stu-av">S</div><span id="stu-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -2990,7 +2993,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-catalog" class="page">
   <div class="topbar">
-    <div class="tb-brand">Exam<em>Shield</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
+    <div class="tb-brand">Coding<em>Hub</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="cat-av">S</div><span id="cat-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -3024,7 +3027,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-course-detail" class="page">
   <div class="topbar">
-    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div class="tb-brand">Coding<em>Hub</em></div>
     <div class="tb-right">
       <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()">← Back to Catalog</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -3046,7 +3049,7 @@ upgrade-insecure-requests;</pre>
       <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()" style="padding:5px 10px">
         <span style="font-size:.9rem">←</span>
       </button>
-      <div class="tb-brand" style="font-size:1.1rem">Exam<em>Shield</em></div>
+      <div class="tb-brand" style="font-size:1.1rem">Coding<em>Hub</em></div>
       <span class="w3-breadcrumb-sep">›</span>
       <span id="learn-course-title" class="w3-breadcrumb-title"></span>
     </div>
@@ -3167,7 +3170,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-my-learning" class="page">
   <div class="topbar">
-    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div class="tb-brand">Coding<em>Hub</em></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="ml-av">S</div><span id="ml-name">Student</span></div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -3193,7 +3196,7 @@ upgrade-insecure-requests;</pre>
      ══════════════════════════════════════════════════ -->
 <div id="page-certificate" class="page">
   <div style="width:100%;padding:16px 24px;background:var(--ink2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
-    <div class="tb-brand">Exam<em>Shield</em></div>
+    <div class="tb-brand">Coding<em>Hub</em></div>
     <button class="btn btn-ghost btn-sm" onclick="showStuSection('my-learning')">← My Learning</button>
   </div>
   <div class="cert-wrap" style="margin-top:32px">
@@ -3205,7 +3208,7 @@ upgrade-insecure-requests;</pre>
      PAGE: VERIFY CERTIFICATE (Public)
      ══════════════════════════════════════════════════ -->
 <div id="page-verify" class="page">
-  <div class="tb-brand" style="margin-bottom:24px;font-size:1.5rem">Exam<em style="color:var(--muted);font-style:normal">Shield</em></div>
+  <div class="tb-brand" style="margin-bottom:24px;font-size:1.5rem">Coding<em style="color:var(--muted);font-style:normal">Hub</em></div>
   <div class="verify-card" id="verify-card">
     <div class="verify-icon">🔍</div>
     <h2 style="color:var(--head);margin-bottom:8px">Certificate Verification</h2>
@@ -3292,7 +3295,7 @@ window.addEventListener('message', function(ev) {
 function startPyodide() {
   if (_pyFrame) return;
   // Build the Pyodide runner as an inline blob so no external iframe src is needed.
-  // Using cdnjs.cloudflare.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
+  // Using unpkg.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
   // errors in Edge/Safari caused by jsdelivr's cross-origin IndexedDB writes.
   // Pyodide runner HTML base64-encoded to avoid multi-layer string escaping issues.
   var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwpsb2FkUHlvZGlkZSh7IGluZGV4VVJMOiAiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsLyIgfSkudGhlbihmdW5jdGlvbihwKSB7CiAgcHkgPSBwOwogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIgfSwgIioiKTsKfSkuY2F0Y2goZnVuY3Rpb24oZSkgewogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIsIGVycm9yOiBTdHJpbmcoZSkgfSwgIioiKTsKfSk7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGV2KSB7CiAgaWYgKCFldi5kYXRhIHx8IGV2LmRhdGEudCAhPT0gInJ1biIpIHJldHVybjsKICBpZiAoIXB5KSB7CiAgICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IGZhbHNlLCBlcnJvcjogIlB5b2RpZGUgbm90IHJlYWR5IiB9LCAiKiIpOwogICAgcmV0dXJuOwogIH0KICB2YXIgbyA9ICIiLCBlciA9ICIiLCBlYyA9IDA7CiAgcHkuc2V0U3Rkb3V0KHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBvICs9IHM7IH0gfSk7CiAgcHkuc2V0U3RkZXJyKHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBlciArPSBzOyB9IH0pOwoKICB2YXIgbGluZXMgPSAoZXYuZGF0YS5zdGRpbiB8fCAiIikuc3BsaXQoIlxuIik7CiAgcHkuZ2xvYmFscy5zZXQoIl9zdGRpbl9saW5lcyIsIHB5LnRvUHkobGluZXMpKTsKICB0cnkgewogICAgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoCiAgICAgICJpbXBvcnQgYnVpbHRpbnNcbiIgKwogICAgICAiX3NsID0gbGlzdChfc3RkaW5fbGluZXMpXG4iICsKICAgICAgIl9zaSA9IFswXVxuIiArCiAgICAgICJkZWYgX2lucChwPScnKTpcbiIgKwogICAgICAiICAgIGkgPSBfc2lbMF07IF9zaVswXSArPSAxXG4iICsKICAgICAgIiAgICByZXR1cm4gX3NsW2ldIGlmIGkgPCBsZW4oX3NsKSBlbHNlICcnXG4iICsKICAgICAgImJ1aWx0aW5zLmlucHV0ID0gX2lucCIKICAgICk7CiAgfSBjYXRjaCh4KSB7fQoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhldi5kYXRhLmNvZGUpOyB9CiAgY2F0Y2goeCkgeyBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsgfQoKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4=";
@@ -3306,7 +3309,6 @@ function startPyodide() {
   f.setAttribute('data-pyodide', 'true'); // secondary whitelist marker
   f.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px;';
   f.setAttribute('allow', 'storage-access');
-  f.setAttribute('sandbox', 'allow-scripts allow-same-origin');
   f.src = blobUrl;
   document.body.appendChild(f);
   _pyFrame = f;
@@ -3754,6 +3756,8 @@ function setRole(r) {
 }
 
 async function handleLogin() {
+  // Guard: prevent double-click / rapid re-submission
+  if (window._loginInProgress) return;
   if (typeof RateLimiter !== 'undefined' && !RateLimiter.check('login')) {
     toast('Too many login attempts. Wait 60 seconds.','err',6000); return;
   }
@@ -3762,6 +3766,7 @@ async function handleLogin() {
   if (!email) { toast('Enter your email','warn'); return; }
   if (!pass)  { toast('Enter your password','warn'); return; }
 
+  window._loginInProgress = true;
   const btn = document.getElementById('btn-login');
   document.getElementById('btn-login-txt').textContent = 'Signing in...';
   btn.disabled = true;
@@ -3770,70 +3775,85 @@ async function handleLogin() {
     // Demo mode — no Firebase configured
     await sleep(700);
     currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0] + (currentRole==='prof'?' (Prof)':'')};
-    btn.disabled = false;
     document.getElementById('btn-login-txt').textContent = 'Sign In';
+    btn.disabled = false;
+    window._loginInProgress = false;
     onAuthSuccess();
     return;
   }
 
+  // Set _authHandled BEFORE the await so the onAuthStateChanged listener
+  // cannot fire onAuthSuccess() in parallel with this handler.
+  _authHandled = true;
   try {
     const c = await auth.signInWithEmailAndPassword(email, pass);
     currentUser = c.user;
-    _authHandled = true; // prevent onAuthStateChanged from double-firing
 
-    // Load role and questions — but NEVER block dashboard if these fail
+    // Load role and questions — never block dashboard if these fail
     try { await loadUserRole(currentUser.uid); } catch(e) { console.warn('loadUserRole failed:', e); }
     try { await loadQuestionsFromFirestore(); }  catch(e) { console.warn('loadQuestions failed:', e); }
 
+    document.getElementById('btn-login-txt').textContent = 'Sign In';
+    btn.disabled = false;
+    window._loginInProgress = false;
     onAuthSuccess();
   } catch(e) {
+    _authHandled = false; // reset so auth listener works normally again
     const msg = e.code === 'auth/wrong-password'    ? 'Incorrect password.'
               : e.code === 'auth/user-not-found'    ? 'No account found with that email.'
               : e.code === 'auth/invalid-email'     ? 'Invalid email address.'
               : e.code === 'auth/too-many-requests' ? 'Too many attempts — try again later.'
+              : e.code === 'auth/invalid-credential'? 'Invalid email or password.'
               : 'Login failed: ' + e.message;
     toast(msg, 'err');
+    document.getElementById('btn-login-txt').textContent = 'Sign In';
+    btn.disabled = false;
+    window._loginInProgress = false;
   }
-
-  btn.disabled = false;
-  document.getElementById('btn-login-txt').textContent = 'Sign In';
 }
 
 async function handleRegister() {
+  if (window._loginInProgress) return;
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value || 'demo123';
   if (!email) { toast('Enter your email','warn'); return; }
   if (pass.length < 6) { toast('Password must be at least 6 characters','warn'); return; }
 
+  window._loginInProgress = true;
   const btn = document.getElementById('btn-reg');
   document.getElementById('btn-reg-txt').textContent = 'Creating...';
   btn.disabled = true;
 
   if (!firebaseReady) {
     currentUser = {uid:'demo-'+Date.now(), email, displayName: email.split('@')[0]};
-    btn.disabled = false;
     document.getElementById('btn-reg-txt').textContent = 'Create Account';
+    btn.disabled = false;
+    window._loginInProgress = false;
     onAuthSuccess();
     return;
   }
 
+  _authHandled = true;
   try {
     const c = await auth.createUserWithEmailAndPassword(email, pass);
     currentUser = c.user;
-    _authHandled = true;
     try { await loadUserRole(currentUser.uid); } catch(e) { console.warn('loadUserRole failed:', e); }
     try { await loadQuestionsFromFirestore(); }  catch(e) { console.warn('loadQuestions failed:', e); }
+    document.getElementById('btn-reg-txt').textContent = 'Create Account';
+    btn.disabled = false;
+    window._loginInProgress = false;
     onAuthSuccess();
   } catch(e) {
+    _authHandled = false;
     const msg = e.code === 'auth/email-already-in-use' ? 'An account with this email already exists.'
               : e.code === 'auth/weak-password'        ? 'Password is too weak (min 6 chars).'
               : e.code === 'auth/invalid-email'        ? 'Invalid email address.'
               : 'Register failed: ' + e.message;
     toast(msg, 'err');
+    document.getElementById('btn-reg-txt').textContent = 'Create Account';
+    btn.disabled = false;
+    window._loginInProgress = false;
   }
-
-  btn.disabled = false;
-  document.getElementById('btn-reg-txt').textContent = 'Create Account';
 }
 
 function onAuthSuccess() {
@@ -4428,7 +4448,7 @@ async function startExam(qId) {
   document.getElementById('guard-pill').classList.add('vis');
 
   clearConsole();
-  outLine('info','CodingHub secure execution environment ready.');
+  outLine('info','CodingHub execution environment ready.');
   outLine('warn','⚠ This session is monitored. No paste, no tab switching, no AI tools.');
 }
 
@@ -9044,115 +9064,78 @@ for i in range(1, 6):
 
 /* ── Render helpers ── */
 
-/* ── Smart lesson content formatter ──────────────────────────────────────────
-   Converts plain-text lesson content into structured HTML:
-   numbered lists, bullet lists, headings (emoji-led or colon-terminated),
-   code blocks (triple-quote or 4-space indent), and note callouts.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── Smart lesson content formatter ───────────────────────────────────────── */
 function formatLessonContent(raw) {
   if (!raw) return '';
   const lines = raw.split(/\n/);
-  let html = '';
-  let inList = false, listType = '', inCode = false, codeLines = [];
+  let html = '', inList = false, listType = '', inCode = false, codeLines = [];
 
-  const closeList = () => {
-    if (inList) { html += '</' + listType + '>'; inList = false; listType = ''; }
-  };
+  const closeList = () => { if (inList) { html += '</' + listType + '>'; inList = false; listType = ''; } };
   const closeCode = () => {
     if (!inCode) return;
-    const joined = codeLines.join('\n');
-    html += '<div class="w3-example-box">'
-          + '<div class="w3-example-label"><span>Code Example</span>'
-          + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(joined) + ')">&#9654; Try it</button>'
-          + '</div><div class="w3-example-code">' + sanitize(joined) + '</div></div>';
+    const j = codeLines.join('\n');
+    html += '<div class="w3-example-box"><div class="w3-example-label"><span>Code Example</span>'
+          + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(j) + ')">&#9654; Try it</button>'
+          + '</div><div class="w3-example-code">' + sanitize(j) + '</div></div>';
     inCode = false; codeLines = [];
   };
-
-  const reHeadEmoji  = /^([\u{1F300}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FEFF}]+)\s+(.+)/u;
-  const reSection    = /^([A-Z][A-Za-z ]{3,}):$/;
-  const reNumbered   = /^(\d+)[.)\s]\s*(.+)/;
-  const reBullet     = /^[\u2022\u2023\u2043\u204C\u204D\u2212\*\-\u2192\u27A4\u25BA\u25C6\u25C7\u25AA\u25B8]+\s+(.+)/u;
-  const reCodeOpen   = /^['"]{3}(PYTHON|python|py|code|CODE)?\s*$/i;
-  const reCodeClose  = /^['"]{3}\s*$/;
-  const reIndent     = /^( {4}|\t)(.+)/;
-  const reNote       = /^[\u26A0\u2757\u{1F4A1}\u{1F4CC}\u{1F514}]/u;
 
   for (let i = 0; i < lines.length; i++) {
     const raw_line = lines[i];
     const line = raw_line.trim();
     if (!line) { if (!inCode) closeList(); continue; }
 
-    if (!inCode && reCodeOpen.test(line)) { closeList(); inCode = true; continue; }
-    if (inCode) {
-      if (reCodeClose.test(line)) closeCode();
-      else codeLines.push(raw_line);
-      continue;
-    }
+    // Code fence: '''PYTHON or '''
+    if (!inCode && /^['"]{3}/i.test(line)) { closeList(); inCode = true; continue; }
+    if (inCode) { if (/^['"]{3}\s*$/.test(line)) closeCode(); else codeLines.push(raw_line); continue; }
 
-    if (reIndent.test(raw_line)) {
+    // 4-space / tab indented code block
+    if (/^( {4}|\t)/.test(raw_line)) {
       closeList();
       const block = [];
-      while (i < lines.length && (reIndent.test(lines[i]) || lines[i].trim() === '')) {
+      while (i < lines.length && (/^( {4}|\t)/.test(lines[i]) || lines[i].trim() === '')) {
         if (lines[i].trim()) block.push(lines[i].replace(/^( {4}|\t)/, ''));
         i++;
       }
       i--;
-      const bjoined = block.join('\n');
-      html += '<div class="w3-example-box">'
-            + '<div class="w3-example-label"><span>Code Example</span>'
-            + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(bjoined) + ')">&#9654; Try it</button>'
-            + '</div><div class="w3-example-code">' + sanitize(bjoined) + '</div></div>';
+      const bj = block.join('\n');
+      html += '<div class="w3-example-box"><div class="w3-example-label"><span>Code Example</span>'
+            + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(bj) + ')">&#9654; Try it</button>'
+            + '</div><div class="w3-example-code">' + sanitize(bj) + '</div></div>';
       continue;
     }
 
-    const hm = line.match(reHeadEmoji);
-    if (hm) {
-      closeList();
-      html += '<h2 style="font-size:1.05rem;font-weight:800;color:var(--head);margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)">'
-            + hm[1] + ' ' + sanitize(hm[2]) + '</h2>';
-      continue;
-    }
-    if (reSection.test(line)) {
-      closeList();
-      html += '<h2 style="font-size:1.05rem;font-weight:800;color:var(--head);margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)">'
-            + sanitize(line) + '</h2>';
-      continue;
-    }
+    // Emoji section heading
+    const hm = line.match(/^([\u{1F300}-\u{1FFFF}\u{2600}-\u{27BF}\u2728\u2B50\u{1F4CC}\u{1F4A1}\u{1F680}\u{1F3AF}\u{1F528}\u2705\u274C]+)\s+(.+)/u);
+    if (hm) { closeList(); html += '<h2 style="font-size:1.05rem;font-weight:800;color:var(--head);margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)">' + hm[1] + ' ' + sanitize(hm[2]) + '</h2>'; continue; }
 
-    const nm = line.match(reNumbered);
+    // ALL CAPS colon header
+    if (/^[A-Z][A-Za-z ]{3,}:$/.test(line)) { closeList(); html += '<h2 style="font-size:1.05rem;font-weight:800;color:var(--head);margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)">' + sanitize(line) + '</h2>'; continue; }
+
+    // Numbered list
+    const nm = line.match(/^(\d+)[.)]\s*(.+)/);
     if (nm) {
-      if (!inList || listType !== 'ol') {
-        closeList();
-        html += '<ol style="margin:10px 0 16px;padding-left:24px;color:var(--soft);font-size:.92rem;line-height:1.85">';
-        inList = true; listType = 'ol';
-      }
-      html += '<li style="margin-bottom:6px">' + sanitize(nm[2]) + '</li>';
-      continue;
+      if (!inList || listType !== 'ol') { closeList(); html += '<ol style="margin:10px 0 16px;padding-left:24px;color:var(--soft);font-size:.92rem;line-height:1.85">'; inList = true; listType = 'ol'; }
+      html += '<li style="margin-bottom:6px">' + sanitize(nm[2]) + '</li>'; continue;
     }
 
-    const bm = line.match(reBullet);
+    // Bullet list
+    const bm = line.match(/^[\u2022\u2023\u2043\u2212\*\-\u2192\u27A4\u25BA]+\s+(.+)/u);
     if (bm) {
-      if (!inList || listType !== 'ul') {
-        closeList();
-        html += '<ul style="margin:10px 0 16px;padding-left:18px;color:var(--soft);font-size:.92rem;line-height:1.85;list-style:none">';
-        inList = true; listType = 'ul';
-      }
-      html += '<li style="margin-bottom:6px"><span style="color:var(--stu);margin-right:8px">&#9658;</span>' + sanitize(bm[1]) + '</li>';
-      continue;
+      if (!inList || listType !== 'ul') { closeList(); html += '<ul style="margin:10px 0 16px;padding-left:18px;color:var(--soft);font-size:.92rem;line-height:1.85;list-style:none">'; inList = true; listType = 'ul'; }
+      html += '<li style="margin-bottom:6px"><span style="color:var(--stu);margin-right:8px">&#9658;</span>' + sanitize(bm[1]) + '</li>'; continue;
     }
 
-    if (reNote.test(line)) {
+    // Note callout
+    if (/^[\u26A0\u2757\u{1F4A1}\u{1F4CC}\u{1F514}]/u.test(line)) {
       closeList();
-      html += '<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-left:3px solid var(--cyan);'
-            + 'border-radius:0 var(--r-sm) var(--r-sm) 0;padding:12px 16px;margin:16px 0;font-size:.84rem;color:var(--soft);line-height:1.65">'
-            + '<span style="color:var(--cyan);font-weight:700;margin-right:6px">&#128204; Note:</span>' + sanitize(line) + '</div>';
+      html += '<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-left:3px solid var(--cyan);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:12px 16px;margin:16px 0;font-size:.84rem;color:var(--soft);line-height:1.65"><span style="color:var(--cyan);font-weight:700;margin-right:6px">&#128204; Note:</span>' + sanitize(line) + '</div>';
       continue;
     }
 
     closeList();
     html += '<p style="font-size:.92rem;color:var(--soft);line-height:1.85;margin-bottom:14px">' + sanitize(line) + '</p>';
   }
-
   closeList(); closeCode();
   return html;
 }
