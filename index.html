@@ -1899,6 +1899,57 @@ select.inp option{background:var(--ink3)}
   .w3-sidebar{display:none}
   .w3-lesson-wrap{padding:20px 18px}
 }
+
+/* ═══════════════════════════════════════════════════
+   CHRONOCODE — 4D timeline assessment styles
+   ═══════════════════════════════════════════════════ */
+.chrono-subtabs{display:flex;gap:4px;margin:16px 0 18px;border-bottom:1px solid var(--line)}
+.chrono-subtab{padding:9px 16px;font-size:.78rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.chrono-subtab.active{color:var(--stu);border-bottom-color:var(--stu)}
+.chrono-view{display:none}
+.chrono-view.active{display:block}
+
+.chrono-stage-card{position:relative;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.chrono-stage-card .cs-num{position:absolute;top:-10px;left:14px;background:var(--stu);color:#04231a;font-size:.68rem;font-weight:800;padding:2px 10px;border-radius:20px}
+.chrono-stage-card .cs-remove{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer}
+.chrono-stage-card .cs-remove:hover{color:var(--danger)}
+
+.chrono-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.chrono-challenge-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:10px}
+.chrono-challenge-card h3{margin:0;font-size:.95rem;color:var(--head)}
+.chrono-challenge-card p{margin:0;font-size:.76rem;color:var(--muted);line-height:1.5}
+.chrono-meta-row{display:flex;gap:8px;font-size:.68rem;color:var(--soft);font-family:var(--ff-mono)}
+
+.chrono-shell{min-height:60vh}
+.chrono-live-shell{display:grid;grid-template-columns:300px 1fr;min-height:600px}
+.chrono-req-panel{border-right:1px solid var(--line);background:var(--ink2);padding:20px;overflow-y:auto}
+.chrono-timer-box{text-align:center;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--ink);margin-bottom:16px}
+.chrono-timer-big{font-family:var(--ff-mono);font-size:1.8rem;font-weight:700;color:var(--stu)}
+.chrono-timer-lbl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.chrono-stage-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px}
+.chrono-stage-pill{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;border:1px solid var(--line);color:var(--muted)}
+.chrono-stage-pill.current{background:var(--stu);color:#04231a;border-color:var(--stu)}
+.chrono-stage-pill.past{background:rgba(0,229,160,.12);color:var(--stu);border-color:rgba(0,229,160,.3)}
+.chrono-req-block{border-left:2px solid var(--stu);padding-left:12px;margin-bottom:16px}
+.chrono-req-block h4{margin:0 0 6px;font-size:.8rem;color:var(--stu)}
+.chrono-req-block .body{font-size:.76rem;color:var(--soft);line-height:1.55;white-space:pre-wrap}
+.chrono-flash{animation:chronoFlash 1.4s ease}
+@keyframes chronoFlash{0%{background:rgba(0,229,160,.18)}100%{background:transparent}}
+
+.chrono-editor-col{display:flex;flex-direction:column;min-height:600px}
+.chrono-editor-toolbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--ink2)}
+.chrono-console{height:150px;border-top:1px solid var(--line);background:#0c0e14;color:#cfe3ff;font-family:var(--ff-mono);font-size:.75rem;padding:10px 14px;overflow-y:auto;white-space:pre-wrap}
+
+.chrono-scrub-wrap{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.chrono-ai-box{border:1px solid rgba(0,229,160,.25);border-radius:var(--r-lg);padding:18px;background:rgba(0,229,160,.05)}
+.chrono-score-ring{width:78px;height:78px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;margin:0 auto 12px}
+.chrono-ev-row{display:flex;justify-content:space-between;font-size:.72rem;padding:6px 0;border-bottom:1px solid var(--line)}
+.chrono-ev-row .v{color:var(--stu);font-weight:700}
+.chrono-event-list{max-height:180px;overflow-y:auto;font-size:.7rem;color:var(--muted)}
+.chrono-event-list .ev{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line)}
+.hidden{display:none !important}
+@media(max-width:900px){.chrono-live-shell{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -2021,6 +2072,7 @@ select.inp option{background:var(--ink3)}
       <div class="sbar-item" id="sb-createexam" onclick="profNav('createexam')"><span class="sbar-icon">🗂️</span>Create Exam</div>
       <div class="sbar-item" id="sb-violations" onclick="profNav('violations')"><span class="sbar-icon">🚨</span>Violations<span class="sbar-badge" id="vio-count-badge">0</span></div>
       <div class="sbar-item" id="sb-results"    onclick="profNav('presults')"><span class="sbar-icon">📈</span>Results</div>
+      <div class="sbar-item" id="sb-chronocode" onclick="openChronoAdmin()"><span class="sbar-icon">⏱️</span>ChronoCode</div>
 
 
       <div class="sbar-section">University</div>
@@ -2693,6 +2745,78 @@ upgrade-insecure-requests;</pre>
         </div>
       </div>
 
+
+      <!-- ═══ CHRONOCODE PANEL (Professor) ═══ -->
+      <div class="prof-panel" id="pp-chronocode">
+        <div class="sec-hd">
+          <div><h2>⏱️ ChronoCode</h2><p>4D coding challenges — requirements evolve on a timeline, AI scores adaptability</p></div>
+          <button class="btn btn-a btn-sm" onclick="chronoAdminNav('builder')">+ New Challenge</button>
+        </div>
+
+        <div class="chrono-subtabs">
+          <div class="chrono-subtab active" id="cst-list" onclick="chronoAdminNav('list')">📋 Challenges</div>
+          <div class="chrono-subtab" id="cst-builder" onclick="chronoAdminNav('builder')">🛠 Builder</div>
+          <div class="chrono-subtab" id="cst-sessions" onclick="chronoAdminNav('sessions')">🎬 Sessions & Replay</div>
+        </div>
+
+        <!-- LIST view -->
+        <div class="chrono-view active" id="cv-list">
+          <div class="chrono-card-grid" id="chrono-challenge-list">Loading…</div>
+        </div>
+
+        <!-- BUILDER view -->
+        <div class="chrono-view" id="cv-builder">
+          <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;max-width:760px">
+            <div class="field"><label>Challenge Title</label><input class="inp" id="cc-title" placeholder="e.g. Adaptive Inventory Tracker"></div>
+            <div class="field"><label>Language</label>
+              <select class="inp" id="cc-lang">
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="c">C</option>
+              </select>
+            </div>
+            <div class="field"><label>Overview</label><textarea class="inp" id="cc-desc" style="min-height:60px" placeholder="Brief context shown before the session starts…"></textarea></div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px">
+              <h3 style="font-size:.9rem;color:var(--head);margin:0">Timeline Stages</h3>
+              <button class="btn btn-ghost btn-sm" onclick="chronoAddStage()">+ Add Stage</button>
+            </div>
+            <div id="chrono-stage-list"></div>
+
+            <div style="display:flex;gap:10px;margin-top:18px">
+              <button class="btn btn-a" onclick="chronoSaveChallenge()">Save Challenge</button>
+              <button class="btn btn-ghost" onclick="chronoAdminNav('list')">Cancel</button>
+            </div>
+            <div id="chrono-builder-msg" style="margin-top:10px;font-size:.8rem"></div>
+          </div>
+        </div>
+
+        <!-- SESSIONS / REPLAY view -->
+        <div class="chrono-view" id="cv-sessions">
+          <div style="display:grid;grid-template-columns:1fr 360px;gap:18px">
+            <div>
+              <table class="data-table" style="margin-bottom:16px">
+                <thead><tr><th>Candidate</th><th>Challenge</th><th>Status</th><th>Started</th><th></th></tr></thead>
+                <tbody id="chrono-session-table"><tr><td colspan="5" style="color:var(--muted)">Loading…</td></tr></tbody>
+              </table>
+              <div class="chrono-scrub-wrap" id="chrono-replay-wrap" style="display:none">
+                <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:8px">
+                  <span id="chrono-scrub-label">t = 0s</span><span id="chrono-scrub-stage">Stage —</span>
+                </div>
+                <input type="range" id="chrono-scrubber" min="0" max="0" value="0">
+                <div id="chrono-replay-monaco" style="height:360px;margin-top:12px;border:1px solid var(--line);border-radius:var(--r)"></div>
+              </div>
+            </div>
+            <div>
+              <div class="chrono-ai-box" id="chrono-ai-box"><div style="color:var(--muted);font-size:.8rem">Select a session to view its replay and AI adaptability score.</div></div>
+              <div id="chrono-event-log" style="margin-top:16px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /prof-content -->
   </div><!-- /prof-main -->
 </div>
@@ -3003,6 +3127,7 @@ upgrade-insecure-requests;</pre>
     <div class="stu-nav-tab active" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
     <div class="stu-nav-tab" onclick="showStuSection('my-learning')">📖 My Learning</div>
     <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+    <div class="stu-nav-tab" onclick="openChronoStudent()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
     <div class="sec-hd">
@@ -3180,6 +3305,7 @@ upgrade-insecure-requests;</pre>
     <div class="stu-nav-tab" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
     <div class="stu-nav-tab active" onclick="showStuSection('my-learning')">📖 My Learning</div>
     <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+    <div class="stu-nav-tab" onclick="openChronoStudent()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
     <div class="sec-hd">
@@ -3218,6 +3344,74 @@ upgrade-insecure-requests;</pre>
       <button class="btn btn-g" onclick="verifyCert()">Verify</button>
     </div>
     <div id="verify-result" style="margin-top:20px"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: CHRONOCODE CATALOG (Student)
+     ══════════════════════════════════════════════════ -->
+<div id="page-chrono-catalog" class="page">
+  <div class="topbar">
+    <div class="tb-brand">Coding<em>Hub</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">ChronoCode</span></div>
+    <div class="tb-right">
+      <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()">← Back</button>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div style="padding:28px 32px">
+    <div class="sec-hd">
+      <div><h2>⏱️ ChronoCode Challenges</h2><p>Requirements evolve on a timeline. Adapt your code as the spec changes — every edit is recorded and AI-scored for adaptability.</p></div>
+    </div>
+    <div class="chrono-card-grid" id="chrono-catalog-grid">
+      <div style="color:var(--muted);font-size:.85rem">Loading challenges…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: CHRONOCODE TAKE SESSION (Student)
+     ══════════════════════════════════════════════════ -->
+<div id="page-chrono-take" class="page">
+  <div class="chrono-shell" id="chrono-pre-start">
+    <div style="max-width:560px;margin:60px auto;padding:0 24px">
+      <button class="btn btn-ghost btn-sm" onclick="openChronoStudent()" style="margin-bottom:16px">← Back to Challenges</button>
+      <h2 id="chrono-take-title" style="color:var(--head)">Challenge</h2>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px" id="chrono-take-desc"></p>
+      <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px">
+        <div class="field"><label>Your Name</label><input class="inp" id="chrono-cand-name" placeholder="Your full name"></div>
+        <button class="btn btn-a" onclick="chronoBeginSession()">Begin Session →</button>
+      </div>
+      <p style="margin-top:16px;color:var(--muted);font-size:.75rem" id="chrono-take-meta"></p>
+    </div>
+  </div>
+
+  <div class="chrono-live-shell hidden" id="chrono-live-shell">
+    <div class="chrono-req-panel">
+      <div class="chrono-timer-box"><div class="chrono-timer-big" id="chrono-timer">00:00</div><div class="chrono-timer-lbl">Elapsed</div></div>
+      <div class="chrono-stage-pills" id="chrono-stage-pills"></div>
+      <div id="chrono-req-feed"></div>
+      <button class="btn btn-r btn-sm" style="width:100%;margin-top:14px" onclick="chronoSubmitSession()">Submit & End Session</button>
+    </div>
+    <div class="chrono-editor-col">
+      <div class="chrono-editor-toolbar">
+        <span id="chrono-editor-lang-lbl" style="font-size:.75rem;color:var(--muted)"></span>
+        <button class="btn btn-ghost btn-sm" onclick="chronoRunCode()">▶ Run</button>
+      </div>
+      <div id="chrono-monaco-wrap" style="flex:1;min-height:300px"></div>
+      <div class="chrono-console" id="chrono-console">Output will appear here…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: CHRONOCODE RESULT (Student)
+     ══════════════════════════════════════════════════ -->
+<div id="page-chrono-result" class="page">
+  <div style="max-width:520px;margin:80px auto;text-align:center;padding:0 24px">
+    <div style="font-size:2.4rem;margin-bottom:10px">✅</div>
+    <h2 style="color:var(--head)">Session Submitted</h2>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:24px">Your session has been recorded. Your professor can review the full replay and AI adaptability score.</p>
+    <button class="btn btn-ghost" onclick="openChronoStudent()">Back to Challenges</button>
   </div>
 </div>
 
@@ -3270,6 +3464,11 @@ const FB_CONFIG = {
   messagingSenderId: "668902009818",                        // Cloud Messaging sender ID
   appId:             "1:668902009818:web:0d11d663d85d376d96aee3"            // App ID
 };
+
+// ── ChronoCode: AI Adaptation Evaluator endpoint ──────────────
+// Deploy the Cloud Function in /functions/chronocode-eval (see README)
+// and paste its URL here. The Anthropic API key lives server-side only.
+const CHRONO_AI_ENDPOINT = "https://REGION-YOUR_PROJECT_ID.cloudfunctions.net/evaluateAdaptation";
 
 // ── Python Engine via pyrunner.html iframe ───────────────────
 var _pyFrame=null, _pyReady=false, _pyCbs={}, _pyId=0, _pyReadyQ=[];
@@ -9539,6 +9738,494 @@ if (window._pyReadyQ) {
 } else {
   // Already ready
   if (_pyReady) setTimeout(() => w3SetPyReady(true), 100);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHRONOCODE MODULE
+   4D coding assessment: timeline-based evolving requirements,
+   live snapshot recording, replay viewer, AI adaptability scoring.
+
+   Reuses CodingHub's existing infrastructure:
+   - db / fsReady() for Firestore (falls back to in-memory store
+     when Firebase isn't configured, same philosophy as demo mode)
+   - pistonExecute() for code execution (Pyodide/Judge0)
+   - sanitize(), toast(), LANG_MONACO from the main app
+   - the same Monaco AMD loader (window._monacoLoaderReady)
+   New Firestore collections: chrono_challenges, chrono_sessions
+   (+ chrono_sessions/{id}/snapshots subcollection)
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── Local fallback store (used only when Firebase isn't configured) ──
+let chronoLocal = { challenges: {}, sessions: {} };
+function chronoUid(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
+
+// ── Data layer ──────────────────────────────────────────────────
+async function chronoCreateChallenge(data) {
+  data.createdAt = Date.now();
+  data.createdBy = (currentUser && currentUser.uid) || 'demo';
+  if (fsReady()) {
+    const ref = await db.collection('chrono_challenges').add(data);
+    return ref.id;
+  }
+  const id = chronoUid('ch');
+  chronoLocal.challenges[id] = Object.assign({}, data, { id });
+  return id;
+}
+async function chronoListChallenges() {
+  if (fsReady()) {
+    const snap = await db.collection('chrono_challenges').get();
+    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  }
+  return Object.values(chronoLocal.challenges);
+}
+async function chronoGetChallenge(id) {
+  if (fsReady()) {
+    const doc = await db.collection('chrono_challenges').doc(id).get();
+    return doc.exists ? Object.assign({ id: doc.id }, doc.data()) : null;
+  }
+  return chronoLocal.challenges[id] || null;
+}
+async function chronoCreateSession(data) {
+  data.startedAt = Date.now();
+  data.status = 'live';
+  if (fsReady()) {
+    const ref = await db.collection('chrono_sessions').add(data);
+    return ref.id;
+  }
+  const id = chronoUid('sess');
+  chronoLocal.sessions[id] = Object.assign({}, data, { id, snapshots: [] });
+  return id;
+}
+async function chronoUpdateSession(id, patch) {
+  if (fsReady()) { await db.collection('chrono_sessions').doc(id).update(patch); return; }
+  chronoLocal.sessions[id] = Object.assign({}, chronoLocal.sessions[id], patch);
+}
+async function chronoGetSession(id) {
+  if (fsReady()) {
+    const d = await db.collection('chrono_sessions').doc(id).get();
+    return d.exists ? Object.assign({ id: d.id }, d.data()) : null;
+  }
+  return chronoLocal.sessions[id] || null;
+}
+async function chronoListSessions() {
+  if (fsReady()) {
+    const snap = await db.collection('chrono_sessions').get();
+    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  }
+  return Object.values(chronoLocal.sessions);
+}
+async function chronoAddSnapshot(sessionId, snap) {
+  snap.ts = Date.now();
+  if (fsReady()) {
+    await db.collection('chrono_sessions').doc(sessionId).collection('snapshots').add(snap);
+    return;
+  }
+  chronoLocal.sessions[sessionId] = chronoLocal.sessions[sessionId] || { snapshots: [] };
+  chronoLocal.sessions[sessionId].snapshots = chronoLocal.sessions[sessionId].snapshots || [];
+  chronoLocal.sessions[sessionId].snapshots.push(snap);
+}
+async function chronoListSnapshots(sessionId) {
+  if (fsReady()) {
+    const snap = await db.collection('chrono_sessions').doc(sessionId)
+      .collection('snapshots').orderBy('elapsedSeconds', 'asc').get();
+    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  }
+  return ((chronoLocal.sessions[sessionId] || {}).snapshots || []).slice().sort((a, b) => a.elapsedSeconds - b.elapsedSeconds);
+}
+
+function chronoFmtDuration(sec) { const m = Math.floor(sec / 60), s = sec % 60; return m + 'm ' + s + 's'; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PROFESSOR SIDE — Builder, Challenge List, Sessions/Replay
+   ═══════════════════════════════════════════════════════════════ */
+function openChronoAdmin() {
+  document.querySelectorAll('.sbar-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.prof-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('sb-chronocode')?.classList.add('active');
+  document.getElementById('pp-chronocode')?.classList.add('active');
+  chronoAdminNav('list');
+}
+function chronoAdminNav(view) {
+  document.querySelectorAll('.chrono-subtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.chrono-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('cst-' + view)?.classList.add('active');
+  document.getElementById('cv-' + view)?.classList.add('active');
+  if (view === 'list') chronoRenderChallengeList();
+  if (view === 'builder') chronoInitBuilder();
+  if (view === 'sessions') chronoRenderSessionsTable();
+}
+
+async function chronoRenderChallengeList() {
+  const el = document.getElementById('chrono-challenge-list');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted)">Loading…</div>';
+  const list = await chronoListChallenges();
+  if (!list.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.82rem">No ChronoCode challenges yet. Click "+ New Challenge" to build a timeline.</div>';
+    return;
+  }
+  el.innerHTML = list.map(c => `
+    <div class="chrono-challenge-card">
+      <h3>${sanitize(c.title)}</h3>
+      <p>${sanitize(c.description || '')}</p>
+      <div class="chrono-meta-row"><span>${(c.stages || []).length} stages</span><span>·</span><span>${sanitize(c.language || '')}</span></div>
+      <div style="font-size:.7rem;color:var(--muted)">Visible to students in their ChronoCode tab</div>
+    </div>
+  `).join('');
+}
+
+let chronoStageCount = 0;
+function chronoInitBuilder() {
+  document.getElementById('cc-title').value = '';
+  document.getElementById('cc-desc').value = '';
+  document.getElementById('chrono-stage-list').innerHTML = '';
+  document.getElementById('chrono-builder-msg').innerHTML = '';
+  chronoStageCount = 0;
+  chronoAddStage({ atSeconds: 0, title: 'Initial Requirement', requirementText: 'Describe the starting problem statement.' });
+  chronoAddStage({ atSeconds: 240, title: 'Requirement Change #1', requirementText: 'Describe how the spec evolves at 4 minutes.' });
+  chronoAddStage({ atSeconds: 480, title: 'Requirement Change #2', requirementText: 'Describe a further twist at 8 minutes.' });
+}
+function chronoAddStage(prefill) {
+  chronoStageCount++;
+  const idx = chronoStageCount;
+  const div = document.createElement('div');
+  div.className = 'chrono-stage-card';
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <div class="cs-num">Stage ${idx}</div>
+    <button class="cs-remove" onclick="this.parentElement.remove()">×</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Appears at (seconds)</label><input class="inp cs-at" type="number" min="0" value="${(prefill && prefill.atSeconds) || 0}"></div>
+      <div class="field"><label>Stage Title</label><input class="inp cs-title" value="${sanitize((prefill && prefill.title) || '')}"></div>
+    </div>
+    <div class="field"><label>Requirement Text</label><textarea class="inp cs-req" style="min-height:50px">${sanitize((prefill && prefill.requirementText) || '')}</textarea></div>
+  `;
+  document.getElementById('chrono-stage-list').appendChild(div);
+}
+async function chronoSaveChallenge() {
+  const title = document.getElementById('cc-title').value.trim();
+  const language = document.getElementById('cc-lang').value;
+  const description = document.getElementById('cc-desc').value.trim();
+  const cards = Array.from(document.querySelectorAll('#chrono-stage-list .chrono-stage-card'));
+  if (!title || !cards.length) {
+    document.getElementById('chrono-builder-msg').innerHTML = '<span style="color:var(--danger)">Add a title and at least one stage.</span>';
+    return;
+  }
+  const stages = cards.map(card => ({
+    atSeconds: parseInt(card.querySelector('.cs-at').value || '0', 10),
+    title: card.querySelector('.cs-title').value.trim(),
+    requirementText: card.querySelector('.cs-req').value.trim()
+  })).sort((a, b) => a.atSeconds - b.atSeconds);
+
+  try {
+    await chronoCreateChallenge({ title, language, description, stages });
+    toast('ChronoCode challenge saved!', 'ok');
+    chronoAdminNav('list');
+  } catch (e) {
+    document.getElementById('chrono-builder-msg').innerHTML = '<span style="color:var(--danger)">Error: ' + sanitize(e.message || String(e)) + '</span>';
+  }
+}
+
+async function chronoRenderSessionsTable() {
+  const tbody = document.getElementById('chrono-session-table');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Loading…</td></tr>';
+  const sessions = await chronoListSessions();
+  if (!sessions.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">No ChronoCode sessions yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = sessions.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0)).map(s => `
+    <tr>
+      <td>${sanitize(s.candidateName || 'Anonymous')}</td>
+      <td>${sanitize(s.challengeTitle || '')}</td>
+      <td>${sanitize(s.status || 'pending')}</td>
+      <td>${s.startedAt ? new Date(s.startedAt).toLocaleString() : '—'}</td>
+      <td><span style="color:var(--blue);cursor:pointer" onclick="chronoOpenReplay('${s.id}')">View Replay →</span></td>
+    </tr>`).join('');
+}
+
+let chronoReplayEditor = null;
+async function chronoOpenReplay(sessionId) {
+  const session = await chronoGetSession(sessionId);
+  if (!session) { toast('Session not found', 'err'); return; }
+  const snapshots = await chronoListSnapshots(sessionId);
+  const wrap = document.getElementById('chrono-replay-wrap');
+  wrap.style.display = 'block';
+  const scrubber = document.getElementById('chrono-scrubber');
+  scrubber.max = Math.max(0, snapshots.length - 1);
+  scrubber.value = 0;
+
+  function mountReplay() {
+    require(['vs/editor/editor.main'], function (mono) {
+      const host = document.getElementById('chrono-replay-monaco');
+      host.innerHTML = '';
+      if (chronoReplayEditor) { try { chronoReplayEditor.dispose(); } catch (e) {} }
+      chronoReplayEditor = mono.editor.create(host, {
+        value: snapshots.length ? (snapshots[0].code || '') : '',
+        language: LANG_MONACO[session.language] || 'python',
+        theme: 'vs-dark', readOnly: true, automaticLayout: true, fontSize: 13, minimap: { enabled: false }
+      });
+    });
+  }
+  if (snapshots.length) {
+    if (window._monacoLoaderReady) {
+      mountReplay();
+    } else {
+      const prev = window._monacoLoaderResolve;
+      window._monacoLoaderResolve = function () { if (prev) prev(); mountReplay(); };
+    }
+  } else {
+    document.getElementById('chrono-replay-monaco').innerHTML = '<div style="color:var(--muted);padding:20px">No snapshots recorded.</div>';
+  }
+
+  scrubber.oninput = () => {
+    const i = parseInt(scrubber.value, 10);
+    const s = snapshots[i];
+    if (!s || !chronoReplayEditor) return;
+    chronoReplayEditor.setValue(s.code || '');
+    document.getElementById('chrono-scrub-label').textContent = 't = ' + chronoFmtDuration(s.elapsedSeconds || 0);
+    document.getElementById('chrono-scrub-stage').textContent = 'Stage ' + ((s.stageIndex ?? 0) + 1);
+  };
+
+  document.getElementById('chrono-event-log').innerHTML =
+    '<h3 style="font-size:.8rem;color:var(--head)">Event Log</h3><div class="chrono-event-list">' +
+    (session.events || []).map(e => `<div class="ev"><span>${sanitize(e.type)}${e.title ? (' — ' + sanitize(e.title)) : ''}</span><span>${chronoFmtDuration(e.elapsedSeconds || 0)}</span></div>`).join('') +
+    '</div>';
+
+  chronoRenderAIBox(session);
+}
+
+function chronoRenderAIBox(session) {
+  const box = document.getElementById('chrono-ai-box');
+  if (!box) return;
+  if (session.status !== 'evaluated' || !session.aiEvaluation) {
+    box.innerHTML = '<div style="color:var(--muted);font-size:.8rem">' +
+      (session.status === 'submitted'
+        ? 'AI evaluation pending or unavailable (requires the Cloud Function — see /functions/chronocode-eval).'
+        : 'Session not yet submitted.') + '</div>';
+    return;
+  }
+  const ev = session.aiEvaluation;
+  const score = Math.round(ev.adaptabilityScore ?? 0);
+  const color = score >= 75 ? 'var(--green)' : score >= 45 ? 'var(--amber)' : 'var(--red)';
+  box.innerHTML = `
+    <div class="chrono-score-ring" style="background:conic-gradient(${color} ${score * 3.6}deg, var(--line) 0deg)">
+      <div style="background:var(--ink2);width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center">${score}</div>
+    </div>
+    <div style="text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:12px">Adaptability Score</div>
+    ${(ev.dimensions || []).map(d => `<div class="chrono-ev-row"><span>${sanitize(d.name)}</span><span class="v">${sanitize(String(d.score))}</span></div>`).join('')}
+    <p style="font-size:.74rem;color:var(--soft);line-height:1.55;margin-top:12px">${sanitize(ev.summary || '')}</p>
+  `;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STUDENT SIDE — Catalog, Take Session (timeline + editor), Result
+   ═══════════════════════════════════════════════════════════════ */
+function openChronoStudent() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-chrono-catalog').classList.add('active');
+  chronoRenderCatalogGrid();
+}
+async function chronoRenderCatalogGrid() {
+  const el = document.getElementById('chrono-catalog-grid');
+  el.innerHTML = '<div style="color:var(--muted);font-size:.85rem">Loading…</div>';
+  const list = await chronoListChallenges();
+  if (!list.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.85rem">No ChronoCode challenges available yet. Ask your professor to create one.</div>';
+    return;
+  }
+  el.innerHTML = list.map(c => `
+    <div class="chrono-challenge-card">
+      <h3>${sanitize(c.title)}</h3>
+      <p>${sanitize(c.description || '')}</p>
+      <div class="chrono-meta-row"><span>${(c.stages || []).length} stages</span><span>·</span><span>${sanitize(c.language || '')}</span></div>
+      <button class="btn btn-a btn-sm" onclick="openChronoTake('${c.id}')">Start →</button>
+    </div>
+  `).join('');
+}
+
+let chronoCurrentChallenge = null;
+let chronoCurrentSessionId = null;
+let chronoEditor = null;
+let chronoSessionTimer = null;
+let chronoSnapshotTimer = null;
+
+async function openChronoTake(challengeId) {
+  showPage('chrono-take');
+  document.getElementById('chrono-pre-start').classList.remove('hidden');
+  document.getElementById('chrono-live-shell').classList.add('hidden');
+  const ch = await chronoGetChallenge(challengeId);
+  if (!ch) { toast('Challenge not found', 'err'); openChronoStudent(); return; }
+  chronoCurrentChallenge = ch;
+  document.getElementById('chrono-take-title').textContent = ch.title;
+  document.getElementById('chrono-take-desc').textContent = ch.description || '';
+  document.getElementById('chrono-take-meta').textContent = `${(ch.stages || []).length} timeline stages · ${ch.language}`;
+}
+
+function chronoStarterFor(lang) {
+  return {
+    python: "# Start coding here\n\ndef solve():\n    pass\n",
+    javascript: "// Start coding here\n\nfunction solve() {\n\n}\n",
+    java: "public class Main {\n  public static void main(String[] args) {\n\n  }\n}\n",
+    cpp: "#include <iostream>\nusing namespace std;\n\nint main(){\n\n  return 0;\n}\n",
+    c: "#include <stdio.h>\n\nint main(){\n\n  return 0;\n}\n"
+  }[lang] || '';
+}
+
+async function chronoBeginSession() {
+  const name = document.getElementById('chrono-cand-name').value.trim()
+    || (currentUser && currentUser.displayName) || 'Anonymous';
+  const ch = chronoCurrentChallenge;
+  if (!ch) return;
+  const sessionId = await chronoCreateSession({
+    challengeId: ch.id, challengeTitle: ch.title, language: ch.language,
+    candidateName: name, candidateUid: (currentUser && currentUser.uid) || null,
+    currentStageIndex: 0, events: [{ type: 'session_start', elapsedSeconds: 0, ts: Date.now() }]
+  });
+  chronoCurrentSessionId = sessionId;
+  document.getElementById('chrono-pre-start').classList.add('hidden');
+  document.getElementById('chrono-live-shell').classList.remove('hidden');
+  document.getElementById('chrono-editor-lang-lbl').textContent = ch.language + ' · auto-saving every 20s';
+  document.getElementById('chrono-req-feed').innerHTML = '';
+  chronoLoadMonaco(chronoStarterFor(ch.language), ch.language);
+  setTimeout(() => chronoBeginTimeline(ch, sessionId), 500);
+}
+
+function chronoLoadMonaco(initialCode, lang) {
+  function init() {
+    require(['vs/editor/editor.main'], function (mono) {
+      const host = document.getElementById('chrono-monaco-wrap');
+      if (!host) return;
+      host.innerHTML = '';
+      if (chronoEditor) { try { chronoEditor.dispose(); } catch (e) {} }
+      chronoEditor = mono.editor.create(host, {
+        value: initialCode, language: LANG_MONACO[lang] || 'python', theme: 'vs-dark',
+        fontSize: 14, fontFamily: "'DM Mono', monospace", minimap: { enabled: false },
+        automaticLayout: true, wordWrap: 'on', tabSize: 4, insertSpaces: true
+      });
+    });
+  }
+  if (window._monacoLoaderReady) {
+    init();
+  } else if (window._monacoLoaderFailed) {
+    chronoMonacoFallback(initialCode);
+  } else {
+    const prevResolve = window._monacoLoaderResolve;
+    window._monacoLoaderResolve = function () { if (prevResolve) prevResolve(); init(); };
+    setTimeout(() => { if (!chronoEditor) chronoMonacoFallback(initialCode); }, 15000);
+  }
+}
+function chronoMonacoFallback(code) {
+  const host = document.getElementById('chrono-monaco-wrap');
+  if (!host) return;
+  host.innerHTML = `<textarea id="chrono-fallback-ta" style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;font-family:'DM Mono',monospace;font-size:14px;padding:14px;border:none;outline:none;resize:none;box-sizing:border-box"></textarea>`;
+  const ta = document.getElementById('chrono-fallback-ta');
+  ta.value = code;
+  chronoEditor = { getValue: () => ta.value, setValue: (v) => { ta.value = v; }, dispose: () => {} };
+  toast('Editor ready (lightweight mode)', 'info', 4000);
+}
+
+function chronoBeginTimeline(challenge, sessionId) {
+  let elapsed = 0, currentStageIndex = -1;
+  const events = [];
+
+  function renderPills() {
+    document.getElementById('chrono-stage-pills').innerHTML = challenge.stages.map((s, i) => {
+      const cls = i < currentStageIndex ? 'past' : (i === currentStageIndex ? 'current' : '');
+      return `<div class="chrono-stage-pill ${cls}" title="${sanitize(s.title)}">${i + 1}</div>`;
+    }).join('');
+  }
+  function pushReq(stage, idx) {
+    const feed = document.getElementById('chrono-req-feed');
+    const block = document.createElement('div');
+    block.className = 'chrono-req-block chrono-flash';
+    block.innerHTML = `<h4>Stage ${idx + 1}: ${sanitize(stage.title)}</h4><div class="body">${sanitize(stage.requirementText)}</div>`;
+    feed.prepend(block);
+    events.push({ type: 'stage_change', stageIndex: idx, elapsedSeconds: elapsed, ts: Date.now(), title: stage.title });
+    chronoUpdateSession(sessionId, { currentStageIndex: idx, events });
+    chronoAddSnapshot(sessionId, { code: chronoEditor ? chronoEditor.getValue() : '', elapsedSeconds: elapsed, stageIndex: idx, trigger: 'stage_change' });
+  }
+
+  chronoSessionTimer = setInterval(() => {
+    elapsed++;
+    const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const ss = String(elapsed % 60).padStart(2, '0');
+    const td = document.getElementById('chrono-timer');
+    if (td) td.textContent = mm + ':' + ss;
+    const nextIdx = challenge.stages.findIndex((s, i) => i > currentStageIndex && s.atSeconds <= elapsed);
+    if (nextIdx !== -1) { currentStageIndex = nextIdx; renderPills(); pushReq(challenge.stages[nextIdx], nextIdx); }
+  }, 1000);
+
+  if (challenge.stages.length && challenge.stages[0].atSeconds <= 0) {
+    currentStageIndex = 0; renderPills(); pushReq(challenge.stages[0], 0);
+  }
+
+  chronoSnapshotTimer = setInterval(() => {
+    if (!chronoEditor) return;
+    chronoAddSnapshot(sessionId, { code: chronoEditor.getValue(), elapsedSeconds: elapsed, stageIndex: currentStageIndex, trigger: 'interval' });
+  }, 20000);
+
+  window._chronoEnd = () => chronoEndSession(challenge, sessionId, () => elapsed, () => currentStageIndex, events);
+  window._chronoElapsedGetter = () => elapsed;
+  window._chronoStageGetter = () => currentStageIndex;
+  window._chronoEventsRef = events;
+}
+
+async function chronoRunCode() {
+  if (!chronoEditor) { toast('Editor still loading…', 'warn'); return; }
+  const out = document.getElementById('chrono-console');
+  out.textContent = 'Running…';
+  try {
+    const code = chronoEditor.getValue();
+    const result = await pistonExecute(code, chronoCurrentChallenge.language, '');
+    const r = result.run || {};
+    out.innerHTML = sanitize((r.stdout || '') + (r.stderr || '')) || 'No output.';
+    const elapsed = window._chronoElapsedGetter ? window._chronoElapsedGetter() : 0;
+    const stageIdx = window._chronoStageGetter ? window._chronoStageGetter() : 0;
+    if (window._chronoEventsRef) window._chronoEventsRef.push({ type: 'run', elapsedSeconds: elapsed, ts: Date.now() });
+    chronoAddSnapshot(chronoCurrentSessionId, { code, elapsedSeconds: elapsed, stageIndex: stageIdx, trigger: 'run' });
+  } catch (e) {
+    out.innerHTML = '<span style="color:var(--danger)">Execution failed: ' + sanitize(e.message || String(e)) + '</span>';
+  }
+}
+
+function chronoSubmitSession() {
+  if (window._chronoEnd) window._chronoEnd();
+}
+
+async function chronoEndSession(challenge, sessionId, elapsedGetter, stageGetter, events) {
+  clearInterval(chronoSessionTimer); clearInterval(chronoSnapshotTimer);
+  const elapsed = elapsedGetter(), currentStageIndex = stageGetter();
+  const finalCode = chronoEditor ? chronoEditor.getValue() : '';
+  events.push({ type: 'session_end', elapsedSeconds: elapsed, ts: Date.now() });
+  await chronoAddSnapshot(sessionId, { code: finalCode, elapsedSeconds: elapsed, stageIndex: currentStageIndex, trigger: 'submit' });
+  await chronoUpdateSession(sessionId, { status: 'submitted', finalCode, events, endedAt: Date.now() });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-chrono-result').classList.add('active');
+  chronoTriggerAIEval(sessionId, challenge).catch(e => console.warn('AI eval failed', e));
+}
+
+async function chronoTriggerAIEval(sessionId, challenge) {
+  const snapshots = await chronoListSnapshots(sessionId);
+  const session = await chronoGetSession(sessionId);
+  const payload = {
+    sessionId,
+    challenge: { title: challenge.title, stages: challenge.stages, language: challenge.language },
+    snapshots: snapshots.map(s => ({ elapsedSeconds: s.elapsedSeconds, stageIndex: s.stageIndex, trigger: s.trigger, code: s.code })),
+    events: (session && session.events) || []
+  };
+  try {
+    const res = await fetch(CHRONO_AI_ENDPOINT, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Eval endpoint returned ' + res.status);
+    const evalResult = await res.json();
+    await chronoUpdateSession(sessionId, { status: 'evaluated', aiEvaluation: evalResult });
+  } catch (e) {
+    // Graceful fallback: session stays "submitted" until the Cloud Function is deployed
+    console.warn('AI evaluation unavailable:', e.message);
+  }
 }
 
 </script>
