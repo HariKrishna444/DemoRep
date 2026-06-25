@@ -10,7 +10,10 @@
      jsDelivr) to avoid "Tracking Prevention blocked access to storage" errors
      that Edge/Safari ITP fire when jsDelivr tries cross-origin IndexedDB writes.
      If self-hosting, add CSP as an HTTP response header instead of a meta tag. -->
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
 /* ═══════════════════════════════════════════════════
    ROOT TOKENS
@@ -3426,39 +3429,32 @@ upgrade-insecure-requests;</pre>
 <!-- ══════════════════════════════════════════════════
      SCRIPTS
      ══════════════════════════════════════════════════ -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
 <script>
-// Load Monaco AMD loader as a same-origin Blob so Edge/Safari ITP never fires
-// "Tracking Prevention blocked access to storage" — cross-origin scripts trigger
-// it even if they don't actually USE storage, purely from the origin check.
-// Fetching the script text and re-injecting via Blob URL makes it appear same-origin.
-(function() {
-  const LOADER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js';
-  window._monacoLoaderReady = false;
-
-  fetch(LOADER_URL)
-    .then(r => {
-      if (!r.ok) throw new Error('fetch ' + r.status);
-      return r.text();
-    })
-    .then(src => {
-      const blob = new Blob([src], { type: 'application/javascript' });
-      const blobUrl = URL.createObjectURL(blob);
-      const s = document.createElement('script');
-      s.src = blobUrl;
-      s.onload = () => {
-        URL.revokeObjectURL(blobUrl);
-        window._monacoLoaderReady = true;
-        // Fire any queued loadMonaco() calls
-        if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve();
-      };
-      s.onerror = () => { window._monacoLoaderFailed = true; if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve(); };
-      document.head.appendChild(s);
-    })
-    .catch(() => { window._monacoLoaderFailed = true; if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve(); });
-})();
+// Load Monaco loader directly — faster than fetch-to-blob on GitHub Pages.
+// We inject it lazily after DOMContentLoaded so it never blocks the login paint.
+window._monacoLoaderReady = false;
+function _injectMonacoLoader() {
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js';
+  s.crossOrigin = 'anonymous';
+  s.onload = function() {
+    window._monacoLoaderReady = true;
+    if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve();
+  };
+  s.onerror = function() {
+    window._monacoLoaderFailed = true;
+    if (typeof window._monacoLoaderResolve === 'function') window._monacoLoaderResolve();
+  };
+  document.head.appendChild(s);
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _injectMonacoLoader);
+} else {
+  _injectMonacoLoader();
+}
 </script>
 
 <script>
@@ -3799,7 +3795,7 @@ async function initApp() {
       showPage('login');
       toast('🎮 Demo mode — Firebase not configured. All features work locally!','warn',6000);
     }
-  }, 2200);
+  }, 400);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -10078,8 +10074,8 @@ async function openChronoTake(challengeId) {
   chronoCurrentChallenge = ch;
   document.getElementById('chrono-take-title').textContent = ch.title;
   document.getElementById('chrono-take-desc').textContent = ch.description || '';
-  const durMins = Math.round((ch.totalDurationSecs || 900) / 60);
-  document.getElementById('chrono-take-meta').textContent = `${(ch.stages || []).length} timeline stages · ${ch.language} · ${durMins} minutes total`;
+  const durMins2 = Math.round((ch.totalDurationSecs || 900) / 60);
+  document.getElementById('chrono-take-meta').textContent = `${(ch.stages || []).length} timeline stages · ${ch.language} · ${durMins2} min`;
 }
 
 function chronoStarterFor(lang) {
@@ -10107,20 +10103,37 @@ async function chronoBeginSession() {
   document.getElementById('chrono-live-shell').classList.remove('hidden');
   document.getElementById('chrono-editor-lang-lbl').textContent = ch.language + ' · auto-saving every 20s';
   document.getElementById('chrono-req-feed').innerHTML = '';
-  chronoLoadMonaco(chronoStarterFor(ch.language), ch.language);
-  // Give Monaco time to mount into the now-visible DOM before starting timeline
-  setTimeout(() => {
-    if (chronoEditor && chronoEditor.layout) chronoEditor.layout();
-    chronoBeginTimeline(ch, sessionId);
-  }, 800);
+  // Mount Monaco then start the timeline — don't start timeline until editor is ready
+  // so the first snapshot has real code.
+  function waitAndStart() {
+    chronoLoadMonaco(chronoStarterFor(ch.language), ch.language, function onReady() {
+      chronoBeginTimeline(ch, sessionId);
+    });
+  }
+  if (window._mono && window._mono.editor) {
+    waitAndStart();
+  } else {
+    // _mono still loading — show a brief status and wait
+    const lbl = document.getElementById('chrono-editor-lang-lbl');
+    if (lbl) lbl.textContent = 'Loading editor…';
+    let tries = 0;
+    const poll = setInterval(() => {
+      tries++;
+      if (window._mono && window._mono.editor) {
+        clearInterval(poll);
+        waitAndStart();
+      } else if (tries > 100) {
+        clearInterval(poll);
+        waitAndStart(); // proceed anyway — fallback textarea will kick in
+      }
+    }, 100);
+  }
 }
 
-function chronoLoadMonaco(initialCode, lang) {
-  // The main app stores Monaco as window._mono inside _onMonacoReady(mono).
-  // We reuse that — never call require() here as it would 404 without require.config.
+function chronoLoadMonaco(initialCode, lang, onReady) {
   function createEditor() {
     const host = document.getElementById('chrono-monaco-wrap');
-    if (!host) return;
+    if (!host) { if (onReady) onReady(); return; }
     if (chronoEditor) { try { chronoEditor.dispose(); } catch(e){} chronoEditor = null; }
     host.innerHTML = '';
     chronoEditor = window._mono.editor.create(host, {
@@ -10139,20 +10152,20 @@ function chronoLoadMonaco(initialCode, lang) {
       bracketPairColorization: { enabled: true },
       smoothScrolling: true,
     });
+    const lbl = document.getElementById('chrono-editor-lang-lbl');
+    if (lbl) lbl.textContent = lang + ' · auto-saving every 20s';
+    if (onReady) setTimeout(onReady, 50); // brief tick so editor finishes layout
   }
   if (window._mono && window._mono.editor) {
     createEditor();
   } else {
-    // _mono not set yet — poll until main app finishes loading Monaco
     let attempts = 0;
     const poll = setInterval(() => {
       attempts++;
       if (window._mono && window._mono.editor) {
-        clearInterval(poll);
-        createEditor();
-      } else if (attempts > 80) {          // ~8s timeout
-        clearInterval(poll);
-        chronoMonacoFallback(initialCode);
+        clearInterval(poll); createEditor();
+      } else if (attempts > 80) {
+        clearInterval(poll); chronoMonacoFallback(initialCode); if (onReady) onReady();
       }
     }, 100);
   }
