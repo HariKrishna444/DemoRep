@@ -9975,20 +9975,21 @@ async function chronoOpenReplay(sessionId) {
     const host = document.getElementById('chrono-replay-monaco');
     host.innerHTML = '';
     if (chronoReplayEditor) { try { chronoReplayEditor.dispose(); } catch(e){} }
-    chronoReplayEditor = window.monaco.editor.create(host, {
+    chronoReplayEditor = window._mono.editor.create(host, {
       value: snapshots.length ? (snapshots[0].code || '') : '',
       language: LANG_MONACO[session.language] || 'python',
-      theme: 'vs-dark', readOnly: true, automaticLayout: true, fontSize: 13, minimap: { enabled: false }
+      theme: 'vs-dark', readOnly: true, automaticLayout: true, fontSize: 13,
+      minimap: { enabled: false }, lineNumbers: 'on'
     });
   }
   if (snapshots.length) {
-    if (window.monaco && window.monaco.editor) {
+    if (window._mono && window._mono.editor) {
       mountReplay();
     } else {
       let a = 0;
       const poll = setInterval(() => {
         a++;
-        if (window.monaco && window.monaco.editor) { clearInterval(poll); mountReplay(); }
+        if (window._mono && window._mono.editor) { clearInterval(poll); mountReplay(); }
         else if (a > 80) { clearInterval(poll); document.getElementById('chrono-replay-monaco').innerHTML = '<div style="color:var(--muted);padding:20px">Editor unavailable — try refreshing.</div>'; }
       }, 100);
     }
@@ -10115,17 +10116,14 @@ async function chronoBeginSession() {
 }
 
 function chronoLoadMonaco(initialCode, lang) {
-  // Always use window.monaco — the main CodingHub app already loaded it
-  // via the cdnjs AMD loader + require.config. Never call require() here
-  // directly because without require.config({paths:{vs:cdnjs_url}}) the
-  // AMD loader resolves 'vs/editor/editor.main' relative to the page URL
-  // (github.io/DemoRep/vs/...) which 404s.
+  // The main app stores Monaco as window._mono inside _onMonacoReady(mono).
+  // We reuse that — never call require() here as it would 404 without require.config.
   function createEditor() {
     const host = document.getElementById('chrono-monaco-wrap');
     if (!host) return;
     if (chronoEditor) { try { chronoEditor.dispose(); } catch(e){} chronoEditor = null; }
     host.innerHTML = '';
-    chronoEditor = window.monaco.editor.create(host, {
+    chronoEditor = window._mono.editor.create(host, {
       value: initialCode,
       language: LANG_MONACO[lang] || 'python',
       theme: 'vs-dark',
@@ -10136,23 +10134,25 @@ function chronoLoadMonaco(initialCode, lang) {
       wordWrap: 'on',
       tabSize: 4,
       insertSpaces: true,
-      scrollBeyondLastLine: false
+      scrollBeyondLastLine: false,
+      lineNumbers: 'on',
+      bracketPairColorization: { enabled: true },
+      smoothScrolling: true,
     });
   }
-  if (window.monaco && window.monaco.editor) {
-    // Monaco already available — create immediately
+  if (window._mono && window._mono.editor) {
     createEditor();
   } else {
-    // Poll for window.monaco (main app is still loading it)
+    // _mono not set yet — poll until main app finishes loading Monaco
     let attempts = 0;
     const poll = setInterval(() => {
       attempts++;
-      if (window.monaco && window.monaco.editor) {
+      if (window._mono && window._mono.editor) {
         clearInterval(poll);
         createEditor();
-      } else if (attempts > 60) {
+      } else if (attempts > 80) {          // ~8s timeout
         clearInterval(poll);
-        chronoMonacoFallback(initialCode); // give up after ~6s, use textarea
+        chronoMonacoFallback(initialCode);
       }
     }, 100);
   }
@@ -10250,19 +10250,32 @@ async function chronoRunCode() {
 
     const result = await pistonExecute(code, ch.language, testInput);
     const r = result.run || {};
-    const actualOut = (r.stdout || '') + (r.stderr || '');
-    const actual = actualOut.trim();
+    const stdout = (r.stdout || '').trim();
+    const stderr = (r.stderr || '').trim();
     const expected = expectedRaw.trim();
 
     let html = '';
-    if (r.stderr && !r.stdout) {
-      html = '<span style="color:var(--danger)">Error:<br>' + sanitize(r.stderr).replace(/\n/g,'<br>') + '</span>';
+    // Show stderr/error block if present
+    if (stderr) {
+      html += '<div style="color:var(--danger);margin-bottom:6px">⚠ ' + sanitize(stderr).replace(/\n/g,'<br>') + '</div>';
+    }
+    // Show stdout output
+    html += '<div style="margin-bottom:6px"><span style="color:var(--soft);font-size:.72rem;text-transform:uppercase;letter-spacing:.4px">Output</span><br>'
+          + '<code style="color:#cfe3ff;white-space:pre-wrap">' + sanitize(stdout || '(no output)') + '</code></div>';
+    // Test case comparison (only if professor set expected output for this stage)
+    if (expected) {
+      const passed = stdout === expected;
+      html += passed
+        ? '<div style="background:rgba(63,214,138,.12);border:1px solid rgba(63,214,138,.3);border-radius:7px;padding:8px 12px;font-size:.8rem;color:var(--green)">✅ Test passed — output matches expected.</div>'
+        : '<div style="background:rgba(255,92,108,.1);border:1px solid rgba(255,92,108,.3);border-radius:7px;padding:8px 12px;font-size:.8rem">'
+          + '<div style="color:var(--danger);margin-bottom:4px">❌ Test failed</div>'
+          + '<div style="color:var(--muted);font-size:.72rem">Expected:</div>'
+          + '<code style="color:#ffd080;white-space:pre-wrap;display:block;margin:2px 0 6px">' + sanitize(expected) + '</code>'
+          + '<div style="color:var(--muted);font-size:.72rem">Got:</div>'
+          + '<code style="color:#ff9090;white-space:pre-wrap;display:block;margin:2px 0">' + sanitize(stdout) + '</code>'
+          + '</div>';
     } else {
-      html += '<span style="color:var(--soft)">Output:</span><br>' + sanitize(actual || '(no output)').replace(/\n/g,'<br>') + '<br>';
-      if (expected) {
-        const passed = actual === expected;
-        html += '<br>' + (passed ? '<span style="color:var(--green)">✅ Test passed.</span>' : '<span style="color:var(--danger)">❌ Test failed. Expected: ' + sanitize(expected) + ' | Got: ' + sanitize(actual) + '</span>');
-      }
+      html += '<div style="font-size:.72rem;color:var(--muted);margin-top:4px">ℹ No expected output set for this stage (add one in the builder).</div>';
     }
     out.innerHTML = html;
     if (window._chronoEventsRef) window._chronoEventsRef.push({ type: 'run', elapsedSeconds: elapsed, ts: Date.now(), passed: expected ? actual === expected : null });
