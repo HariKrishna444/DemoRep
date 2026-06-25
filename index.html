@@ -9972,23 +9972,25 @@ async function chronoOpenReplay(sessionId) {
   scrubber.value = 0;
 
   function mountReplay() {
-    require(['vs/editor/editor.main'], function (mono) {
-      const host = document.getElementById('chrono-replay-monaco');
-      host.innerHTML = '';
-      if (chronoReplayEditor) { try { chronoReplayEditor.dispose(); } catch (e) {} }
-      chronoReplayEditor = mono.editor.create(host, {
-        value: snapshots.length ? (snapshots[0].code || '') : '',
-        language: LANG_MONACO[session.language] || 'python',
-        theme: 'vs-dark', readOnly: true, automaticLayout: true, fontSize: 13, minimap: { enabled: false }
-      });
+    const host = document.getElementById('chrono-replay-monaco');
+    host.innerHTML = '';
+    if (chronoReplayEditor) { try { chronoReplayEditor.dispose(); } catch(e){} }
+    chronoReplayEditor = window.monaco.editor.create(host, {
+      value: snapshots.length ? (snapshots[0].code || '') : '',
+      language: LANG_MONACO[session.language] || 'python',
+      theme: 'vs-dark', readOnly: true, automaticLayout: true, fontSize: 13, minimap: { enabled: false }
     });
   }
   if (snapshots.length) {
-    if (window._monacoLoaderReady) {
+    if (window.monaco && window.monaco.editor) {
       mountReplay();
     } else {
-      const prev = window._monacoLoaderResolve;
-      window._monacoLoaderResolve = function () { if (prev) prev(); mountReplay(); };
+      let a = 0;
+      const poll = setInterval(() => {
+        a++;
+        if (window.monaco && window.monaco.editor) { clearInterval(poll); mountReplay(); }
+        else if (a > 80) { clearInterval(poll); document.getElementById('chrono-replay-monaco').innerHTML = '<div style="color:var(--muted);padding:20px">Editor unavailable — try refreshing.</div>'; }
+      }, 100);
     }
   } else {
     document.getElementById('chrono-replay-monaco').innerHTML = '<div style="color:var(--muted);padding:20px">No snapshots recorded.</div>';
@@ -10113,46 +10115,46 @@ async function chronoBeginSession() {
 }
 
 function chronoLoadMonaco(initialCode, lang) {
-  function init() {
-    // If window.monaco is already defined from the main app's editor load,
-    // use it directly instead of re-requiring (avoids duplicate-module race)
-    const mono = window._mono || (typeof monaco !== 'undefined' ? monaco : null);
+  // Always use window.monaco — the main CodingHub app already loaded it
+  // via the cdnjs AMD loader + require.config. Never call require() here
+  // directly because without require.config({paths:{vs:cdnjs_url}}) the
+  // AMD loader resolves 'vs/editor/editor.main' relative to the page URL
+  // (github.io/DemoRep/vs/...) which 404s.
+  function createEditor() {
     const host = document.getElementById('chrono-monaco-wrap');
-    if (!host) { setTimeout(init, 300); return; }
-    if (chronoEditor) { try { chronoEditor.dispose(); } catch (e) {} chronoEditor = null; }
-    if (mono && mono.editor) {
-      host.innerHTML = '';
-      chronoEditor = mono.editor.create(host, {
-        value: initialCode, language: LANG_MONACO[lang] || 'python', theme: 'vs-dark',
-        fontSize: 14, fontFamily: "'DM Mono', monospace", minimap: { enabled: false },
-        automaticLayout: true, wordWrap: 'on', tabSize: 4, insertSpaces: true,
-        scrollBeyondLastLine: false
-      });
-      return;
-    }
-    // Monaco not yet available — require it
-    require(['vs/editor/editor.main'], function (m) {
-      window._mono = window._mono || m;
-      const h = document.getElementById('chrono-monaco-wrap');
-      if (!h) return;
-      h.innerHTML = '';
-      if (chronoEditor) { try { chronoEditor.dispose(); } catch(e){} }
-      chronoEditor = (window._mono || m).editor.create(h, {
-        value: initialCode, language: LANG_MONACO[lang] || 'python', theme: 'vs-dark',
-        fontSize: 14, fontFamily: "'DM Mono', monospace", minimap: { enabled: false },
-        automaticLayout: true, wordWrap: 'on', tabSize: 4, insertSpaces: true,
-        scrollBeyondLastLine: false
-      });
+    if (!host) return;
+    if (chronoEditor) { try { chronoEditor.dispose(); } catch(e){} chronoEditor = null; }
+    host.innerHTML = '';
+    chronoEditor = window.monaco.editor.create(host, {
+      value: initialCode,
+      language: LANG_MONACO[lang] || 'python',
+      theme: 'vs-dark',
+      fontSize: 14,
+      fontFamily: "'DM Mono', monospace",
+      minimap: { enabled: false },
+      automaticLayout: true,
+      wordWrap: 'on',
+      tabSize: 4,
+      insertSpaces: true,
+      scrollBeyondLastLine: false
     });
   }
-  if (window._monacoLoaderReady || (typeof require !== 'undefined' && typeof monaco !== 'undefined')) {
-    init();
-  } else if (window._monacoLoaderFailed) {
-    chronoMonacoFallback(initialCode);
+  if (window.monaco && window.monaco.editor) {
+    // Monaco already available — create immediately
+    createEditor();
   } else {
-    const prevResolve = window._monacoLoaderResolve;
-    window._monacoLoaderResolve = function () { if (prevResolve) prevResolve(); init(); };
-    setTimeout(() => { if (!chronoEditor) chronoMonacoFallback(initialCode); }, 18000);
+    // Poll for window.monaco (main app is still loading it)
+    let attempts = 0;
+    const poll = setInterval(() => {
+      attempts++;
+      if (window.monaco && window.monaco.editor) {
+        clearInterval(poll);
+        createEditor();
+      } else if (attempts > 60) {
+        clearInterval(poll);
+        chronoMonacoFallback(initialCode); // give up after ~6s, use textarea
+      }
+    }, 100);
   }
 }
 function chronoMonacoFallback(code) {
