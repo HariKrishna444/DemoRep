@@ -1924,7 +1924,7 @@ select.inp option{background:var(--ink3)}
 .chrono-meta-row{display:flex;gap:8px;font-size:.68rem;color:var(--soft);font-family:var(--ff-mono)}
 
 .chrono-shell{min-height:60vh}
-#page-chrono-take.active{overflow:hidden;height:100vh}.chrono-live-shell{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 57px);overflow:hidden}.chrono-editor-col{display:flex;flex-direction:column;height:100%;overflow:hidden}#chrono-monaco-wrap{flex:1;min-height:0;overflow:hidden}
+#page-chrono-take.active{overflow:hidden;height:100vh}.chrono-live-shell{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 57px);overflow:hidden}.chrono-editor-col{display:flex;flex-direction:column;height:100%;overflow:hidden}#chrono-monaco-wrap{flex:1;min-height:0;overflow:hidden;}
 .chrono-req-panel{border-right:1px solid var(--line);background:var(--ink2);padding:20px;overflow-y:auto}
 .chrono-timer-box{text-align:center;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--ink);margin-bottom:16px}
 .chrono-timer-big{font-family:var(--ff-mono);font-size:1.8rem;font-weight:700;color:var(--stu)}
@@ -1940,8 +1940,7 @@ select.inp option{background:var(--ink3)}
 @keyframes chronoFlash{0%{background:rgba(0,229,160,.18)}100%{background:transparent}}
 
 
-.chrono-editor-toolbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--ink2)}
-.chrono-console{height:150px;border-top:1px solid var(--line);background:#0c0e14;color:#cfe3ff;font-family:var(--ff-mono);font-size:.75rem;padding:10px 14px;overflow-y:auto;white-space:pre-wrap}
+/* chrono editor uses shared .code-tb / .console / .con-out from exam editor */
 
 .chrono-scrub-wrap{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:14px}
 .chrono-ai-box{border:1px solid rgba(0,229,160,.25);border-radius:var(--r-lg);padding:18px;background:rgba(0,229,160,.05)}
@@ -3403,12 +3402,53 @@ upgrade-insecure-requests;</pre>
       <button class="btn btn-r btn-sm" style="width:100%;margin-top:14px" onclick="chronoSubmitSession()">Submit & End Session</button>
     </div>
     <div class="chrono-editor-col">
-      <div class="chrono-editor-toolbar">
-        <span id="chrono-editor-lang-lbl" style="font-size:.75rem;color:var(--muted)"></span>
-        <button class="btn btn-ghost btn-sm" onclick="chronoRunCode()">▶ Run</button>
+      <!-- Toolbar — mirrors exam editor code-tb -->
+      <div class="code-tb">
+        <div class="code-tb-l">
+          <select class="sel" id="chrono-lang-sel" onchange="chronoChangeLang(this.value)">
+            <option value="python">Python 3</option>
+            <option value="javascript">JavaScript</option>
+            <option value="cpp">C++ 17</option>
+            <option value="java">Java 11</option>
+            <option value="c">C</option>
+          </select>
+          <span id="chrono-lang-badge" style="font-size:.65rem;font-family:var(--ff-mono);padding:2px 8px;border-radius:99px;background:rgba(0,229,160,.12);color:var(--stu);border:1px solid rgba(0,229,160,.25);white-space:nowrap;">🐍 In-Browser</span>
+          <select class="sel" id="chrono-theme-sel" onchange="chronoChangeTheme(this.value)">
+            <option value="vs-dark">Dark</option>
+            <option value="vs">Light</option>
+            <option value="hc-black">High Contrast</option>
+          </select>
+          <select class="sel" id="chrono-fs-sel" onchange="chronoChangeFS(this.value)">
+            <option value="13">13px</option>
+            <option value="14" selected>14px</option>
+            <option value="15">15px</option>
+            <option value="16">16px</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="chronoResetCode()">↺ Reset</button>
+        </div>
       </div>
-      <div id="chrono-monaco-wrap" style="flex:1;min-height:300px"></div>
-      <div class="chrono-console" id="chrono-console">Output will appear here…</div>
+      <!-- Monaco editor -->
+      <div id="chrono-monaco-wrap"></div>
+      <!-- Console — mirrors exam editor console -->
+      <div class="console" id="chrono-console-panel">
+        <div class="con-tabs">
+          <div class="con-tab active" onclick="chronoConTab('out',this)">Output</div>
+          <div class="con-tab" onclick="chronoConTab('custom',this)">Custom Input</div>
+          <div class="con-actions">
+            <button class="btn btn-ghost btn-sm" id="chrono-btn-run" onclick="chronoRunCode()">▶ Run</button>
+            <button class="btn btn-r btn-sm" id="chrono-btn-submit" onclick="chronoSubmitSession()">✓ Submit</button>
+          </div>
+        </div>
+        <div class="con-out" id="chrono-con-out">
+          <div class="out-l info"><span class="op">$</span><span class="ot">ChronoCode ready — start coding!</span></div>
+        </div>
+        <div class="custom-in" id="chrono-custom-in">
+          <label style="font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);text-transform:uppercase;letter-spacing:1px">Custom STDIN</label>
+          <textarea id="chrono-stdin-ta" placeholder="Enter custom input…"></textarea>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -10101,7 +10141,10 @@ async function chronoBeginSession() {
   chronoCurrentSessionId = sessionId;
   document.getElementById('chrono-pre-start').classList.add('hidden');
   document.getElementById('chrono-live-shell').classList.remove('hidden');
-  document.getElementById('chrono-editor-lang-lbl').textContent = ch.language + ' · auto-saving every 20s';
+  // Set lang selector + badge to match challenge language
+  const cLangSel = document.getElementById('chrono-lang-sel');
+  if (cLangSel) cLangSel.value = ch.language;
+  chronoChangeLang(ch.language);
   document.getElementById('chrono-req-feed').innerHTML = '';
   // Mount Monaco then start the timeline — don't start timeline until editor is ready
   // so the first snapshot has real code.
@@ -10130,17 +10173,82 @@ async function chronoBeginSession() {
   }
 }
 
+// ── ChronoCode editor toolbar helpers (mirrors exam editor) ────────────
+function chronoChangeLang(lang) {
+  if (!chronoEditor) return;
+  const model = chronoEditor.getModel();
+  if (model) window._mono.editor.setModelLanguage(model, LANG_MONACO[lang] || 'python');
+  // update lang badge
+  const badge = document.getElementById('chrono-lang-badge');
+  if (badge) {
+    if (lang === 'python') {
+      badge.textContent = '🐍 In-Browser'; badge.style.color = 'var(--stu)';
+      badge.style.background = 'rgba(0,229,160,.12)'; badge.style.borderColor = 'rgba(0,229,160,.25)';
+    } else {
+      badge.textContent = '☁ Judge0 API'; badge.style.color = 'var(--blue)';
+      badge.style.background = 'rgba(59,130,246,.12)'; badge.style.borderColor = 'rgba(59,130,246,.25)';
+    }
+  }
+}
+function chronoChangeTheme(t) {
+  if (window._mono) window._mono.editor.setTheme(t);
+}
+function chronoChangeFS(s) {
+  if (chronoEditor) chronoEditor.updateOptions({ fontSize: parseInt(s, 10) });
+}
+function chronoResetCode() {
+  if (!chronoEditor || !chronoCurrentChallenge) return;
+  if (confirm('Reset to starter code?')) chronoEditor.setValue(chronoStarterFor(chronoCurrentChallenge.language));
+}
+function chronoConTab(name, el) {
+  document.querySelectorAll('#chrono-console-panel .con-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const out = document.getElementById('chrono-con-out');
+  const cin = document.getElementById('chrono-custom-in');
+  if (out) out.style.display = name === 'out' ? '' : 'none';
+  if (cin) cin.style.display = name === 'custom' ? 'flex' : 'none';
+}
+function chronoOutLine(type, text) {
+  const el = document.getElementById('chrono-con-out');
+  if (!el) return;
+  const row = document.createElement('div');
+  row.className = 'out-l ' + (type || 'info');
+  row.innerHTML = '<span class="op">' + (type==='err'?'✗':type==='ok'?'✓':'>') + '</span><span class="ot">' + sanitize(text) + '</span>';
+  el.appendChild(row);
+  el.scrollTop = el.scrollHeight;
+}
+// ────────────────────────────────────────────────────────────────────
+
 function chronoLoadMonaco(initialCode, lang, onReady) {
   function createEditor() {
     const host = document.getElementById('chrono-monaco-wrap');
     if (!host) { if (onReady) onReady(); return; }
     if (chronoEditor) { try { chronoEditor.dispose(); } catch(e){} chronoEditor = null; }
     host.innerHTML = '';
+    // Monaco workers MUST be configured for syntax highlighting to work.
+    // The main app sets MonacoEnvironment in _initEditor; we ensure it is
+    // set here too in case ChronoCode is the first to create an editor.
+    if (!window.MonacoEnvironment) {
+      const _mvs = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs';
+      const _mmin = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min';
+      window.MonacoEnvironment = {
+        getWorkerUrl: function(moduleId, label) {
+          let w = _mvs + '/base/worker/workerMain.js';
+          if (label === 'json')       w = _mvs + '/language/json/jsonWorker.js';
+          if (label === 'css' || label === 'scss' || label === 'less') w = _mvs + '/language/css/cssWorker.js';
+          if (label === 'typescript' || label === 'javascript') w = _mvs + '/language/typescript/tsWorker.js';
+          const src = "self.MonacoEnvironment={baseUrl:'" + _mmin + "/'};importScripts('" + w + "');";
+          return URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+        }
+      };
+    }
+    const themeVal = (document.getElementById('chrono-theme-sel') || {}).value || 'vs-dark';
+    const fsVal = parseInt((document.getElementById('chrono-fs-sel') || {}).value || '14', 10);
     chronoEditor = window._mono.editor.create(host, {
       value: initialCode,
       language: LANG_MONACO[lang] || 'python',
-      theme: 'vs-dark',
-      fontSize: 14,
+      theme: themeVal,
+      fontSize: fsVal,
       fontFamily: "'DM Mono', monospace",
       minimap: { enabled: false },
       automaticLayout: true,
@@ -10151,10 +10259,9 @@ function chronoLoadMonaco(initialCode, lang, onReady) {
       lineNumbers: 'on',
       bracketPairColorization: { enabled: true },
       smoothScrolling: true,
+      suggest: { showSnippets: true },
     });
-    const lbl = document.getElementById('chrono-editor-lang-lbl');
-    if (lbl) lbl.textContent = lang + ' · auto-saving every 20s';
-    if (onReady) setTimeout(onReady, 50); // brief tick so editor finishes layout
+    if (onReady) setTimeout(onReady, 50);
   }
   if (window._mono && window._mono.editor) {
     createEditor();
@@ -10248,9 +10355,12 @@ function chronoBeginTimeline(challenge, sessionId) {
 
 async function chronoRunCode() {
   if (!chronoEditor) { toast('Editor still loading…', 'warn'); return; }
-  const out = document.getElementById('chrono-console');
-  out.textContent = 'Running…';
-  const runBtn = document.querySelector('[onclick="chronoRunCode()"]');
+  // Switch to output tab
+  chronoConTab('out', document.querySelector('#chrono-console-panel .con-tab'));
+  const outEl = document.getElementById('chrono-con-out');
+  if (outEl) outEl.innerHTML = '';
+  chronoOutLine('info', '▶ Running…');
+  const runBtn = document.getElementById('chrono-btn-run');
   if (runBtn) { runBtn.disabled = true; runBtn.textContent = '⏳'; }
   try {
     const code = chronoEditor.getValue();
@@ -10258,7 +10368,8 @@ async function chronoRunCode() {
     const stageIdx = window._chronoStageGetter ? window._chronoStageGetter() : 0;
     const ch = chronoCurrentChallenge;
     const stage = ch && ch.stages ? ch.stages[stageIdx] : null;
-    const testInput = (stage && stage.testInput) || '';
+    const customStdin = (document.getElementById('chrono-stdin-ta') || {}).value || '';
+    const testInput = customStdin || (stage && stage.testInput) || '';
     const expectedRaw = (stage && stage.expectedOutput) || '';
 
     const result = await pistonExecute(code, ch.language, testInput);
@@ -10267,36 +10378,33 @@ async function chronoRunCode() {
     const stderr = (r.stderr || '').trim();
     const expected = expectedRaw.trim();
 
-    let html = '';
-    // Show stderr/error block if present
-    if (stderr) {
-      html += '<div style="color:var(--danger);margin-bottom:6px">⚠ ' + sanitize(stderr).replace(/\n/g,'<br>') + '</div>';
+    // Show stderr
+    if (stderr) { chronoOutLine('err', '⚠ ' + stderr); }
+    // Show stdout
+    if (stdout) {
+      stdout.split('\n').forEach(line => chronoOutLine('ok', line));
+    } else if (!stderr) {
+      chronoOutLine('warn', '(no output)');
     }
-    // Show stdout output
-    html += '<div style="margin-bottom:6px"><span style="color:var(--soft);font-size:.72rem;text-transform:uppercase;letter-spacing:.4px">Output</span><br>'
-          + '<code style="color:#cfe3ff;white-space:pre-wrap">' + sanitize(stdout || '(no output)') + '</code></div>';
-    // Test case comparison (only if professor set expected output for this stage)
+    // Test case comparison
     if (expected) {
       const passed = stdout === expected;
-      html += passed
-        ? '<div style="background:rgba(63,214,138,.12);border:1px solid rgba(63,214,138,.3);border-radius:7px;padding:8px 12px;font-size:.8rem;color:var(--green)">✅ Test passed — output matches expected.</div>'
-        : '<div style="background:rgba(255,92,108,.1);border:1px solid rgba(255,92,108,.3);border-radius:7px;padding:8px 12px;font-size:.8rem">'
-          + '<div style="color:var(--danger);margin-bottom:4px">❌ Test failed</div>'
-          + '<div style="color:var(--muted);font-size:.72rem">Expected:</div>'
-          + '<code style="color:#ffd080;white-space:pre-wrap;display:block;margin:2px 0 6px">' + sanitize(expected) + '</code>'
-          + '<div style="color:var(--muted);font-size:.72rem">Got:</div>'
-          + '<code style="color:#ff9090;white-space:pre-wrap;display:block;margin:2px 0">' + sanitize(stdout) + '</code>'
-          + '</div>';
+      if (passed) {
+        chronoOutLine('ok', '✅ Test passed — output matches expected.');
+      } else {
+        chronoOutLine('err', '❌ Test failed');
+        chronoOutLine('info', 'Expected: ' + expected);
+        chronoOutLine('err',  'Got:      ' + stdout);
+      }
     } else {
-      html += '<div style="font-size:.72rem;color:var(--muted);margin-top:4px">ℹ No expected output set for this stage (add one in the builder).</div>';
+      chronoOutLine('info', 'ℹ No test case set for this stage yet.');
     }
-    out.innerHTML = html;
     if (window._chronoEventsRef) window._chronoEventsRef.push({ type: 'run', elapsedSeconds: elapsed, ts: Date.now(), passed: expected ? actual === expected : null });
     chronoAddSnapshot(chronoCurrentSessionId, { code, elapsedSeconds: elapsed, stageIndex: stageIdx, trigger: 'run' });
   } catch (e) {
-    out.innerHTML = '<span style="color:var(--danger)">Execution failed: ' + sanitize(e.message || String(e)) + '</span>';
+    chronoOutLine('err', 'Execution failed: ' + (e.message || String(e)));
   } finally {
-    if (runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run'; }
+    const rb = document.getElementById('chrono-btn-run'); if (rb) { rb.disabled = false; rb.textContent = '▶ Run'; }
   }
 }
 
