@@ -8761,29 +8761,51 @@ async function saveCourse() {
   const allModules = [...(_cbWebModules || []), ...courseBuilderModules];
   const totalLessons = allModules.reduce((a,m)=>a+(m.lessons||[]).length,0);
 
+  const creatorName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'professor';
+
   const course = {
     title, language:lang, description:desc, difficulty:diff,
     price: 'free', // All courses are free
     thumbnail:thumb, totalLessons,
     modules: allModules,
     createdBy: currentUser?.uid || 'unknown',
+    createdByName: creatorName,
     createdAt: fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
   };
+
+  // Build a readable Firestore document ID from the professor's name + course
+  // title (e.g. "harikrishna-python-programming") instead of a random auto-ID.
+  function slugify(str) {
+    return String(str||'')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'course';
+  }
+  const baseSlug = slugify(creatorName) + '-' + slugify(title);
+
   if (fsReady()) {
     try {
-      const ref = await db.collection('courses').add(course);
-      course.id = ref.id;
+      // Ensure uniqueness — append -2, -3, etc. if the slug is already taken
+      let docId = baseSlug, suffix = 1;
+      while (true) {
+        const existing = await db.collection('courses').doc(docId).get();
+        if (!existing.exists) break;
+        suffix++; docId = baseSlug + '-' + suffix;
+      }
+      await db.collection('courses').doc(docId).set(course);
+      course.id = docId;
       // Save quizzes for modules that have them
       for (const mod of allModules) {
         if (mod.hasQuiz) {
-          await db.collection('courses').doc(ref.id)
+          await db.collection('courses').doc(docId)
             .collection('quizzes').doc(mod.id).set({ questions: [], moduleId: mod.id });
         }
       }
       toast(`Course "${title}" created with ${totalLessons} lessons! 🎓`, 'ok');
     } catch(e) { toast('Save failed: '+e.message,'err'); return; }
   } else {
-    course.id = 'demo-' + genId();
+    course.id = baseSlug;
     coursesCatalog.unshift(course);
     toast(`Course "${title}" created (demo mode) — ${totalLessons} lessons`, 'ok');
   }
