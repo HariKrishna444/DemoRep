@@ -3891,8 +3891,20 @@ async function initApp() {
     if (!FB_CONFIG.apiKey.includes('REPLACE')) {
       // ── Firebase boot ─────────────────────────────────────
       firebase.initializeApp(FB_CONFIG);
+      // Silence Firestore's internal SDK warnings (e.g. harmless "BloomFilter
+      // error" logged during listener resync) — doesn't affect data/behavior.
+      if (firebase.firestore && firebase.firestore.setLogLevel) {
+        firebase.firestore.setLogLevel('error');
+      }
       auth = firebase.auth();
       db   = firebase.firestore();
+      // Force plain long-polling instead of the streaming WebChannel transport.
+      // GitHub Pages + browser extensions / tracking prevention frequently break
+      // the streaming RPC with "400 Bad Request" on the Write channel — this
+      // setting avoids that failure mode entirely at a small latency cost.
+      try {
+        db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+      } catch (e) { /* settings must be called before first use — ignore if too late */ }
 
       // ── Offline persistence ───────────────────────────────────────────
       // Use the modern persistentLocalCache approach to avoid the
