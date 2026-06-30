@@ -1450,6 +1450,7 @@ select.inp option{background:var(--ink3)}
   display:flex;align-items:flex-start;gap:10px;
   background:var(--ink);border:1px solid var(--line);
   border-radius:var(--r-sm);padding:10px 12px;
+  transition:opacity .15s, border-color .15s, transform .12s;
 }
 .cb-block-h2{border-left:3px solid var(--amber)}
 .cb-block-text{border-left:3px solid var(--cyan)}
@@ -1458,10 +1459,13 @@ select.inp option{background:var(--ink3)}
 .cb-block-table{border-left:3px solid #ec4899}
 .cb-block-list{border-left:3px solid #f59e0b}
 .cb-block-tag{
-  font-family:var(--ff-mono);font-size:.68rem;font-weight:800;
+  font-family:var(--ff-mono);font-size:.62rem;font-weight:800;
   color:var(--muted);width:22px;flex-shrink:0;text-align:center;
-  padding-top:8px;
+  padding-top:6px;line-height:1.5;cursor:grab;user-select:none;
 }
+.cb-block-tag:active{cursor:grabbing}
+.cb-block.cb-dragging{opacity:.4;border-style:dashed}
+.cb-block.cb-drag-over{border-color:var(--stu);border-top-width:2px;transform:translateY(2px)}
 .cb-block input.inp,.cb-block textarea.inp{flex:1}
 .cb-block-rm{
   background:transparent;border:none;color:var(--muted);
@@ -8744,6 +8748,46 @@ function updateCBBlock(modIdx, lessonIdx, blockIdx, field, value) {
   courseBuilderModules[modIdx].lessons[lessonIdx].sections[blockIdx][field] = value;
 }
 function cbAttrEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+/* ── Drag-and-drop reordering for content blocks (Heading/Paragraph/Code/
+   Table/Points/Note) — works for both the new-course builder and the
+   add-module-to-existing-course modal, since both pass in a getter/setter
+   for their own sections array. ── */
+function setupBlockDnD(wrap, getSections, onReorder) {
+  if (!wrap) return;
+  let dragIdx = null;
+  const blocks = wrap.querySelectorAll('.cb-block');
+  blocks.forEach((el, idx) => {
+    el.setAttribute('draggable', 'true');
+    el.addEventListener('dragstart', (e) => {
+      dragIdx = idx;
+      el.classList.add('cb-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', String(idx)); } catch(err) {}
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('cb-dragging');
+      blocks.forEach(b => b.classList.remove('cb-drag-over'));
+    });
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('cb-drag-over');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('cb-drag-over'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('cb-drag-over');
+      const dropIdx = idx;
+      if (dragIdx === null || dragIdx === dropIdx) return;
+      const sections = getSections();
+      const [moved] = sections.splice(dragIdx, 1);
+      sections.splice(dropIdx, 0, moved);
+      dragIdx = null;
+      onReorder();
+    });
+  });
+}
+
 function renderCBBlocks(modIdx, lessonIdx) {
   const lesson = courseBuilderModules[modIdx].lessons[lessonIdx];
   const wrap = document.getElementById(`cb-blocks-${modIdx}-${lessonIdx}`);
@@ -8756,7 +8800,7 @@ function renderCBBlocks(modIdx, lessonIdx) {
   wrap.innerHTML = sections.map((sec, bi) => {
     if (sec.type === 'h2') {
       return `<div class="cb-block cb-block-h2">
-        <span class="cb-block-tag">H</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>H</span>
         <input class="inp" placeholder="Heading text" value="${cbAttrEsc(sec.text)}"
           oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">
         <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
@@ -8764,7 +8808,7 @@ function renderCBBlocks(modIdx, lessonIdx) {
     }
     if (sec.type === 'example') {
       return `<div class="cb-block cb-block-code">
-        <span class="cb-block-tag">{ }</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>{ }</span>
         <div style="flex:1;display:flex;flex-direction:column;gap:5px">
           <input class="inp" placeholder="Code label e.g. Example 1" value="${cbAttrEsc(sec.label)}"
             oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'label',this.value)">
@@ -8776,7 +8820,7 @@ function renderCBBlocks(modIdx, lessonIdx) {
     }
     if (sec.type === 'note') {
       return `<div class="cb-block cb-block-note">
-        <span class="cb-block-tag">!</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>!</span>
         <textarea class="inp" placeholder="Note text" style="min-height:46px"
           oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
         <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
@@ -8785,7 +8829,7 @@ function renderCBBlocks(modIdx, lessonIdx) {
     if (sec.type === 'table') {
       const rows = sec.rows || [];
       return `<div class="cb-block cb-block-table">
-        <span class="cb-block-tag">▦</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>▦</span>
         <div style="flex:1;display:flex;flex-direction:column;gap:6px">
           <input class="inp" placeholder="Table title e.g. Comparison Operators" value="${cbAttrEsc(sec.title)}"
             oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'title',this.value)">
@@ -8810,7 +8854,7 @@ function renderCBBlocks(modIdx, lessonIdx) {
     if (sec.type === 'list') {
       const items = sec.items || [];
       return `<div class="cb-block cb-block-list">
-        <span class="cb-block-tag">≡</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>≡</span>
         <div style="flex:1;display:flex;flex-direction:column;gap:6px">
           <input class="inp" placeholder="List title (optional) e.g. Features of Python" value="${cbAttrEsc(sec.title)}"
             oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'title',this.value)">
@@ -8825,12 +8869,13 @@ function renderCBBlocks(modIdx, lessonIdx) {
       </div>`;
     }
     return `<div class="cb-block cb-block-text">
-      <span class="cb-block-tag">¶</span>
+      <span class="cb-block-tag" title="Drag to reorder">⠿<br>¶</span>
       <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
         oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
       <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
+  setupBlockDnD(wrap, () => courseBuilderModules[modIdx].lessons[lessonIdx].sections, () => renderCBBlocks(modIdx, lessonIdx));
 }
 function addCBTableRow(modIdx, lessonIdx, bi) {
   courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].rows.push(['','']);
@@ -9548,7 +9593,7 @@ function renderAmmBlocks(lessonIdx) {
   wrap.innerHTML = sections.map((sec, bi) => {
     if (sec.type === 'h2') {
       return `<div class="cb-block cb-block-h2">
-        <span class="cb-block-tag">H</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>H</span>
         <input class="inp" placeholder="Heading text" value="${cbAttrEsc(sec.text)}"
           oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)">
         <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
@@ -9556,7 +9601,7 @@ function renderAmmBlocks(lessonIdx) {
     }
     if (sec.type === 'example') {
       return `<div class="cb-block cb-block-code">
-        <span class="cb-block-tag">{ }</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>{ }</span>
         <div style="flex:1;display:flex;flex-direction:column;gap:5px">
           <input class="inp" placeholder="Code label e.g. Example 1" value="${cbAttrEsc(sec.label)}"
             oninput="updateAmmBlock(${lessonIdx},${bi},'label',this.value)">
@@ -9568,7 +9613,7 @@ function renderAmmBlocks(lessonIdx) {
     }
     if (sec.type === 'note') {
       return `<div class="cb-block cb-block-note">
-        <span class="cb-block-tag">!</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>!</span>
         <textarea class="inp" placeholder="Note text" style="min-height:46px"
           oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
         <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
@@ -9577,7 +9622,7 @@ function renderAmmBlocks(lessonIdx) {
     if (sec.type === 'table') {
       const rows = sec.rows || [];
       return `<div class="cb-block cb-block-table">
-        <span class="cb-block-tag">▦</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>▦</span>
         <div style="flex:1;display:flex;flex-direction:column;gap:6px">
           <input class="inp" placeholder="Table title e.g. Comparison Operators" value="${cbAttrEsc(sec.title)}"
             oninput="updateAmmBlock(${lessonIdx},${bi},'title',this.value)">
@@ -9602,7 +9647,7 @@ function renderAmmBlocks(lessonIdx) {
     if (sec.type === 'list') {
       const items = sec.items || [];
       return `<div class="cb-block cb-block-list">
-        <span class="cb-block-tag">≡</span>
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>≡</span>
         <div style="flex:1;display:flex;flex-direction:column;gap:6px">
           <input class="inp" placeholder="List title (optional) e.g. Features of Python" value="${cbAttrEsc(sec.title)}"
             oninput="updateAmmBlock(${lessonIdx},${bi},'title',this.value)">
@@ -9617,12 +9662,13 @@ function renderAmmBlocks(lessonIdx) {
       </div>`;
     }
     return `<div class="cb-block cb-block-text">
-      <span class="cb-block-tag">¶</span>
+      <span class="cb-block-tag" title="Drag to reorder">⠿<br>¶</span>
       <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
         oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
       <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
+  setupBlockDnD(wrap, () => _addModuleLessons[lessonIdx].sections, () => renderAmmBlocks(lessonIdx));
 }
 function addAmmTableRow(lessonIdx, bi) {
   _addModuleLessons[lessonIdx].sections[bi].rows.push(['','']);
