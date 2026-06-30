@@ -1410,6 +1410,39 @@ select.inp option{background:var(--ink3)}
   display:flex;align-items:center;gap:12px;
   margin-bottom:8px;
 }
+.lesson-builder-item-wrap{
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:12px 16px;
+  margin-bottom:10px;
+}
+.lesson-builder-item-wrap .lesson-builder-item{
+  background:transparent;border:none;padding:0;margin-bottom:8px;
+}
+.cb-video-url{width:100%;display:block}
+.cb-blocks-hint{font-size:.68rem;color:var(--muted);margin:4px 0 8px;line-height:1.5}
+.cb-blocks-wrap{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.cb-block-add-row{display:flex;gap:8px;flex-wrap:wrap}
+.cb-block{
+  display:flex;align-items:flex-start;gap:10px;
+  background:var(--ink);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:10px 12px;
+}
+.cb-block-h2{border-left:3px solid var(--amber)}
+.cb-block-text{border-left:3px solid var(--cyan)}
+.cb-block-code{border-left:3px solid var(--stu)}
+.cb-block-note{border-left:3px solid #8b5cf6}
+.cb-block-tag{
+  font-family:var(--ff-mono);font-size:.68rem;font-weight:800;
+  color:var(--muted);width:22px;flex-shrink:0;text-align:center;
+  padding-top:8px;
+}
+.cb-block input.inp,.cb-block textarea.inp{flex:1}
+.cb-block-rm{
+  background:transparent;border:none;color:var(--muted);
+  font-size:1.1rem;line-height:1;cursor:pointer;padding:4px 6px;
+  flex-shrink:0;border-radius:5px;transition:all .15s;
+}
+.cb-block-rm:hover{color:var(--danger);background:rgba(255,59,92,.08)}
 .quiz-builder-item{
   background:var(--ink3);border:1px solid var(--line);
   border-radius:var(--r-sm);padding:12px 16px;margin-bottom:8px;
@@ -8503,24 +8536,110 @@ function addCourseModule() {
 
 function addCBLesson(modIdx) {
   const lessonIdx = courseBuilderModules[modIdx].lessons.length;
-  courseBuilderModules[modIdx].lessons.push({ id:'l-'+genId(), title:'', type:'article', videoUrl:'', content:'', duration:'' });
+  courseBuilderModules[modIdx].lessons.push({ id:'l-'+genId(), title:'', type:'article', videoUrl:'', content:'', duration:'', sections:[] });
   const el = document.getElementById('cbmod-lessons-'+modIdx);
   const row = document.createElement('div');
-  row.className = 'lesson-builder-item';
+  row.className = 'lesson-builder-item-wrap';
   row.innerHTML = `
-    <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
-    <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
-    <select class="inp" style="width:100px;padding:7px"
-            onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value">
-      <option value="article">Article</option>
-      <option value="video">Video</option>
-    </select>
-    <input class="inp" placeholder="YouTube URL / content" style="flex:2;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value;courseBuilderModules[${modIdx}].lessons[${lessonIdx}].content=this.value">
-    <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">`;
+    <div class="lesson-builder-item">
+      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
+      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
+             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
+      <select class="inp" style="width:100px;padding:7px" id="cb-ltype-${modIdx}-${lessonIdx}"
+              onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx})">
+        <option value="article">Article</option>
+        <option value="video">Video</option>
+      </select>
+      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
+             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
+    </div>
+    <input class="inp cb-video-url hidden" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
+           style="margin:6px 0;padding:7px 10px"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
+    <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, note — so they render cleanly (not as one mixed paragraph).</div>
+    <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
+    <div class="cb-block-add-row">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
+    </div>`;
   el.appendChild(row);
+  renderCBBlocks(modIdx, lessonIdx);
+}
+
+function cbToggleLessonType(modIdx, lessonIdx) {
+  const sel = document.getElementById(`cb-ltype-${modIdx}-${lessonIdx}`);
+  const vidInput = document.getElementById(`cb-video-${modIdx}-${lessonIdx}`);
+  if (vidInput) vidInput.classList.toggle('hidden', sel.value !== 'video');
+}
+
+/* ── Structured content blocks: Heading / Paragraph / Code / Note ────────
+   Stored as lesson.sections — same shape w3RenderSections() already
+   renders, so the learn page shows clean separated heading/text/code,
+   matching the demo reference UI instead of one jumbled paragraph. ── */
+function addCBBlock(modIdx, lessonIdx, type) {
+  const lesson = courseBuilderModules[modIdx].lessons[lessonIdx];
+  lesson.sections = lesson.sections || [];
+  if (type === 'example') lesson.sections.push({ type:'example', label:'', code:'' });
+  else if (type === 'note') lesson.sections.push({ type:'note', text:'' });
+  else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
+  else lesson.sections.push({ type:'text', text:'' });
+  renderCBBlocks(modIdx, lessonIdx);
+}
+function removeCBBlock(modIdx, lessonIdx, blockIdx) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections.splice(blockIdx, 1);
+  renderCBBlocks(modIdx, lessonIdx);
+}
+function updateCBBlock(modIdx, lessonIdx, blockIdx, field, value) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[blockIdx][field] = value;
+}
+function cbAttrEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function renderCBBlocks(modIdx, lessonIdx) {
+  const lesson = courseBuilderModules[modIdx].lessons[lessonIdx];
+  const wrap = document.getElementById(`cb-blocks-${modIdx}-${lessonIdx}`);
+  if (!wrap) return;
+  const sections = lesson.sections || [];
+  if (!sections.length) {
+    wrap.innerHTML = '<div style="font-size:.72rem;color:var(--muted);padding:6px 2px">No blocks yet — add a heading, paragraph, or code block below.</div>';
+    return;
+  }
+  wrap.innerHTML = sections.map((sec, bi) => {
+    if (sec.type === 'h2') {
+      return `<div class="cb-block cb-block-h2">
+        <span class="cb-block-tag">H</span>
+        <input class="inp" placeholder="Heading text" value="${cbAttrEsc(sec.text)}"
+          oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'example') {
+      return `<div class="cb-block cb-block-code">
+        <span class="cb-block-tag">{ }</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+          <input class="inp" placeholder="Code label e.g. Example 1" value="${cbAttrEsc(sec.label)}"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'label',this.value)">
+          <textarea class="inp" style="font-family:var(--ff-mono);font-size:.78rem;min-height:74px" placeholder="code here…"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'code',this.value)">${sanitize(sec.code)}</textarea>
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'note') {
+      return `<div class="cb-block cb-block-note">
+        <span class="cb-block-tag">!</span>
+        <textarea class="inp" placeholder="Note text" style="min-height:46px"
+          oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    return `<div class="cb-block cb-block-text">
+      <span class="cb-block-tag">¶</span>
+      <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
+        oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
+      <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+    </div>`;
+  }).join('');
 }
 
 async function saveCourse() {
@@ -9163,135 +9282,16 @@ async function saveNewModule() {
    to power the 3-panel layout.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Static Python course content (rich lesson data for each topic) ── */
-const W3_PYTHON_LESSONS = {
-  'l-wiki-python-(programming-language)': {
-    hint: 'Try: print("Hello, Python!")',
-    starterCode:
-`# Python Basics — try it yourself!
-name = "World"
-print(f"Hello, {name}!")
-
-# Variables
-x = 42
-pi = 3.14159
-is_fun = True
-
-print(f"x={x}, pi={pi}, fun={is_fun}")`,
-    sections: [
-      { type:'intro', text:'Python is a high-level, general-purpose programming language. Created by Guido van Rossum and first released in 1991, Python\'s design philosophy emphasises code readability. It supports multiple programming paradigms.' },
-      { type:'example', label:'Your First Program', code:'print("Hello, World!")' },
-      { type:'h2', text:'Variables & Types' },
-      { type:'text', text:'Python is dynamically typed — you don\'t declare types. The interpreter infers them at runtime.' },
-      { type:'example', label:'Common data types', code:`name = "Alice"      # str
-age  = 25           # int
-gpa  = 3.8          # float
-enrolled = True     # bool
-
-print(type(name))   # <class 'str'>
-print(type(age))    # <class 'int'>` },
-      { type:'note', text:'You can check any variable\'s type with the built-in type() function.' },
-      { type:'h2', text:'Basic Arithmetic' },
-      { type:'example', label:'Arithmetic operators', code:`a, b = 10, 3
-print(a + b)   # 13   addition
-print(a - b)   # 7    subtraction
-print(a * b)   # 30   multiplication
-print(a / b)   # 3.33 float division
-print(a // b)  # 3    floor division
-print(a % b)   # 1    modulus
-print(a ** b)  # 1000 exponentiation` },
-    ],
-  },
-  'l-wiki-control-flow': {
-    hint: 'Try changing the value of score and see which grade prints.',
-    starterCode:
-`# Control flow — if / elif / else
-score = 78
-
-if score >= 90:
-    grade = "A"
-elif score >= 75:
-    grade = "B"
-elif score >= 60:
-    grade = "C"
-else:
-    grade = "F"
-
-print(f"Score: {score} → Grade: {grade}")`,
-    sections: [
-      { type:'intro', text:'Control flow is the order in which individual statements, instructions or function calls are executed inside a program. Python uses indentation (whitespace) to define blocks.' },
-      { type:'h2', text:'if / elif / else' },
-      { type:'example', label:'Conditional statement', code:`temperature = 22
-
-if temperature > 30:
-    print("Hot day — wear sunscreen")
-elif temperature > 20:
-    print("Pleasant — enjoy outside")
-else:
-    print("Cool — bring a jacket")` },
-      { type:'h2', text:'for Loops' },
-      { type:'text', text:'Python\'s for loop iterates over any iterable — lists, strings, ranges, dictionaries…' },
-      { type:'example', label:'Iterating a list', code:`fruits = ["apple", "banana", "cherry"]
-for fruit in fruits:
-    print(f"I like {fruit}")` },
-      { type:'example', label:'range() function', code:`# Print squares of 1 through 5
-for n in range(1, 6):
-    print(f"{n}² = {n**2}")` },
-      { type:'h2', text:'while Loops' },
-      { type:'example', label:'Countdown', code:`count = 5
-while count > 0:
-    print(count)
-    count -= 1
-print("Blast off! 🚀")` },
-      { type:'note', text:'Use break to exit a loop early, and continue to skip to the next iteration.' },
-    ],
-  },
-  'l-wiki-function-(computer-programming)': {
-    hint: 'Define your own function that takes a name and returns a greeting string.',
-    starterCode:
-`# Functions in Python
-def greet(name, greeting="Hello"):
-    """Return a greeting string."""
-    return f"{greeting}, {name}!"
-
-print(greet("Alice"))
-print(greet("Bob", "Hi"))
-
-# Lambda (anonymous function)
-square = lambda x: x ** 2
-print(square(9))`,
-    sections: [
-      { type:'intro', text:'A function is a named block of reusable code. Functions help break programs into smaller, modular chunks, making code easier to read, test, and maintain.' },
-      { type:'h2', text:'Defining Functions' },
-      { type:'example', label:'def keyword', code:`def add(a, b):
-    return a + b
-
-result = add(3, 4)
-print(result)  # 7` },
-      { type:'h2', text:'Default Parameters' },
-      { type:'example', label:'Optional arguments', code:`def power(base, exponent=2):
-    return base ** exponent
-
-print(power(3))     # 9   (uses default exponent)
-print(power(2, 10)) # 1024` },
-      { type:'h2', text:'*args and **kwargs' },
-      { type:'example', label:'Variable arguments', code:`def total(*numbers):
-    return sum(numbers)
-
-print(total(1, 2, 3, 4))    # 10
-print(total(10, 20))        # 30` },
-      { type:'note', text:'Docstrings (triple-quoted strings at the top of a function body) document what a function does. Access them via help(func) or func.__doc__.' },
-    ],
-  },
-  'default': {
-    hint: 'Edit the code on the right and press ▶ Run to execute it!',
-    starterCode: `# Python Playground — edit and run!
+/* ── Default playground starter code (used only when a lesson has no
+   sections / content of its own — never overrides real lesson data) ── */
+const W3_DEFAULT_LESSON = {
+  hint: 'Edit the code on the right and press ▶ Run to execute it!',
+  starterCode: `# Python Playground — edit and run!
 print("Hello from CodingHub! 💻")
 
 for i in range(1, 6):
     print(f"Line {i}: {'⭐' * i}")`,
-    sections: [],
-  },
+  sections: [],
 };
 
 /* ── Render helpers ── */
@@ -9590,12 +9590,16 @@ window.openLesson = function(courseId, moduleId, lessonId) {
       : '';
   }
 
-  // Article content — use W3 static lesson data when available
-  const w3Data = W3_PYTHON_LESSONS[lessonId] || W3_PYTHON_LESSONS['default'];
+  // Article content — ALWAYS use the real lesson's own data first.
+  // lesson.sections (structured Heading/Paragraph/Code/Note blocks from the
+  // course builder) takes priority. Falls back to legacy raw lesson.content
+  // (older lessons authored as one freeform text field), and only uses the
+  // generic default starter code when the lesson truly has nothing.
+  const w3Data = W3_DEFAULT_LESSON;
   let articleHtml = '';
   if (lesson.type !== 'video') {
-    if (w3Data.sections && w3Data.sections.length) {
-      articleHtml = `<div class="article-content">${w3RenderSections(w3Data.sections)}</div>`;
+    if (lesson.sections && lesson.sections.length) {
+      articleHtml = `<div class="article-content">${w3RenderSections(lesson.sections)}</div>`;
     } else if (lesson.content) {
       const mdContent = (lesson.content || '')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
