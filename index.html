@@ -1260,6 +1260,30 @@ select.inp option{background:var(--ink3)}
   font-style:italic;color:var(--soft);
 }
 .article-content strong{color:var(--head);font-weight:700}
+/* Data table block (operator/meaning style, matches GFG-style reference tables) */
+.w3-data-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.w3-data-table th{
+  text-align:left;padding:10px 4px;color:var(--head);font-weight:700;
+  border-bottom:1px solid var(--line2);
+}
+.w3-data-table td{
+  padding:11px 4px;color:var(--soft);border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+.w3-data-table td:first-child{width:38%;font-family:var(--ff-mono)}
+.w3-data-table td code{
+  font-family:var(--ff-mono);font-size:.86rem;color:var(--body);
+  background:transparent;border:none;padding:0;
+}
+.w3-data-table tr:last-child td{border-bottom:none}
+/* Point-wise / bullet list block */
+.w3-data-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.w3-data-list li{
+  position:relative;padding-left:20px;font-size:.9rem;color:var(--soft);line-height:1.7;
+}
+.w3-data-list li::before{
+  content:'•';position:absolute;left:2px;color:var(--stu);font-weight:900;
+}
 .article-content em{color:var(--amber)}
 .learn-nav-btns{display:flex;gap:10px;margin-top:32px;padding-top:20px;border-top:1px solid var(--line)}
 
@@ -1431,6 +1455,8 @@ select.inp option{background:var(--ink3)}
 .cb-block-text{border-left:3px solid var(--cyan)}
 .cb-block-code{border-left:3px solid var(--stu)}
 .cb-block-note{border-left:3px solid #8b5cf6}
+.cb-block-table{border-left:3px solid #ec4899}
+.cb-block-list{border-left:3px solid #f59e0b}
 .cb-block-tag{
   font-family:var(--ff-mono);font-size:.68rem;font-weight:800;
   color:var(--muted);width:22px;flex-shrink:0;text-align:center;
@@ -8574,6 +8600,8 @@ function addCBLesson(modIdx) {
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'list')">+ Points</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
     </div>`;
   el.appendChild(row);
@@ -8596,6 +8624,8 @@ function addCBBlock(modIdx, lessonIdx, type) {
   if (type === 'example') lesson.sections.push({ type:'example', label:'', code:'' });
   else if (type === 'note') lesson.sections.push({ type:'note', text:'' });
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
+  else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[['',''],['','']] });
+  else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
   else lesson.sections.push({ type:'text', text:'' });
   renderCBBlocks(modIdx, lessonIdx);
 }
@@ -8645,6 +8675,48 @@ function renderCBBlocks(modIdx, lessonIdx) {
         <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
       </div>`;
     }
+    if (sec.type === 'table') {
+      const rows = sec.rows || [];
+      return `<div class="cb-block cb-block-table">
+        <span class="cb-block-tag">▦</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <input class="inp" placeholder="Table title e.g. Comparison Operators" value="${cbAttrEsc(sec.title)}"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'title',this.value)">
+          <div style="display:flex;gap:6px">
+            <input class="inp" placeholder="Col 1 header" style="flex:1" value="${cbAttrEsc(sec.col1)}"
+              oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'col1',this.value)">
+            <input class="inp" placeholder="Col 2 header" style="flex:1" value="${cbAttrEsc(sec.col2)}"
+              oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'col2',this.value)">
+          </div>
+          ${rows.map((r,ri)=>`<div style="display:flex;gap:6px">
+            <input class="inp" placeholder="Value" style="flex:1;font-family:var(--ff-mono)" value="${cbAttrEsc(r[0])}"
+              oninput="updateCBTableCell(${modIdx},${lessonIdx},${bi},${ri},0,this.value)">
+            <input class="inp" placeholder="Meaning" style="flex:1" value="${cbAttrEsc(r[1])}"
+              oninput="updateCBTableCell(${modIdx},${lessonIdx},${bi},${ri},1,this.value)">
+            <button type="button" class="cb-block-rm" onclick="removeCBTableRow(${modIdx},${lessonIdx},${bi},${ri})">×</button>
+          </div>`).join('')}
+          <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addCBTableRow(${modIdx},${lessonIdx},${bi})">+ Row</button>
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'list') {
+      const items = sec.items || [];
+      return `<div class="cb-block cb-block-list">
+        <span class="cb-block-tag">≡</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <input class="inp" placeholder="List title (optional) e.g. Features of Python" value="${cbAttrEsc(sec.title)}"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'title',this.value)">
+          ${items.map((it,ii)=>`<div style="display:flex;gap:6px">
+            <input class="inp" placeholder="Point ${ii+1}" style="flex:1" value="${cbAttrEsc(it)}"
+              oninput="updateCBListItem(${modIdx},${lessonIdx},${bi},${ii},this.value)">
+            <button type="button" class="cb-block-rm" onclick="removeCBListItem(${modIdx},${lessonIdx},${bi},${ii})">×</button>
+          </div>`).join('')}
+          <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addCBListItem(${modIdx},${lessonIdx},${bi})">+ Point</button>
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
     return `<div class="cb-block cb-block-text">
       <span class="cb-block-tag">¶</span>
       <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
@@ -8652,6 +8724,28 @@ function renderCBBlocks(modIdx, lessonIdx) {
       <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
+}
+function addCBTableRow(modIdx, lessonIdx, bi) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].rows.push(['','']);
+  renderCBBlocks(modIdx, lessonIdx);
+}
+function removeCBTableRow(modIdx, lessonIdx, bi, ri) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].rows.splice(ri,1);
+  renderCBBlocks(modIdx, lessonIdx);
+}
+function updateCBTableCell(modIdx, lessonIdx, bi, ri, ci, value) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].rows[ri][ci] = value;
+}
+function addCBListItem(modIdx, lessonIdx, bi) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].items.push('');
+  renderCBBlocks(modIdx, lessonIdx);
+}
+function removeCBListItem(modIdx, lessonIdx, bi, ii) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].items.splice(ii,1);
+  renderCBBlocks(modIdx, lessonIdx);
+}
+function updateCBListItem(modIdx, lessonIdx, bi, ii, value) {
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].items[ii] = value;
 }
 
 async function saveCourse() {
@@ -9257,6 +9351,8 @@ function addAmmLesson() {
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'h2')">+ Heading</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'text')">+ Paragraph</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'example')">+ Code</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'table')">+ Table</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'list')">+ Points</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'note')">+ Note</button>
     </div>`;
   el.appendChild(row);
@@ -9278,6 +9374,8 @@ function addAmmBlock(lessonIdx, type) {
   if (type === 'example') lesson.sections.push({ type:'example', label:'', code:'' });
   else if (type === 'note') lesson.sections.push({ type:'note', text:'' });
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
+  else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[['',''],['','']] });
+  else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
   else lesson.sections.push({ type:'text', text:'' });
   renderAmmBlocks(lessonIdx);
 }
@@ -9326,6 +9424,48 @@ function renderAmmBlocks(lessonIdx) {
         <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
       </div>`;
     }
+    if (sec.type === 'table') {
+      const rows = sec.rows || [];
+      return `<div class="cb-block cb-block-table">
+        <span class="cb-block-tag">▦</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <input class="inp" placeholder="Table title e.g. Comparison Operators" value="${cbAttrEsc(sec.title)}"
+            oninput="updateAmmBlock(${lessonIdx},${bi},'title',this.value)">
+          <div style="display:flex;gap:6px">
+            <input class="inp" placeholder="Col 1 header" style="flex:1" value="${cbAttrEsc(sec.col1)}"
+              oninput="updateAmmBlock(${lessonIdx},${bi},'col1',this.value)">
+            <input class="inp" placeholder="Col 2 header" style="flex:1" value="${cbAttrEsc(sec.col2)}"
+              oninput="updateAmmBlock(${lessonIdx},${bi},'col2',this.value)">
+          </div>
+          ${rows.map((r,ri)=>`<div style="display:flex;gap:6px">
+            <input class="inp" placeholder="Value" style="flex:1;font-family:var(--ff-mono)" value="${cbAttrEsc(r[0])}"
+              oninput="updateAmmTableCell(${lessonIdx},${bi},${ri},0,this.value)">
+            <input class="inp" placeholder="Meaning" style="flex:1" value="${cbAttrEsc(r[1])}"
+              oninput="updateAmmTableCell(${lessonIdx},${bi},${ri},1,this.value)">
+            <button type="button" class="cb-block-rm" onclick="removeAmmTableRow(${lessonIdx},${bi},${ri})">×</button>
+          </div>`).join('')}
+          <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addAmmTableRow(${lessonIdx},${bi})">+ Row</button>
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'list') {
+      const items = sec.items || [];
+      return `<div class="cb-block cb-block-list">
+        <span class="cb-block-tag">≡</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <input class="inp" placeholder="List title (optional) e.g. Features of Python" value="${cbAttrEsc(sec.title)}"
+            oninput="updateAmmBlock(${lessonIdx},${bi},'title',this.value)">
+          ${items.map((it,ii)=>`<div style="display:flex;gap:6px">
+            <input class="inp" placeholder="Point ${ii+1}" style="flex:1" value="${cbAttrEsc(it)}"
+              oninput="updateAmmListItem(${lessonIdx},${bi},${ii},this.value)">
+            <button type="button" class="cb-block-rm" onclick="removeAmmListItem(${lessonIdx},${bi},${ii})">×</button>
+          </div>`).join('')}
+          <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addAmmListItem(${lessonIdx},${bi})">+ Point</button>
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
     return `<div class="cb-block cb-block-text">
       <span class="cb-block-tag">¶</span>
       <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
@@ -9333,6 +9473,28 @@ function renderAmmBlocks(lessonIdx) {
       <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
+}
+function addAmmTableRow(lessonIdx, bi) {
+  _addModuleLessons[lessonIdx].sections[bi].rows.push(['','']);
+  renderAmmBlocks(lessonIdx);
+}
+function removeAmmTableRow(lessonIdx, bi, ri) {
+  _addModuleLessons[lessonIdx].sections[bi].rows.splice(ri,1);
+  renderAmmBlocks(lessonIdx);
+}
+function updateAmmTableCell(lessonIdx, bi, ri, ci, value) {
+  _addModuleLessons[lessonIdx].sections[bi].rows[ri][ci] = value;
+}
+function addAmmListItem(lessonIdx, bi) {
+  _addModuleLessons[lessonIdx].sections[bi].items.push('');
+  renderAmmBlocks(lessonIdx);
+}
+function removeAmmListItem(lessonIdx, bi, ii) {
+  _addModuleLessons[lessonIdx].sections[bi].items.splice(ii,1);
+  renderAmmBlocks(lessonIdx);
+}
+function updateAmmListItem(lessonIdx, bi, ii, value) {
+  _addModuleLessons[lessonIdx].sections[bi].items[ii] = value;
 }
 
 async function saveNewModule() {
@@ -9514,6 +9676,25 @@ function w3RenderSections(sections) {
         return `<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-left:3px solid var(--cyan);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:12px 16px;margin:18px 0;font-size:.84rem;color:var(--soft);line-height:1.65">
           <span style="color:var(--cyan);font-weight:700;margin-right:6px">📌 Note:</span>${sanitize(sec.note||sec.text||'')}
         </div>`;
+      case 'table': {
+        const rows = (sec.rows || []).filter(r => (r[0]||'').trim() || (r[1]||'').trim());
+        if (!rows.length) return '';
+        return `<div style="margin:24px 0">
+          ${sec.title ? `<h2 style="font-size:1.1rem;font-weight:800;color:var(--head);margin:0 0 12px">${sanitize(sec.title)}</h2>` : ''}
+          <table class="w3-data-table">
+            <thead><tr><th>${sanitize(sec.col1||'Operator')}</th><th>${sanitize(sec.col2||'Meaning')}</th></tr></thead>
+            <tbody>${rows.map(r => `<tr><td><code>${sanitize(r[0])}</code></td><td>${sanitize(r[1])}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>`;
+      }
+      case 'list': {
+        const items = (sec.items || []).filter(i => (i||'').trim());
+        if (!items.length) return '';
+        return `<div style="margin:18px 0">
+          ${sec.title ? `<h3 style="font-size:.98rem;font-weight:700;color:var(--head);margin:0 0 10px">${sanitize(sec.title)}</h3>` : ''}
+          <ul class="w3-data-list">${items.map(i => `<li>${sanitize(i)}</li>`).join('')}</ul>
+        </div>`;
+      }
       default: return '';
     }
   }).join('');
