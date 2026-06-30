@@ -7256,35 +7256,28 @@ function showStuSection(section) {
    PHASE 1: FIRESTORE HELPERS
    ────────────────────────────────────────────────────────────────── */
 async function loadCourses() {
-  // Always load web-sourced courses from public APIs
-  let webCourses = [];
-  try {
-    webCourses = await getWebCourses();
-  } catch(e) { console.warn('getWebCourses error:', e); }
-
+  // Catalog shows ONLY courses created by professors and stored in Firestore.
+  // (Web-sourced course building still exists as an on-demand professor tool
+  // — see buildCourseFromWeb() / the "Generate from Web" course builder —
+  // but it no longer runs automatically on every catalog load.)
   if (!fsReady()) {
-    coursesCatalog = webCourses;
+    coursesCatalog = [];
     return;
   }
   try {
     const snap = await db.collection('courses').get();
-    const fetched = snap.docs.map(doc => {
+    coursesCatalog = snap.docs.map(doc => {
       const d = doc.data();
-      d.price = 'free';
+      d.price = d.price || 'free';
       return { id: doc.id, ...d };
     });
-    // Merge Firestore courses + web-API courses (Firestore takes precedence for same IDs)
-    const fetchedIds = new Set(fetched.map(c => c.id));
-    const webOnly = webCourses.filter(c => !fetchedIds.has(c.id));
-    coursesCatalog = [...fetched, ...webOnly];
-    if (!coursesCatalog.length) coursesCatalog = webCourses;
   } catch(e) {
     console.warn('loadCourses error:', e.code, e.message);
-    coursesCatalog = webCourses;
+    coursesCatalog = [];
     if (e.code === 'permission-denied' && !window._coursePermToastShown) {
       window._coursePermToastShown = true;
       if (typeof toast === 'function') {
-        toast('Firestore rules not yet deployed — showing web-sourced courses.', 'warn', 6000);
+        toast('Firestore rules not yet deployed — course catalog unavailable.', 'warn', 6000);
       }
     }
   }
@@ -8767,77 +8760,7 @@ async function buildCourseFromWeb(meta, videoIds, wikiTopics, bookQuery) {
  * COURSE CATALOG DEFINITIONS
  * These define the course structure; actual content is fetched live from APIs.
  */
-const WEB_COURSE_DEFS = [
-  {
-    meta: { id:'course-python-intro', title:'Python Programming — Zero to Hero', description:'Learn Python from scratch with Wikipedia articles and YouTube tutorials.', language:'Python', difficulty:'beginner', thumbnail:'🐍' },
-    videoIds: [
-      { id:'rfscVS0vtbw', title:'Learn Python in 4 Hours', duration:'30m' },
-      { id:'8DvywoWv6fI', title:'Python for Beginners – Full Tutorial', duration:'20m' },
-    ],
-    wikiTopics: ['Python (programming language)', 'Control flow', 'Function (computer programming)'],
-    bookQuery: 'Python programming Lutz',
-  },
-  {
-    meta: { id:'course-ds-algorithms', title:'Data Structures & Algorithms', description:'Master arrays, trees, graphs and sorting with real explanations.', language:'Computer Science', difficulty:'intermediate', thumbnail:'🌲' },
-    videoIds: [
-      { id:'RBSGKlAvoiM', title:'Data Structures Easy to Advanced', duration:'25m' },
-      { id:'pkYVOmU3MgA', title:'Algorithms Course – Graph Theory', duration:'20m' },
-    ],
-    wikiTopics: ['Array data structure', 'Binary search tree', 'Sorting algorithm', 'Graph (discrete mathematics)'],
-    bookQuery: 'Introduction to Algorithms Cormen',
-  },
-  {
-    meta: { id:'course-web-html-css', title:'Web Development: HTML & CSS', description:'Build modern websites from scratch. Covers HTML5, CSS3, Flexbox, Grid.', language:'Web', difficulty:'beginner', thumbnail:'🌐' },
-    videoIds: [
-      { id:'G3e-cpL7ofc', title:'HTML & CSS Full Course', duration:'20m' },
-      { id:'1Rs2ND1ryYc', title:'CSS Tutorial – Zero to Hero', duration:'15m' },
-    ],
-    wikiTopics: ['HTML', 'Cascading Style Sheets', 'Responsive web design'],
-    bookQuery: 'HTML CSS Jon Duckett',
-  },
-  {
-    meta: { id:'course-sql-databases', title:'SQL & Relational Databases', description:'Master SQL queries, joins, indexes and database design concepts.', language:'SQL', difficulty:'beginner', thumbnail:'🗄️' },
-    videoIds: [
-      { id:'HXV3zeQKqGY', title:'SQL Tutorial – Full Database Course', duration:'25m' },
-    ],
-    wikiTopics: ['SQL', 'Relational database', 'Database normalization', 'Join (SQL)'],
-    bookQuery: 'Learning SQL Beaulieu',
-  },
-  {
-    meta: { id:'course-git-devops', title:'Git & Version Control', description:'Learn Git from the ground up: commits, branches, merges, and GitHub workflows.', language:'DevOps', difficulty:'beginner', thumbnail:'🔀' },
-    videoIds: [
-      { id:'RGOj5yH7evk', title:'Git and GitHub for Beginners', duration:'15m' },
-    ],
-    wikiTopics: ['Git', 'Version control', 'GitHub'],
-    bookQuery: 'Pro Git Chacon',
-  },
-];
-
-/**
- * Fetch all web-sourced courses, building them from live API data.
- * Results are cached in session to avoid hammering APIs.
- */
-let _webCoursesCache = null;
-async function getWebCourses() {
-  if (_webCoursesCache) return _webCoursesCache;
-  const built = [];
-  for (const def of WEB_COURSE_DEFS) {
-    try {
-      const course = await buildCourseFromWeb(def.meta, def.videoIds, def.wikiTopics, def.bookQuery);
-      built.push(course);
-    } catch(e) {
-      // If API fetch fails, push a minimal shell
-      built.push({
-        id: def.meta.id, title: def.meta.title,
-        description: def.meta.description, language: def.meta.language,
-        difficulty: def.meta.difficulty, thumbnail: def.meta.thumbnail,
-        price: 'free', totalLessons: 0, modules: [], _source: 'web-fallback',
-      });
-    }
-  }
-  _webCoursesCache = built;
-  return built;
-}
+/* WEB_COURSE_DEFS + getWebCourses() removed — the catalog no longer auto-builds demo courses from external APIs on load (this was the main cause of slow catalog load times). buildCourseFromWeb() and its fetch helpers (fetchWikiLesson, fetchYouTubeLesson, fetchOpenLibraryBook) are still used on-demand by the professor 'Generate from Web' course builder. */
 
 function getDemoCourses() {
   // Returns empty — web courses are loaded async via getWebCourses()
