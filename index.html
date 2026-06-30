@@ -9754,25 +9754,27 @@ for i in range(1, 6):
    snippets (matches the GeeksforGeeks-style colored code block look). ── */
 function w3Highlight(code) {
   const esc = sanitize(code);
-  const KEYWORDS = /\b(def|class|return|if|elif|else|for|while|in|import|from|as|try|except|finally|with|pass|break|continue|lambda|yield|raise|global|nonlocal|and|or|not|is|None|True|False|public|private|protected|static|void|int|String|double|float|boolean|char|new|extends|implements|interface|package|throws|throw|final|abstract|const|let|var|function|export|default|async|await|of|switch|case|do|struct|namespace|using|include|typedef|sizeof)\b/g;
-  const BUILTIN = /\b(print|len|range|input|str|list|dict|set|tuple|console|System|Math|self|this|super)\b/g;
-  const lines = esc.split('\n').map(line => {
-    // Skip already-escaped HTML entities while matching
-    let out = line;
-    // Comments first (so we don't double-color inside them)
-    let commentMatch = out.match(/(#.*$|\/\/.*$)/);
-    let tail = '';
-    if (commentMatch) {
-      tail = '<span class="tok-com">' + commentMatch[0] + '</span>';
-      out = out.slice(0, commentMatch.index);
+  const KEYWORDS = new Set(['def','class','return','if','elif','else','for','while','in','import','from','as','try','except','finally','with','pass','break','continue','lambda','yield','raise','global','nonlocal','and','or','not','is','None','True','False','public','private','protected','static','void','int','String','double','float','boolean','char','new','extends','implements','interface','package','throws','throw','final','abstract','const','let','var','function','export','default','async','await','of','switch','case','do','struct','namespace','using','include','typedef','sizeof']);
+  const BUILTIN = new Set(['print','len','range','input','str','list','dict','set','tuple','console','System','Math','self','this','super']);
+  // Single left-to-right tokenizing pass: matches a comment, a string, a
+  // number, or a word — one token at a time — and only ever appends to the
+  // output. This avoids the previous bug where chained global .replace()
+  // calls for keywords/builtins would re-match literal text inside HTML
+  // *already injected* by an earlier pass (e.g. the word "class" or "str"
+  // appearing inside class="tok-str" from the string-highlighting pass),
+  // which corrupted the markup and leaked raw attribute text onto the page.
+  const TOKEN = /(#.*$|\/\/.*$)|(&quot;.*?&quot;|&#39;.*?&#39;|".*?"|'.*?')|(\b\d+\.?\d*\b)|([A-Za-z_]\w*)/gm;
+  return esc.replace(TOKEN, (m, comment, str, num, word) => {
+    if (comment) return '<span class="tok-com">' + comment + '</span>';
+    if (str) return '<span class="tok-str">' + str + '</span>';
+    if (num) return '<span class="tok-num">' + num + '</span>';
+    if (word) {
+      if (KEYWORDS.has(word)) return '<span class="tok-kw">' + word + '</span>';
+      if (BUILTIN.has(word)) return '<span class="tok-builtin">' + word + '</span>';
+      return word;
     }
-    out = out.replace(/(&quot;.*?&quot;|&#39;.*?&#39;|".*?"|'.*?')/g, '<span class="tok-str">$1</span>');
-    out = out.replace(KEYWORDS, '<span class="tok-kw">$1</span>');
-    out = out.replace(BUILTIN, '<span class="tok-builtin">$1</span>');
-    out = out.replace(/\b(\d+\.?\d*)\b/g, '<span class="tok-num">$1</span>');
-    return out + tail;
+    return m;
   });
-  return lines.join('\n');
 }
 
 /* ── Smart lesson content formatter ───────────────────────────────────────── */
