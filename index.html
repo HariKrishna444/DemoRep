@@ -1828,6 +1828,12 @@ select.inp option{background:var(--ink3)}
   padding:4px 12px;cursor:pointer;transition:all .15s;letter-spacing:.2px;
 }
 .w3-try-it-btn:hover{background:#00fbb3;transform:translateY(-1px)}
+.w3-inline-output{
+  padding:12px 20px;font-family:var(--ff-mono);font-size:.8rem;
+  background:#0c0e14;border-top:1px solid var(--line);
+  white-space:pre-wrap;line-height:1.6;max-height:200px;overflow-y:auto;
+}
+#page-learn .w3-inline-output{background:#1e1e1e;color:#d4d4d4}
 
 /* Skeleton loader */
 .w3-skeleton{padding:36px 44px;animation:skepulse 1.5s ease infinite}
@@ -8479,17 +8485,118 @@ function checkVerifyParam() {
 /* ──────────────────────────────────────────────────────────────────
    ADMIN COURSE BUILDER (Professor)
    ────────────────────────────────────────────────────────────────── */
+let _editingCourseId = null; // null = creating a new course, set = editing an existing one
+
 function openCourseBuilder() {
+  _editingCourseId = null;
   courseBuilderModules = [];
   document.getElementById('cb-title').value = '';
   document.getElementById('cb-lang').value = '';
   document.getElementById('cb-desc').value = '';
+  document.getElementById('cb-diff').value = 'beginner';
   document.getElementById('cb-thumb').value = '📚';
   document.getElementById('cb-wiki-topics').value = '';
   document.getElementById('cb-yt-ids').value = '';
   document.getElementById('cb-book-query').value = '';
   document.getElementById('cb-fetch-preview').innerHTML = '';
   document.getElementById('cb-modules-list').innerHTML = '';
+  const h3 = document.querySelector('#course-builder-modal h3');
+  if (h3) h3.textContent = '📚 Create New Course';
+  const saveBtn = document.querySelector('#course-builder-modal .modal-footer .btn-a');
+  if (saveBtn) saveBtn.textContent = 'Create Course';
+  document.getElementById('course-builder-modal').classList.add('open');
+}
+
+/* ── Edit an existing course's modules/lessons (reuses the same builder
+   modal + addCourseModule/addCBLesson/renderCBBlocks machinery, just
+   pre-filled with the course's current data instead of starting empty). ── */
+async function openEditCourseModal(courseId) {
+  let course = coursesCatalog.find(c => c.id === courseId);
+  if (fsReady()) {
+    try {
+      const snap = await db.collection('courses').doc(courseId).get();
+      if (snap.exists) course = Object.assign({ id: courseId }, snap.data());
+    } catch(e) { console.warn('Could not fetch fresh course data:', e); }
+  }
+  if (!course) { toast('Course not found','err'); return; }
+
+  _editingCourseId = courseId;
+  _cbWebModules = []; // editing never re-merges web-imported modules
+  // Deep-clone so cancelling the edit doesn't mutate the cached course
+  courseBuilderModules = JSON.parse(JSON.stringify(course.modules || []));
+
+  document.getElementById('cb-title').value = course.title || '';
+  document.getElementById('cb-lang').value = course.language || '';
+  document.getElementById('cb-desc').value = course.description || '';
+  document.getElementById('cb-diff').value = course.difficulty || 'beginner';
+  document.getElementById('cb-thumb').value = course.thumbnail || '📚';
+  document.getElementById('cb-wiki-topics').value = '';
+  document.getElementById('cb-yt-ids').value = '';
+  document.getElementById('cb-book-query').value = '';
+  document.getElementById('cb-fetch-preview').innerHTML = '';
+
+  const h3 = document.querySelector('#course-builder-modal h3');
+  if (h3) h3.textContent = '✎ Edit Course: ' + (course.title || '');
+  const saveBtn = document.querySelector('#course-builder-modal .modal-footer .btn-a');
+  if (saveBtn) saveBtn.textContent = 'Save Changes';
+
+  // Render existing modules + lessons + content blocks into #cb-modules-list
+  cbModuleCount = courseBuilderModules.length;
+  const listEl = document.getElementById('cb-modules-list');
+  listEl.innerHTML = '';
+  courseBuilderModules.forEach((mod, modIdx) => {
+    const row = document.createElement('div');
+    row.className = 'builder-step';
+    row.id = 'cbmod-' + modIdx;
+    row.innerHTML = `
+      <div class="builder-step-head">
+        <div class="step-num">${modIdx+1}</div>
+        <input class="inp" placeholder="Module title e.g. Basics" style="flex:1" value="${cbAttrEsc(mod.title)}"
+          oninput="courseBuilderModules[${modIdx}].title=this.value">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--soft)">
+          <input type="checkbox" ${mod.hasQuiz ? 'checked' : ''} onchange="courseBuilderModules[${modIdx}].hasQuiz=this.checked" style="accent-color:var(--stu)">
+          Has Quiz
+        </label>
+      </div>
+      <div id="cbmod-lessons-${modIdx}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBLesson(${modIdx})">+ Add Lesson</button>`;
+    listEl.appendChild(row);
+
+    const lessonsEl = document.getElementById('cbmod-lessons-' + modIdx);
+    (mod.lessons || []).forEach((lesson, lessonIdx) => {
+      const lrow = document.createElement('div');
+      lrow.className = 'lesson-builder-item-wrap';
+      lrow.innerHTML = `
+        <div class="lesson-builder-item">
+          <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
+          <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px" value="${cbAttrEsc(lesson.title)}"
+                 oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
+          <select class="inp" style="width:100px;padding:7px" id="cb-ltype-${modIdx}-${lessonIdx}"
+                  onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx})">
+            <option value="article" ${lesson.type!=='video'?'selected':''}>Article</option>
+            <option value="video" ${lesson.type==='video'?'selected':''}>Video</option>
+          </select>
+          <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px" value="${cbAttrEsc(lesson.duration)}"
+                 oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
+        </div>
+        <input class="inp cb-video-url ${lesson.type==='video'?'':'hidden'}" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
+               style="margin:6px 0;padding:7px 10px" value="${cbAttrEsc(lesson.videoUrl)}"
+               oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
+        <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, table, points, note.</div>
+        <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
+        <div class="cb-block-add-row">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'list')">+ Points</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
+        </div>`;
+      lessonsEl.appendChild(lrow);
+      renderCBBlocks(modIdx, lessonIdx);
+    });
+  });
+
   document.getElementById('course-builder-modal').classList.add('open');
 }
 function closeCourseBuilder() { document.getElementById('course-builder-modal').classList.remove('open'); }
@@ -8761,6 +8868,26 @@ async function saveCourse() {
   const allModules = [...(_cbWebModules || []), ...courseBuilderModules];
   const totalLessons = allModules.reduce((a,m)=>a+(m.lessons||[]).length,0);
 
+  // ── EDIT MODE: update the existing course's lessons/modules in place ──
+  if (_editingCourseId) {
+    const updatePayload = { title, language:lang, description:desc, difficulty:diff, thumbnail:thumb, modules:allModules, totalLessons };
+    if (fsReady()) {
+      try {
+        await db.collection('courses').doc(_editingCourseId).update(updatePayload);
+        toast(`Course "${title}" updated! 🎓`, 'ok');
+      } catch(e) { toast('Update failed: '+e.message,'err'); return; }
+    } else {
+      const idx = coursesCatalog.findIndex(c => c.id === _editingCourseId);
+      if (idx !== -1) Object.assign(coursesCatalog[idx], updatePayload);
+      toast(`Course "${title}" updated (demo mode)`, 'ok');
+    }
+    _editingCourseId = null;
+    closeCourseBuilder();
+    await loadCourses();
+    if (typeof renderCourseAnalytics === 'function') renderCourseAnalytics();
+    return;
+  }
+
   const creatorName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'professor';
 
   const course = {
@@ -8901,6 +9028,7 @@ async function renderCourseAnalytics() {
         <td><span class="diff easy">free</span></td>
         <td>
           <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="openEditCourseModal('${c.id}')">✎ Edit</button>
             <button class="btn btn-blue btn-sm" onclick="openAddModuleModal('${c.id}')">+ Module</button>
             <button class="btn btn-ghost btn-sm" onclick="openQuizBuilder('${c.id}','mod-1')">+ Quiz</button>
             <button class="btn btn-r btn-sm" onclick="deleteCourse('${c.id}')">🗑</button>
@@ -9678,6 +9806,7 @@ function formatLessonContent(raw) {
 }
 
 function w3RenderSections(sections) {
+  let _exCounter = 0;
   return sections.map(sec => {
     switch(sec.type) {
       case 'intro':
@@ -9686,14 +9815,23 @@ function w3RenderSections(sections) {
         return `<p style="font-size:.92rem;color:var(--soft);line-height:1.85;margin-bottom:14px">${sanitize(sec.text)}</p>`;
       case 'h2':
         return `<h2 style="font-size:1.1rem;font-weight:800;color:var(--head);margin:30px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)">${sanitize(sec.text)}</h2>`;
-      case 'example':
-        return `<div class="w3-example-box">
+      case 'example': {
+        // Use an ID and read the code back from the rendered .w3-example-code
+        // element's textContent at click-time (avoids escaping a code string
+        // into an inline onclick attribute, which breaks on quotes/newlines).
+        const exId = 'w3ex-' + (_exCounter++) + '-' + Math.random().toString(36).slice(2,7);
+        return `<div class="w3-example-box" id="box-${exId}">
           <div class="w3-example-label">
             <span>Example — ${sanitize(sec.label||'')}</span>
-            <button class="w3-try-it-btn" onclick="w3LoadCode(${JSON.stringify(sec.code)})">▶ Try it</button>
+            <div style="display:flex;gap:6px">
+              <button class="w3-try-it-btn" id="run-${exId}" onclick="w3RunInlineExample('${exId}')">▶ Run</button>
+              <button class="w3-try-it-btn" onclick="w3LoadCode(document.querySelector('#box-${exId} .w3-example-code').textContent)" style="opacity:.85">✎ Edit in Playground</button>
+            </div>
           </div>
           <div class="w3-example-code">${w3Highlight(sec.code)}</div>
+          <div class="w3-inline-output" id="out-${exId}" style="display:none"></div>
         </div>`;
+      }
       case 'note':
         return `<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-left:3px solid var(--cyan);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:12px 16px;margin:18px 0;font-size:.84rem;color:var(--soft);line-height:1.65">
           <span style="color:var(--cyan);font-weight:700;margin-right:6px">📌 Note:</span>${sanitize(sec.note||sec.text||'')}
@@ -10032,6 +10170,39 @@ function w3HandleTab(e) {
 }
 
 /* ── Run Python code via Pyodide ── */
+/* ── Run a static "Code Example" block inline (no editor needed) ──
+   Uses the same in-browser Pyodide engine as the main playground, so it
+   runs instantly with no external API call. ── */
+async function w3RunInlineExample(exId) {
+  const codeEl = document.querySelector(`#box-${exId} .w3-example-code`);
+  const outEl  = document.getElementById('out-' + exId);
+  const btn    = document.getElementById('run-' + exId);
+  if (!codeEl || !outEl || !btn) return;
+  const code = codeEl.textContent;
+
+  outEl.style.display = 'block';
+  outEl.innerHTML = '<span class="w3-out-running">⏳ Starting Python engine…</span>';
+  btn.disabled = true;
+  const origLabel = btn.textContent;
+  btn.textContent = '⏳ Running…';
+
+  try {
+    if (!_pyFrame) startPyodide();
+    await waitPyReady(60000);
+    const result = await runPy(code, '');
+    let html = '';
+    if (result.stdout) html += `<span class="w3-out-ok">${sanitize(result.stdout)}</span>`;
+    if (result.stderr) html += `<span class="w3-out-err">${sanitize(result.stderr)}</span>`;
+    if (!result.stdout && !result.stderr) html = '<span class="w3-out-info">✓ Ran successfully (no output)</span>';
+    outEl.innerHTML = html;
+  } catch(e) {
+    outEl.innerHTML = `<span class="w3-out-err">Error: ${sanitize(e.message||String(e))}</span>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = origLabel;
+}
+
 async function w3RunCode() {
   if (!_pyReady) {
     toast('Python engine still loading — please wait','warn');
