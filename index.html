@@ -3957,6 +3957,20 @@ function flattenCourseLessons(course) {
   (course?.modules || []).forEach(m => (m.lessons || []).forEach(l => out.push({ moduleId: m.id, lesson: l })));
   return out;
 }
+
+// Keep the address bar in sync with whatever course/lesson is currently
+// being viewed — so copying straight from the URL bar (or bookmarking,
+// or sending the tab's URL to someone) works, not just the Share button.
+// Uses history.replaceState rather than `location.hash = ...` so it does
+// NOT fire a 'hashchange' event (which would otherwise re-trigger
+// handleDeepLink() and recurse) and doesn't add extra back-button entries
+// for every lesson click.
+function updateUrlHash(hash) {
+  try {
+    const url = location.href.split('#')[0] + hash;
+    history.replaceState(null, '', url);
+  } catch (e) { /* sandboxed iframe or unsupported browser — harmless no-op */ }
+}
 function shareLink(type, courseId, modId, lessonId) {
   const base = location.href.split('#')[0];
   // Build human-readable URL segments from titles when available
@@ -7833,6 +7847,7 @@ async function openCourseDetail(courseId) {
   await loadMyEnrollments();
   const course = coursesCatalog.find(c=>c.id===courseId);
   if (!course) { content.innerHTML='<div style="padding:40px;color:var(--danger)">Course not found.</div>'; return; }
+  updateUrlHash('#/course/' + courseId);
   const enrolled = myEnrollments[courseId];
   const modules = course.modules || [];
   const syllabus = modules.map((m,mi) => {
@@ -8011,6 +8026,8 @@ function openLesson(courseId, moduleId, lessonId) {
     if (l) { lesson = l; mod = m; break; }
   }
   if (!lesson) return;
+  const flatIdx = flattenCourseLessons(course).findIndex(x => x.lesson.id === lessonId);
+  updateUrlHash('#/course/' + courseId + (flatIdx !== -1 ? '/lesson' + (flatIdx + 1) : ''));
   renderLearnSidebar(course);
   const area = document.getElementById('lesson-content-area');
   const enrollment = myEnrollments[courseId];
@@ -10348,6 +10365,8 @@ window.openLesson = function(courseId, moduleId, lessonId) {
     if (l) { lesson = l; mod = m; break; }
   }
   if (!lesson) return;
+  const flatIdx = flattenCourseLessons(course).findIndex(x => x.lesson.id === lessonId);
+  updateUrlHash('#/course/' + courseId + (flatIdx !== -1 ? '/lesson' + (flatIdx + 1) : ''));
   renderLearnSidebar(course);
   const area = document.getElementById('lesson-content-area');
   if (!area) return;
