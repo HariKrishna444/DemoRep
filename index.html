@@ -1458,6 +1458,15 @@ select.inp option{background:var(--ink3)}
 .cb-block-note{border-left:3px solid #8b5cf6}
 .cb-block-table{border-left:3px solid #ec4899}
 .cb-block-list{border-left:3px solid #f59e0b}
+.cb-block-vid{border-left:3px solid #6366f1}
+.cb-block-img{border-left:3px solid #10b981}
+.lesson-share-btn{
+  font-size:.72rem;opacity:0;transition:opacity .15s;cursor:pointer;
+  padding:2px 4px;border-radius:4px;flex-shrink:0;
+}
+.lesson-row:hover .lesson-share-btn,
+.sb-mod-label:hover .lesson-share-btn{opacity:1}
+.lesson-share-btn:hover{background:rgba(0,229,160,.12)}
 .cb-block-tag{
   font-family:var(--ff-mono);font-size:.62rem;font-weight:800;
   color:var(--muted);width:22px;flex-shrink:0;text-align:center;
@@ -3922,6 +3931,73 @@ const DEMO_STUDENTS = [];
 /* ═══════════════════════════════════════════════════════════════
    INIT — Phase 2 upgraded with Firebase persistence + role loading
    ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   SHAREABLE LINKS
+   URLs: #/course/ID  |  #/course/ID/mod/MOD_ID  |  #/course/ID/mod/MOD_ID/lesson/LESSON_ID
+   Anyone with the link opens the course in read-only "viewer" mode —
+   no login needed to browse. Students who want to track progress
+   are prompted to log in, but the content is immediately visible.
+   ═══════════════════════════════════════════════════════════════ */
+function shareLink(type, courseId, modId, lessonId) {
+  const base = location.href.split('#')[0];
+  let hash = '#/course/' + courseId;
+  if (type === 'module' && modId) hash += '/mod/' + modId;
+  if (type === 'lesson' && modId && lessonId) hash += '/mod/' + modId + '/lesson/' + lessonId;
+  const url = base + hash;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied!', 'ok')).catch(() => prompt('Copy this link:', url));
+  } else { prompt('Copy this link:', url); }
+}
+
+/* ── Hash-based router — handles deep links on page load + back/forward ── */
+async function handleDeepLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#/course/')) return false;
+  const parts = hash.replace('#/course/', '').split('/');
+  const courseId = parts[0];
+  if (!courseId) return false;
+
+  // Allow viewing without login (read-only mode)
+  await loadCourses();
+  const course = coursesCatalog.find(c => c.id === courseId);
+  if (!course) { toast('Course not found', 'err'); return true; }
+
+  const modId    = parts[1] === 'mod'    ? parts[2] : null;
+  const lessonId = parts[3] === 'lesson' ? parts[4] : null;
+
+  if (lessonId && modId) {
+    // Deep link to a specific lesson — open learn view directly
+    currentCourseId = courseId;
+    showPage('learn');
+    await loadMyEnrollments();
+    document.getElementById('learn-course-title').textContent = course.title || '';
+    updateLearnProgress(courseId);
+    renderLearnSidebar(course);
+    openLesson(courseId, modId, lessonId);
+  } else if (modId) {
+    // Deep link to a module — open course detail with that module expanded
+    await openCourseDetail(courseId);
+    setTimeout(() => {
+      const idx = (course.modules || []).findIndex(m => m.id === modId);
+      if (idx !== -1) {
+        const el = document.getElementById('cdmod-' + idx);
+        if (el) el.style.display = 'flex';
+        el && el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 400);
+  } else {
+    // Deep link to course root
+    await openCourseDetail(courseId);
+  }
+
+  // Nudge logged-out visitors to sign in for progress tracking
+  if (!currentUser) {
+    setTimeout(() => toast('💡 Log in to track your progress and earn a certificate!', 'info', 6000), 1200);
+  }
+  return true;
+}
+
 async function initApp() {
   try {
     if (!FB_CONFIG.apiKey.includes('REPLACE')) {
@@ -6167,9 +6243,17 @@ function exportResults() {
 /* ═══════════════════════════════════════════════════════════════
    BOOT
    ═══════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded', async ()=>{
   initResize();
-  initApp();
+  await initApp();
+  // After app boots, check for a deep link in the URL hash
+  if (location.hash.startsWith('#/course/')) {
+    const handled = await handleDeepLink();
+    if (!handled) initApp(); // fallback
+  }
+});
+window.addEventListener('hashchange', () => {
+  if (location.hash.startsWith('#/course/')) handleDeepLink();
 });
 
 
@@ -7749,6 +7833,8 @@ function renderLearnSidebar(course) {
           <div class="lesson-icon">${icon}</div>
           <span class="lesson-title">${sanitize(lesson.title||'Lesson')}</span>
           <span class="lesson-dur">${lesson.duration||''}</span>
+          <span class="lesson-share-btn" title="Copy shareable link"
+            onclick="event.stopPropagation();shareLink('lesson','${currentCourseId}','${mod.id}','${lesson.id}')">🔗</span>
         </div>`;
     }).join('');
 
@@ -7765,6 +7851,8 @@ function renderLearnSidebar(course) {
           <span style="width:18px;height:18px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--amber);flex-shrink:0">${mi+1}</span>
           <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sanitize(mod.title||`Module ${mi+1}`)}</span>
           <span style="font-size:.6rem;color:var(--muted);font-family:var(--ff-mono);margin-right:4px">${doneCount}/${lessons.length}</span>
+          <span class="lesson-share-btn" title="Copy module link"
+            onclick="event.stopPropagation();shareLink('module','${currentCourseId}','${mod.id}')">🔗</span>
           <span class="sb-mod-chevron">▶</span>
         </div>
         <div class="sb-mod-prog"><div class="sb-mod-prog-fill" style="width:${progPct}%"></div></div>
@@ -7852,13 +7940,17 @@ function openLesson(courseId, moduleId, lessonId) {
     : '';
 
   area.innerHTML = `
-    <!-- Breadcrumb -->
-    <div class="lesson-meta-bar">
+    <!-- Breadcrumb + share -->
+    <div class="lesson-meta-bar" style="justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <span>${sanitize(course.title||'')}</span>
       <span style="color:var(--line)">›</span>
       <span>${sanitize(mod?.title||'')}</span>
       <span style="color:var(--line)">›</span>
       <span style="color:var(--stu)">${sanitize(lesson.title||'')}</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0"
+        onclick="shareLink('lesson','${courseId}','${mod?.id||''}','${lessonId}')">🔗 Share Lesson</button>
     </div>
 
     <!-- Lesson title -->
@@ -8595,6 +8687,8 @@ async function openEditCourseModal(courseId) {
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'list')">+ Points</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'vidblock')">+ Video</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'imgblock')">+ Image</button>
         </div>`;
       lessonsEl.appendChild(lrow);
       renderCBBlocks(modIdx, lessonIdx);
@@ -8714,6 +8808,8 @@ function addCBLesson(modIdx) {
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'list')">+ Points</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'vidblock')">+ Video</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'imgblock')">+ Image</button>
     </div>`;
   el.appendChild(row);
   renderCBBlocks(modIdx, lessonIdx);
@@ -8737,6 +8833,8 @@ function addCBBlock(modIdx, lessonIdx, type) {
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
   else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[['',''],['','']] });
   else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
+  else if (type === 'vidblock') lesson.sections.push({ type:'vidblock', url:'', caption:'' });
+  else if (type === 'imgblock') lesson.sections.push({ type:'imgblock', url:'', caption:'' });
   else lesson.sections.push({ type:'text', text:'' });
   renderCBBlocks(modIdx, lessonIdx);
 }
@@ -8864,6 +8962,32 @@ function renderCBBlocks(modIdx, lessonIdx) {
             <button type="button" class="cb-block-rm" onclick="removeCBListItem(${modIdx},${lessonIdx},${bi},${ii})">×</button>
           </div>`).join('')}
           <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addCBListItem(${modIdx},${lessonIdx},${bi})">+ Point</button>
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'vidblock') {
+      return `<div class="cb-block cb-block-vid">
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>▶</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+          <input class="inp" placeholder="YouTube URL or embed URL (e.g. https://youtube.com/watch?v=...)" value="${cbAttrEsc(sec.url)}"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'url',this.value)">
+          <input class="inp" placeholder="Caption (optional)" value="${cbAttrEsc(sec.caption)}"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'caption',this.value)">
+          ${sec.url ? `<div style="font-size:.7rem;color:var(--stu)">✓ Video URL set</div>` : ''}
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'imgblock') {
+      return `<div class="cb-block cb-block-img">
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>🖼</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+          <input class="inp" placeholder="Image URL (https://...)" value="${cbAttrEsc(sec.url)}"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'url',this.value)">
+          <input class="inp" placeholder="Alt text / caption (optional)" value="${cbAttrEsc(sec.caption)}"
+            oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'caption',this.value)">
+          ${sec.url ? `<img src="${cbAttrEsc(sec.url)}" style="max-height:80px;border-radius:6px;object-fit:cover;margin-top:4px" onerror="this.style.display='none'">` : ''}
         </div>
         <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
       </div>`;
@@ -9073,6 +9197,7 @@ async function renderCourseAnalytics() {
         <td><span class="diff easy">free</span></td>
         <td>
           <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="shareLink('course','${c.id}')">🔗 Share</button>
             <button class="btn btn-ghost btn-sm" onclick="openEditCourseModal('${c.id}')">✎ Edit</button>
             <button class="btn btn-blue btn-sm" onclick="openAddModuleModal('${c.id}')">+ Module</button>
             <button class="btn btn-ghost btn-sm" onclick="openQuizBuilder('${c.id}','mod-1')">+ Quiz</button>
@@ -9549,6 +9674,8 @@ function addAmmLesson() {
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'table')">+ Table</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'list')">+ Points</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'note')">+ Note</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'vidblock')">+ Video</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'imgblock')">+ Image</button>
     </div>`;
   el.appendChild(row);
   renderAmmBlocks(idx);
@@ -9571,6 +9698,8 @@ function addAmmBlock(lessonIdx, type) {
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
   else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[['',''],['','']] });
   else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
+  else if (type === 'vidblock') lesson.sections.push({ type:'vidblock', url:'', caption:'' });
+  else if (type === 'imgblock') lesson.sections.push({ type:'imgblock', url:'', caption:'' });
   else lesson.sections.push({ type:'text', text:'' });
   renderAmmBlocks(lessonIdx);
 }
@@ -9657,6 +9786,32 @@ function renderAmmBlocks(lessonIdx) {
             <button type="button" class="cb-block-rm" onclick="removeAmmListItem(${lessonIdx},${bi},${ii})">×</button>
           </div>`).join('')}
           <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addAmmListItem(${lessonIdx},${bi})">+ Point</button>
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'vidblock') {
+      return `<div class="cb-block cb-block-vid">
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>▶</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+          <input class="inp" placeholder="YouTube URL or embed URL" value="${cbAttrEsc(sec.url)}"
+            oninput="updateAmmBlock(${lessonIdx},${bi},'url',this.value)">
+          <input class="inp" placeholder="Caption (optional)" value="${cbAttrEsc(sec.caption)}"
+            oninput="updateAmmBlock(${lessonIdx},${bi},'caption',this.value)">
+          ${sec.url ? `<div style="font-size:.7rem;color:var(--stu)">✓ Video URL set</div>` : ''}
+        </div>
+        <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'imgblock') {
+      return `<div class="cb-block cb-block-img">
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>🖼</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+          <input class="inp" placeholder="Image URL (https://...)" value="${cbAttrEsc(sec.url)}"
+            oninput="updateAmmBlock(${lessonIdx},${bi},'url',this.value)">
+          <input class="inp" placeholder="Alt text / caption (optional)" value="${cbAttrEsc(sec.caption)}"
+            oninput="updateAmmBlock(${lessonIdx},${bi},'caption',this.value)">
+          ${sec.url ? `<img src="${cbAttrEsc(sec.url)}" style="max-height:80px;border-radius:6px;object-fit:cover;margin-top:4px" onerror="this.style.display='none'">` : ''}
         </div>
         <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
       </div>`;
@@ -9880,6 +10035,26 @@ function w3RenderSections(sections) {
           <div class="w3-inline-output" id="out-${exId}" style="display:none"></div>
         </div>`;
       }
+      case 'vidblock': {
+        if (!sec.url) return '';
+        const vembed = sec.url.includes('youtube.com/watch') ? sec.url.replace('watch?v=','embed/').split('&')[0]
+          : sec.url.includes('youtu.be/') ? 'https://www.youtube.com/embed/' + sec.url.split('youtu.be/')[1].split('?')[0]
+          : sec.url;
+        return `<div style="margin:20px 0">
+          <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:var(--r);background:#000">
+            <iframe src="${vembed}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" allowfullscreen loading="lazy"></iframe>
+          </div>
+          ${sec.caption ? `<p style="font-size:.78rem;color:var(--muted);text-align:center;margin:6px 0 0">${sanitize(sec.caption)}</p>` : ''}
+        </div>`;
+      }
+      case 'imgblock':
+        if (!sec.url) return '';
+        return `<div style="margin:20px 0;text-align:center">
+          <img src="${sanitize(sec.url)}" alt="${sanitize(sec.caption||'')}"
+            style="max-width:100%;border-radius:var(--r);border:1px solid var(--line);box-shadow:var(--sh)"
+            onerror="this.style.opacity='.3'">
+          ${sec.caption ? `<p style="font-size:.78rem;color:var(--muted);margin:6px 0 0">${sanitize(sec.caption)}</p>` : ''}
+        </div>`;
       case 'note':
         return `<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-left:3px solid var(--cyan);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:12px 16px;margin:18px 0;font-size:.84rem;color:var(--soft);line-height:1.65">
           <span style="color:var(--cyan);font-weight:700;margin-right:6px">📌 Note:</span>${sanitize(sec.note||sec.text||'')}
