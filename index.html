@@ -3894,6 +3894,11 @@ const MAX_VIOLATIONS     = 2; // strict: 2 violations = terminate
    ═══════════════════════════════════════════════════════════════ */
 let firebaseReady = false;
 let _authHandled  = false;  // prevents onAuthStateChanged double-firing after manual login
+// True once handleDeepLink() has shown publicly-shared course/lesson content
+// for a logged-out visitor. Prevents the auth-state listener in initApp()
+// from yanking them to the login page — free courses stay browsable
+// without login; only enroll/progress/certificate actions require login.
+let _publicDeepLinkActive = false;
 let auth, db;
 let currentUser = null;
 let currentRole = 'prof';        // 'prof' | 'stu'
@@ -3943,6 +3948,15 @@ const DEMO_STUDENTS = [];
 function slugify(str) {
   return String(str||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60)||'item';
 }
+// Flatten a course's lessons into a single ordered list (module order, then
+// lesson order within each module) so we can refer to any lesson by a
+// simple 1-based number across the whole course — e.g. "lesson1", "lesson2"
+// — instead of exposing internal module/lesson IDs in the URL.
+function flattenCourseLessons(course) {
+  const out = [];
+  (course?.modules || []).forEach(m => (m.lessons || []).forEach(l => out.push({ moduleId: m.id, lesson: l })));
+  return out;
+}
 function shareLink(type, courseId, modId, lessonId) {
   const base = location.href.split('#')[0];
   // Build human-readable URL segments from titles when available
@@ -3959,7 +3973,19 @@ function shareLink(type, courseId, modId, lessonId) {
   const courseHash = '#/course/' + courseId; // keep courseId as anchor so lookup still works
   let hash = courseHash;
   if (type === 'module' && modId) hash += '/' + modSlug + '--' + modId;
-  if (type === 'lesson' && modId && lessonId) hash += '/' + modSlug + '--' + modId + '/' + lessonSlug + '--' + lessonId;
+
+  // Lessons: use a simple sequential number across the whole course, e.g.
+  // #/course/hari-python-programming/lesson1, /lesson2, ... instead of
+  // exposing internal module/lesson IDs. Falls back to the old slug--id
+  // format if the lesson can't be found in the flattened list for some
+  // reason (shouldn't normally happen).
+  if (type === 'lesson' && modId && lessonId) {
+    const flat = course ? flattenCourseLessons(course) : [];
+    const flatIdx = flat.findIndex(x => x.lesson.id === lessonId);
+    hash += flatIdx !== -1
+      ? '/lesson' + (flatIdx + 1)
+      : '/' + modSlug + '--' + modId + '/' + lessonSlug + '--' + lessonId;
+  }
 
   const url = base + hash;
 
@@ -4037,9 +4063,33 @@ async function handleDeepLink() {
     const sep = part.lastIndexOf('--');
     return sep !== -1 ? part.slice(sep + 2) : part;
   }
-  const modId    = parts[1] && parts[1] !== 'mod' ? extractId(parts[1]) : (parts[2] ? extractId(parts[2]) : null);
-  const lessonId = parts[2] && parts[1] && parts[1] !== 'mod' && parts[2] ? extractId(parts[2]) :
-                   (parts[4] ? extractId(parts[4]) : null);
+
+  let modId = null, lessonId = null;
+
+  // New short format: #/course/ID/lessonN — N is the lesson's 1-based
+  // position across the whole course (module order, then lesson order).
+  // This is what shareLink() now generates, e.g.
+  // .../course/hari-python-programming/lesson1, /lesson2, ...
+  const lessonNumMatch = parts[1] && parts[1].match(/^lesson(\d+)$/i);
+  if (lessonNumMatch) {
+    const flat = flattenCourseLessons(course);
+    const entry = flat[parseInt(lessonNumMatch[1], 10) - 1];
+    if (entry) { modId = entry.moduleId; lessonId = entry.lesson.id; }
+  } else {
+    // Legacy formats (older shared links still work):
+    //   .../mod-slug--modId/lesson-slug--lessonId
+    //   .../mod/MOD_ID/lesson/LESSON_ID
+    modId    = parts[1] && parts[1] !== 'mod' ? extractId(parts[1]) : (parts[2] ? extractId(parts[2]) : null);
+    lessonId = parts[2] && parts[1] && parts[1] !== 'mod' && parts[2] ? extractId(parts[2]) :
+               (parts[4] ? extractId(parts[4]) : null);
+  }
+
+  // Mark that we're showing publicly-shared content so the auth-state
+  // listener in initApp() doesn't redirect a logged-out visitor to the
+  // login page underneath them — free courses stay viewable without login.
+  // (Login is still required for enrollment, progress tracking, and
+  // certificates, which are gated separately where they're used.)
+  _publicDeepLinkActive = true;
 
   if (lessonId && modId) {
     // Deep link to a specific lesson — open learn view directly
@@ -4127,11 +4177,11 @@ async function initApp() {
           onAuthSuccess();
         } else {
           _authHandled = false;
-          showPage('login');
+          if (!_publicDeepLinkActive) showPage('login');
         }
       });
     } else {
-      showPage('login');
+      if (!_publicDeepLinkActive) showPage('login');
       toast('🎮 Demo mode — Firebase not configured. All features work locally!','warn',6000);
     }
   }, 400);
@@ -6320,6 +6370,10 @@ function exportResults() {
    ═══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async ()=>{
   initResize();
+  // Flag this immediately (before initApp()'s async auth check can fire) so
+  // a logged-out visitor opening a shared course/lesson link never gets
+  // bounced to the login page — free content stays viewable without login.
+  if (location.hash.startsWith('#/course/')) _publicDeepLinkActive = true;
   await initApp();
   // After app boots, check for a deep link in the URL hash
   if (location.hash.startsWith('#/course/')) {
