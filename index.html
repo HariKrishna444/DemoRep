@@ -1954,6 +1954,7 @@ select.inp option{background:var(--ink3)}
 .w3-output::-webkit-scrollbar{width:3px}
 .w3-output::-webkit-scrollbar-thumb{background:var(--line)}
 .w3-out-err{color:var(--danger)}
+.w3-out-line{display:block;white-space:pre-wrap;line-height:1.7;min-height:1.2em}
 .w3-out-ok{color:#a5f3c0}
 .w3-out-info{color:var(--soft)}
 .w3-out-running{color:var(--amber);animation:blink 0.8s ease infinite}
@@ -3939,11 +3940,26 @@ const DEMO_STUDENTS = [];
    no login needed to browse. Students who want to track progress
    are prompted to log in, but the content is immediately visible.
    ═══════════════════════════════════════════════════════════════ */
+function slugify(str) {
+  return String(str||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60)||'item';
+}
 function shareLink(type, courseId, modId, lessonId) {
   const base = location.href.split('#')[0];
-  let hash = '#/course/' + courseId;
-  if (type === 'module' && modId) hash += '/mod/' + modId;
-  if (type === 'lesson' && modId && lessonId) hash += '/mod/' + modId + '/lesson/' + lessonId;
+  // Build human-readable URL segments from titles when available
+  const course = coursesCatalog.find(c => c.id === courseId);
+  const mod = modId ? (course?.modules||[]).find(m => m.id === modId) : null;
+  let lesson = null;
+  if (lessonId && mod) lesson = (mod.lessons||[]).find(l => l.id === lessonId);
+
+  // Readable slugs: use title-based slug if available, fall back to id
+  const courseSlug = course ? slugify(course.title) : courseId;
+  const modSlug    = mod    ? slugify(mod.title)    : modId;
+  const lessonSlug = lesson ? slugify(lesson.title) : lessonId;
+
+  let hash = '#/course/' + courseId; // keep courseId as anchor so lookup still works
+  if (type === 'module' && modId) hash += '/' + modSlug + '--' + modId;
+  if (type === 'lesson' && modId && lessonId) hash += '/' + modSlug + '--' + modId + '/' + lessonSlug + '--' + lessonId;
+
   const url = base + hash;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied!', 'ok')).catch(() => prompt('Copy this link:', url));
@@ -3963,8 +3979,16 @@ async function handleDeepLink() {
   const course = coursesCatalog.find(c => c.id === courseId);
   if (!course) { toast('Course not found', 'err'); return true; }
 
-  const modId    = parts[1] === 'mod'    ? parts[2] : null;
-  const lessonId = parts[3] === 'lesson' ? parts[4] : null;
+  // Parse slug--id format: "python-language-basics--mod-abc123"
+  // extract the real ID from the suffix after '--', or use the whole part as id (legacy)
+  function extractId(part) {
+    if (!part) return null;
+    const sep = part.lastIndexOf('--');
+    return sep !== -1 ? part.slice(sep + 2) : part;
+  }
+  const modId    = parts[1] && parts[1] !== 'mod' ? extractId(parts[1]) : (parts[2] ? extractId(parts[2]) : null);
+  const lessonId = parts[2] && parts[1] && parts[1] !== 'mod' && parts[2] ? extractId(parts[2]) :
+                   (parts[4] ? extractId(parts[4]) : null);
 
   if (lessonId && modId) {
     // Deep link to a specific lesson — open learn view directly
@@ -7764,6 +7788,8 @@ async function openCourseDetail(courseId) {
                🎓 Enroll Now
              </button>`
         }
+        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;justify-content:center;border:1px solid var(--line2);color:var(--soft)"
+          onclick="shareLink('course','${courseId}')">🔗 Share Course</button>
         <div style="margin-top:16px;font-size:.75rem;color:var(--muted);line-height:1.6">
           ✓ Full lifetime access<br>
           ✓ Certificate on completion<br>
@@ -7950,7 +7976,8 @@ function openLesson(courseId, moduleId, lessonId) {
       <span style="color:var(--stu)">${sanitize(lesson.title||'')}</span>
       </div>
       <button class="btn btn-ghost btn-sm" style="flex-shrink:0"
-        onclick="shareLink('lesson','${courseId}','${mod?.id||''}','${lessonId}')">🔗 Share Lesson</button>
+        onclick="shareLink('lesson','${courseId}','${mod?.id||''}','${lessonId}')"
+        style="border:1px solid #d0d7de;color:#24292f;background:#f6f8fa;font-size:.72rem">🔗 Share Lesson</button>
     </div>
 
     <!-- Lesson title -->
@@ -10414,9 +10441,9 @@ async function w3RunInlineExample(exId) {
     await waitPyReady(60000);
     const result = await runPy(code, '');
     let html = '';
-    if (result.stdout) html += `<span class="w3-out-ok">${sanitize(result.stdout)}</span>`;
-    if (result.stderr) html += `<span class="w3-out-err">${sanitize(result.stderr)}</span>`;
-    if (!result.stdout && !result.stderr) html = '<span class="w3-out-info">✓ Ran successfully (no output)</span>';
+    if (result.stdout) html += result.stdout.split('\n').map(l => `<div class="w3-out-line w3-out-ok">${sanitize(l)}</div>`).join('');
+    if (result.stderr) html += result.stderr.split('\n').map(l => `<div class="w3-out-line w3-out-err">${sanitize(l)}</div>`).join('');
+    if (!result.stdout && !result.stderr) html = '<div class="w3-out-line w3-out-info">✓ Ran successfully (no output)</div>';
     outEl.innerHTML = html;
   } catch(e) {
     outEl.innerHTML = `<span class="w3-out-err">Error: ${sanitize(e.message||String(e))}</span>`;
@@ -10446,13 +10473,18 @@ async function w3RunCode() {
     const result = await runPy(code, stdin);
     let html = '';
     if (result.stdout) {
-      html += `<span class="w3-out-ok">${sanitize(result.stdout)}</span>`;
+      // Split on newlines so each print() call appears on its own line
+      html += result.stdout.split('\n').map(line =>
+        `<div class="w3-out-line w3-out-ok">${sanitize(line)}</div>`
+      ).join('');
     }
     if (result.stderr) {
-      html += `<span class="w3-out-err">${sanitize(result.stderr)}</span>`;
+      html += result.stderr.split('\n').map(line =>
+        `<div class="w3-out-line w3-out-err">${sanitize(line)}</div>`
+      ).join('');
     }
     if (!result.stdout && !result.stderr) {
-      html = `<span class="w3-out-info">✓ Ran successfully (no output)</span>`;
+      html = `<div class="w3-out-line w3-out-info">✓ Ran successfully (no output)</div>`;
     }
     out.innerHTML = html;
     out.scrollTop = out.scrollHeight;
