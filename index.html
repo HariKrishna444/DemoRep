@@ -8980,7 +8980,7 @@ function addCBBlock(modIdx, lessonIdx, type) {
   if (type === 'example') lesson.sections.push({ type:'example', label:'', code:'' });
   else if (type === 'note') lesson.sections.push({ type:'note', text:'' });
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
-  else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[['',''],['','']] });
+  else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[{c1:'',c2:''},{c1:'',c2:''}] });
   else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
   else if (type === 'vidblock') lesson.sections.push({ type:'vidblock', url:'', caption:'' });
   else if (type === 'imgblock') lesson.sections.push({ type:'imgblock', url:'', caption:'' });
@@ -8995,6 +8995,34 @@ function updateCBBlock(modIdx, lessonIdx, blockIdx, field, value) {
   courseBuilderModules[modIdx].lessons[lessonIdx].sections[blockIdx][field] = value;
 }
 function cbAttrEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+// Table rows are stored as [{c1,c2}, ...] (Firestore rejects nested arrays like [['','']]).
+// cbCell() tolerantly reads a cell from either the new object form or legacy array form,
+// so any course docs saved before this fix keep rendering correctly.
+function cbCell(row, ci) {
+  if (Array.isArray(row)) return row[ci] || '';
+  return (ci === 0 ? row?.c1 : row?.c2) || '';
+}
+function cbSetCell(row, ci, value) {
+  if (Array.isArray(row)) row = { c1: row[0]||'', c2: row[1]||'' };
+  if (ci === 0) row.c1 = value; else row.c2 = value;
+  return row;
+}
+// Defense-in-depth: walk a modules array and force every table block's rows into
+// the object form before any Firestore write, so a nested array can never sneak through.
+function normalizeModulesForFirestore(modules) {
+  return (modules || []).map(mod => ({
+    ...mod,
+    lessons: (mod.lessons || []).map(lesson => ({
+      ...lesson,
+      sections: (lesson.sections || []).map(sec => {
+        if (sec && sec.type === 'table' && Array.isArray(sec.rows)) {
+          return { ...sec, rows: sec.rows.map(r => Array.isArray(r) ? { c1: r[0]||'', c2: r[1]||'' } : r) };
+        }
+        return sec;
+      })
+    }))
+  }));
+}
 /* ── Drag-and-drop reordering for content blocks (Heading/Paragraph/Code/
    Table/Points/Note) — works for both the new-course builder and the
    add-module-to-existing-course modal, since both pass in a getter/setter
@@ -9087,9 +9115,9 @@ function renderCBBlocks(modIdx, lessonIdx) {
               oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'col2',this.value)">
           </div>
           ${rows.map((r,ri)=>`<div style="display:flex;gap:6px">
-            <input class="inp" placeholder="Value" style="flex:1;font-family:var(--ff-mono)" value="${cbAttrEsc(r[0])}"
+            <input class="inp" placeholder="Value" style="flex:1;font-family:var(--ff-mono)" value="${cbAttrEsc(cbCell(r,0))}"
               oninput="updateCBTableCell(${modIdx},${lessonIdx},${bi},${ri},0,this.value)">
-            <input class="inp" placeholder="Meaning" style="flex:1" value="${cbAttrEsc(r[1])}"
+            <input class="inp" placeholder="Meaning" style="flex:1" value="${cbAttrEsc(cbCell(r,1))}"
               oninput="updateCBTableCell(${modIdx},${lessonIdx},${bi},${ri},1,this.value)">
             <button type="button" class="cb-block-rm" onclick="removeCBTableRow(${modIdx},${lessonIdx},${bi},${ri})">×</button>
           </div>`).join('')}
@@ -9151,7 +9179,7 @@ function renderCBBlocks(modIdx, lessonIdx) {
   setupBlockDnD(wrap, () => courseBuilderModules[modIdx].lessons[lessonIdx].sections, () => renderCBBlocks(modIdx, lessonIdx));
 }
 function addCBTableRow(modIdx, lessonIdx, bi) {
-  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].rows.push(['','']);
+  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].rows.push({c1:'',c2:''});
   renderCBBlocks(modIdx, lessonIdx);
 }
 function removeCBTableRow(modIdx, lessonIdx, bi, ri) {
@@ -9159,7 +9187,8 @@ function removeCBTableRow(modIdx, lessonIdx, bi, ri) {
   renderCBBlocks(modIdx, lessonIdx);
 }
 function updateCBTableCell(modIdx, lessonIdx, bi, ri, ci, value) {
-  courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].rows[ri][ci] = value;
+  const sec = courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi];
+  sec.rows[ri] = cbSetCell(sec.rows[ri], ci, value);
 }
 function addCBListItem(modIdx, lessonIdx, bi) {
   courseBuilderModules[modIdx].lessons[lessonIdx].sections[bi].items.push('');
@@ -9188,7 +9217,7 @@ async function saveCourse() {
 
   // ── EDIT MODE: update the existing course's lessons/modules in place ──
   if (_editingCourseId) {
-    const updatePayload = { title, language:lang, description:desc, difficulty:diff, thumbnail:thumb, modules:allModules, totalLessons };
+    const updatePayload = { title, language:lang, description:desc, difficulty:diff, thumbnail:thumb, modules:normalizeModulesForFirestore(allModules), totalLessons };
     if (fsReady()) {
       try {
         await db.collection('courses').doc(_editingCourseId).update(updatePayload);
@@ -9212,7 +9241,7 @@ async function saveCourse() {
     title, language:lang, description:desc, difficulty:diff,
     price: 'free', // All courses are free
     thumbnail:thumb, totalLessons,
-    modules: allModules,
+    modules: normalizeModulesForFirestore(allModules),
     createdBy: currentUser?.uid || 'unknown',
     createdByName: creatorName,
     createdAt: fsReady() ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
@@ -9845,7 +9874,7 @@ function addAmmBlock(lessonIdx, type) {
   if (type === 'example') lesson.sections.push({ type:'example', label:'', code:'' });
   else if (type === 'note') lesson.sections.push({ type:'note', text:'' });
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
-  else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[['',''],['','']] });
+  else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[{c1:'',c2:''},{c1:'',c2:''}] });
   else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
   else if (type === 'vidblock') lesson.sections.push({ type:'vidblock', url:'', caption:'' });
   else if (type === 'imgblock') lesson.sections.push({ type:'imgblock', url:'', caption:'' });
@@ -9911,9 +9940,9 @@ function renderAmmBlocks(lessonIdx) {
               oninput="updateAmmBlock(${lessonIdx},${bi},'col2',this.value)">
           </div>
           ${rows.map((r,ri)=>`<div style="display:flex;gap:6px">
-            <input class="inp" placeholder="Value" style="flex:1;font-family:var(--ff-mono)" value="${cbAttrEsc(r[0])}"
+            <input class="inp" placeholder="Value" style="flex:1;font-family:var(--ff-mono)" value="${cbAttrEsc(cbCell(r,0))}"
               oninput="updateAmmTableCell(${lessonIdx},${bi},${ri},0,this.value)">
-            <input class="inp" placeholder="Meaning" style="flex:1" value="${cbAttrEsc(r[1])}"
+            <input class="inp" placeholder="Meaning" style="flex:1" value="${cbAttrEsc(cbCell(r,1))}"
               oninput="updateAmmTableCell(${lessonIdx},${bi},${ri},1,this.value)">
             <button type="button" class="cb-block-rm" onclick="removeAmmTableRow(${lessonIdx},${bi},${ri})">×</button>
           </div>`).join('')}
@@ -9975,7 +10004,7 @@ function renderAmmBlocks(lessonIdx) {
   setupBlockDnD(wrap, () => _addModuleLessons[lessonIdx].sections, () => renderAmmBlocks(lessonIdx));
 }
 function addAmmTableRow(lessonIdx, bi) {
-  _addModuleLessons[lessonIdx].sections[bi].rows.push(['','']);
+  _addModuleLessons[lessonIdx].sections[bi].rows.push({c1:'',c2:''});
   renderAmmBlocks(lessonIdx);
 }
 function removeAmmTableRow(lessonIdx, bi, ri) {
@@ -9983,7 +10012,8 @@ function removeAmmTableRow(lessonIdx, bi, ri) {
   renderAmmBlocks(lessonIdx);
 }
 function updateAmmTableCell(lessonIdx, bi, ri, ci, value) {
-  _addModuleLessons[lessonIdx].sections[bi].rows[ri][ci] = value;
+  const sec = _addModuleLessons[lessonIdx].sections[bi];
+  sec.rows[ri] = cbSetCell(sec.rows[ri], ci, value);
 }
 function addAmmListItem(lessonIdx, bi) {
   _addModuleLessons[lessonIdx].sections[bi].items.push('');
@@ -10006,7 +10036,7 @@ async function saveNewModule() {
   const course = coursesCatalog.find(c=>c.id===courseId);
   if (!course) { toast('Course not found','err'); return; }
   const newModule = { id:'mod-'+genId(), title, hasQuiz, lessons: _addModuleLessons.filter(l=>l.title) };
-  const updatedModules = [...(course.modules||[]), newModule];
+  const updatedModules = normalizeModulesForFirestore([...(course.modules||[]), newModule]);
   const totalLessons = updatedModules.reduce((a,m)=>a+(m.lessons||[]).length, 0);
   // Update in-memory
   course.modules = updatedModules;
@@ -10209,13 +10239,13 @@ function w3RenderSections(sections) {
           <span style="color:var(--cyan);font-weight:700;margin-right:6px">📌 Note:</span>${sanitize(sec.note||sec.text||'')}
         </div>`;
       case 'table': {
-        const rows = (sec.rows || []).filter(r => (r[0]||'').trim() || (r[1]||'').trim());
+        const rows = (sec.rows || []).filter(r => (cbCell(r,0)||'').trim() || (cbCell(r,1)||'').trim());
         if (!rows.length) return '';
         return `<div style="margin:24px 0">
           ${sec.title ? `<h2 style="font-size:1.1rem;font-weight:800;color:var(--head);margin:0 0 12px">${sanitize(sec.title)}</h2>` : ''}
           <table class="w3-data-table">
             <thead><tr><th>${sanitize(sec.col1||'Operator')}</th><th>${sanitize(sec.col2||'Meaning')}</th></tr></thead>
-            <tbody>${rows.map(r => `<tr><td><code>${sanitize(r[0])}</code></td><td>${sanitize(r[1])}</td></tr>`).join('')}</tbody>
+            <tbody>${rows.map(r => `<tr><td><code>${sanitize(cbCell(r,0))}</code></td><td>${sanitize(cbCell(r,1))}</td></tr>`).join('')}</tbody>
           </table>
         </div>`;
       }
