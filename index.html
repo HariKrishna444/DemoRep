@@ -3956,14 +3956,65 @@ function shareLink(type, courseId, modId, lessonId) {
   const modSlug    = mod    ? slugify(mod.title)    : modId;
   const lessonSlug = lesson ? slugify(lesson.title) : lessonId;
 
-  let hash = '#/course/' + courseId; // keep courseId as anchor so lookup still works
+  const courseHash = '#/course/' + courseId; // keep courseId as anchor so lookup still works
+  let hash = courseHash;
   if (type === 'module' && modId) hash += '/' + modSlug + '--' + modId;
   if (type === 'lesson' && modId && lessonId) hash += '/' + modSlug + '--' + modId + '/' + lessonSlug + '--' + lessonId;
 
   const url = base + hash;
+
+  // Lessons get two separate links (course link + direct lesson link) shown
+  // in a small popup, since a single copy-to-clipboard can't hand back two
+  // different URLs at once.
+  if (type === 'lesson') {
+    const courseUrl = base + courseHash;
+    openShareLinksModal({
+      title: '🔗 Share Lesson',
+      links: [
+        { label: 'Lesson link (opens this lesson directly)', url: url },
+        { label: 'Course link (opens the course page)', url: courseUrl },
+      ],
+    });
+    return;
+  }
+
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied!', 'ok')).catch(() => prompt('Copy this link:', url));
   } else { prompt('Copy this link:', url); }
+}
+
+/* ── Small reusable popup for showing one or more copyable share links ── */
+function openShareLinksModal({ title, links }) {
+  let modal = document.getElementById('share-links-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'share-links-modal';
+    modal.className = 'modal-bg';
+    document.body.appendChild(modal);
+  }
+  const rowsHtml = links.map((l, i) => {
+    const inputId = 'share-link-input-' + i;
+    return `
+      <div class="field" style="margin-bottom:10px">
+        <label>${sanitize(l.label)}</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="inp" id="${inputId}" readonly value="${sanitize(l.url)}" style="flex:1;font-family:var(--ff-mono);font-size:.72rem" onclick="this.select()">
+          <button class="btn btn-a btn-sm" style="flex-shrink:0" onclick="copyToClipboard('${l.url.replace(/'/g, "\\'")}')">Copy</button>
+        </div>
+      </div>`;
+  }).join('');
+  modal.innerHTML = `
+    <div class="modal" style="max-width:560px">
+      <h3>${sanitize(title || '🔗 Share')}</h3>
+      <div class="modal-fields">${rowsHtml}</div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeShareLinksModal()">Close</button>
+      </div>
+    </div>`;
+  modal.classList.add('open');
+}
+function closeShareLinksModal() {
+  document.getElementById('share-links-modal')?.classList.remove('open');
 }
 
 /* ── Hash-based router — handles deep links on page load + back/forward ── */
