@@ -9752,6 +9752,24 @@ window.renderProfPanel = function(panel) {
 const _origOnAuthSuccess = window.onAuthSuccess;
 window.onAuthSuccess = async function() {
   const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+
+  // A pending course/lesson deep link ALWAYS takes priority over role-based
+  // routing below. Without this early return, a professor account (or even
+  // a student account during the brief window before loadUserRole() has
+  // resolved and currentRole still holds its 'prof' default) would get
+  // bounced to the dashboard/catalog the instant auth finishes — silently
+  // overwriting the lesson page that had already loaded from the URL hash.
+  // This is what caused refreshing on a #/course/.../lessonN link to land
+  // on the catalog instead of staying on the lesson.
+  if (location.hash.startsWith('#/course/')) {
+    await loadCourses();
+    await loadMyEnrollments();
+    await handleDeepLink();
+    toast('Welcome back, '+name+'! 🎓','ok');
+    checkVerifyParam();
+    return;
+  }
+
   if (currentRole === 'prof') {
     document.getElementById('prof-av').textContent   = name[0].toUpperCase();
     document.getElementById('prof-name').textContent = name;
@@ -9765,18 +9783,8 @@ window.onAuthSuccess = async function() {
     document.getElementById('cat-name').textContent = name;
     document.getElementById('ml-av').textContent  = name[0].toUpperCase();
     document.getElementById('ml-name').textContent = name;
-
-    // If the visitor opened (or refreshed on) a shared course/lesson link,
-    // stay right there instead of bouncing them to the catalog once login
-    // resolves — re-run the deep link now that enrollment/progress data is
-    // available, rather than discarding the page they landed on.
-    if (location.hash.startsWith('#/course/')) {
-      await handleDeepLink();
-      toast('Welcome back, '+name+'! 🎓','ok');
-    } else {
-      showStuSection('catalog');
-      toast('Welcome back, '+name+'! 🎓','ok');
-    }
+    showStuSection('catalog');
+    toast('Welcome back, '+name+'! 🎓','ok');
     // NOTE: Pyodide is NOT started here — it starts lazily when:
     //   (a) student opens a Python course lesson with a playground, OR
     //   (b) student enters the Exam platform
@@ -9784,6 +9792,7 @@ window.onAuthSuccess = async function() {
   // Check for verify URL param
   checkVerifyParam();
 };
+
 
 /* ──────────────────────────────────────────────────────────────────
    UPDATED Firestore rules display (security panel)
