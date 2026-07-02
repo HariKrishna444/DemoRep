@@ -9759,15 +9759,24 @@ window.onAuthSuccess = async function() {
     showPage('prof');
     toast('Welcome, '+name+'! 👨‍🏫','ok');
   } else {
-    // Students go to catalog first, exams accessible via tab
     await loadCourses();
     await loadMyEnrollments();
     document.getElementById('cat-av').textContent  = name[0].toUpperCase();
     document.getElementById('cat-name').textContent = name;
     document.getElementById('ml-av').textContent  = name[0].toUpperCase();
     document.getElementById('ml-name').textContent = name;
-    showStuSection('catalog');
-    toast('Welcome back, '+name+'! 🎓','ok');
+
+    // If the visitor opened (or refreshed on) a shared course/lesson link,
+    // stay right there instead of bouncing them to the catalog once login
+    // resolves — re-run the deep link now that enrollment/progress data is
+    // available, rather than discarding the page they landed on.
+    if (location.hash.startsWith('#/course/')) {
+      await handleDeepLink();
+      toast('Welcome back, '+name+'! 🎓','ok');
+    } else {
+      showStuSection('catalog');
+      toast('Welcome back, '+name+'! 🎓','ok');
+    }
     // NOTE: Pyodide is NOT started here — it starts lazily when:
     //   (a) student opens a Python course lesson with a playground, OR
     //   (b) student enters the Exam platform
