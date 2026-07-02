@@ -5073,12 +5073,27 @@ async function saveQuestion() {
       difficulty:  q.diff,
       tags:        q.tags,
       templates:   q.templates,       // starter code per language
+      // FIX: test cases were previously ONLY written to questions_private
+      // (below), so questions_public.testcases was always undefined.
+      // loadQuestionsFromFirestore() reads d.testcases from questions_public,
+      // so every reload (i.e. every real exam session) silently got an
+      // empty testcases array -> students' correct submissions had nothing
+      // to grade against and failed, or hit the "No test cases" guard.
+      // Writing the same test cases here keeps grading working after reload.
+      testcases:   q.testcases,
       createdBy:   currentUser?.uid || 'unknown',
       createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
     };
 
     const privateData = {
-      // Hidden test cases live here — students NEVER read this collection
+      // Kept as a secondary copy (e.g. for future server-side/hidden grading).
+      // NOTE: with the fix above, questions_public.testcases is now the
+      // source of truth actually used by submitCode()/runCode() -- anything
+      // stored here is client-readable by profs only, but since grading
+      // currently runs in the browser, expected outputs in publicData are
+      // technically inspectable by students via devtools regardless of
+      // which collection they live in. True secrecy would require grading
+      // via a Cloud Function instead of comparing tc.expected in-browser.
       hiddenTestcases: q.testcases.map(tc => ({
         input:          tc.input,
         expectedOutput: tc.expected,
