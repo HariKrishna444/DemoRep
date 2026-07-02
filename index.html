@@ -1844,22 +1844,23 @@ select.inp option{background:var(--ink3)}
 .w3-try-it-btn:hover{background:#00fbb3;transform:translateY(-1px)}
 .w3-inline-output{
   padding:10px 14px;font-family:var(--ff-mono);font-size:.82rem;
-  background:#1c2028;border-top:1px solid var(--line);
-  line-height:1.7;max-height:220px;overflow-y:auto;
+  background:#ffffff;border-top:1px solid var(--line);
+  line-height:1.7;max-height:220px;overflow-y:auto;color:#14161a;
 }
-#page-learn .w3-inline-output{background:#20242c;color:#e8eaf0}
+#page-learn .w3-inline-output{background:#ffffff;color:#14161a}
 .w3-ex-stdin-row{
   display:flex;align-items:center;gap:8px;
-  padding:7px 14px;background:rgba(255,196,0,.06);
+  padding:7px 14px;background:rgba(245,166,35,.08);
   border-top:1px dashed var(--line);
 }
-.w3-ex-stdin-row .w3-stdin-label{color:#f5a623}
+.w3-ex-stdin-row .w3-stdin-label{color:#b5750a;font-weight:700}
 .w3-ex-stdin-row .w3-stdin-inp{
-  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  flex:1;background:#ffffff;border:1px solid #d7dbe2;
   border-radius:6px;padding:5px 9px;font-family:var(--ff-mono);
-  font-size:.72rem;color:var(--body);
+  font-size:.72rem;color:#14161a;
 }
-.w3-ex-stdin-row .w3-stdin-inp::placeholder{color:var(--muted)}
+.w3-ex-stdin-row .w3-stdin-inp::placeholder{color:#8a919e}
+
 
 /* Skeleton loader */
 .w3-skeleton{padding:36px 44px;animation:skepulse 1.5s ease infinite}
@@ -1960,22 +1961,22 @@ select.inp option{background:var(--ink3)}
 .w3-output{
   flex:1;overflow-y:auto;padding:8px 10px;
   font-family:var(--ff-mono);font-size:.78rem;line-height:1.75;
-  background:#1c2028;color:#eef1f6;
+  background:#ffffff;color:#14161a;
   max-height:160px;min-height:80px;
 }
 .w3-output::-webkit-scrollbar{width:3px}
 .w3-output::-webkit-scrollbar-thumb{background:var(--line)}
-.w3-out-err{color:#ff9a9a}
 .w3-out-line{
   display:block;width:100%;box-sizing:border-box;
   white-space:pre-wrap;word-break:break-word;line-height:1.7;min-height:1.3em;
-  padding:2px 0 2px 10px;margin:1px 0;border-left:3px solid transparent;
+  padding:2px 0 2px 10px;margin:1px 0;border-left:3px solid transparent;color:#14161a;
 }
-.w3-out-ok{color:#8be9c9;border-left-color:#2fd8a0}
-.w3-out-err{color:#ff9a9a;border-left-color:#ff5c5c;background:rgba(255,92,92,.08)}
-.w3-out-info{color:#a9b6cc}
-.w3-out-hint{color:#ffcf7a;border-left-color:#f5a623;background:rgba(245,166,35,.08)}
-.w3-out-running{color:var(--amber);animation:blink 0.8s ease infinite}
+.w3-out-ok{color:#0b8a4f;border-left-color:#1fae6c;font-weight:600}
+.w3-out-err{color:#c8242c;border-left-color:#e14848;background:rgba(220,53,53,.06);font-weight:600}
+.w3-out-info{color:#4b515c}
+.w3-out-hint{color:#8a5a00;border-left-color:#f5a623;background:rgba(245,166,35,.10);font-weight:600}
+.w3-out-running{color:#b8860b;animation:blink 0.8s ease infinite}
+
 
 /* Hint strip */
 .w3-hint-strip{
@@ -10323,6 +10324,17 @@ function w3GetCodeBlockText(id) {
   return Array.from(wrap.querySelectorAll('.w3-cb-line-code')).map(el => el.textContent).join('\n');
 }
 
+// Pulls the quoted prompt text out of input("...") / input('...') calls so the
+// stdin box placeholder can show the user exactly what the program is asking
+// for. Falls back to a generic hint when input() has no quoted prompt.
+function w3ExtractInputPrompt(code) {
+  const re = /input\s*\(\s*(["'])((?:\\.|(?!\1).)*)\2/g;
+  const prompts = [];
+  let m;
+  while ((m = re.exec(code || ''))) prompts.push(m[2]);
+  return prompts.length ? prompts.join('   |   ') : 'Enter values';
+}
+
 function w3CopyCodeBlock(id, btn) {
   const text = w3GetCodeBlockText(id);
   if (!text) return;
@@ -10435,6 +10447,7 @@ function w3RenderSections(sections) {
         const exId = 'w3ex-' + (_exCounter++) + '-' + Math.random().toString(36).slice(2,7);
         const cb = w3BuildCodeBlock(sec.code, exId);
         const needsStdin = /\binput\s*\(/.test(sec.code || '');
+        const stdinPlaceholder = needsStdin ? w3ExtractInputPrompt(sec.code) : '';
         return `<div class="w3-ex-card">
           ${(sec.title || sec.description) ? `<div class="w3-ex-card-head">
             ${sec.title ? `<div class="w3-ex-card-title">${sanitize(sec.title)}</div>` : ''}
@@ -10454,9 +10467,9 @@ function w3RenderSections(sections) {
             <div class="w3-example-code-wrap${cb.showExpand ? ' collapsed' : ''}" id="${exId}">
               <div class="w3-example-code-lines">${cb.linesHtml}</div>
             </div>
-            ${needsStdin ? `<div class="w3-ex-stdin-row">
+            ${needsStdin ? `<div class="w3-ex-stdin-row" id="stdinwrap-${exId}" style="display:none">
               <span class="w3-stdin-label">stdin</span>
-              <input class="w3-stdin-inp" id="stdin-${exId}" placeholder="One input() call → space-separated values (e.g. 10 20). Multiple calls → comma-separated (e.g. 10,20)">
+              <input class="w3-stdin-inp" id="stdin-${exId}" placeholder="${sanitize(stdinPlaceholder)}">
             </div>` : ''}
           </div>
           <div class="w3-inline-output" id="out-${exId}" style="display:none"></div>
@@ -11107,10 +11120,23 @@ function w3HandleTab(e) {
    Uses the same in-browser Pyodide engine as the main playground, so it
    runs instantly with no external API call. ── */
 async function w3RunInlineExample(exId) {
-  const outEl   = document.getElementById('out-' + exId);
-  const btn     = document.getElementById('run-' + exId);
-  const code    = w3GetCodeBlockText(exId);
-  const stdinEl = document.getElementById('stdin-' + exId);
+  const outEl     = document.getElementById('out-' + exId);
+  const btn       = document.getElementById('run-' + exId);
+  const code      = w3GetCodeBlockText(exId);
+  const stdinWrap = document.getElementById('stdinwrap-' + exId);
+  const stdinEl   = document.getElementById('stdin-' + exId);
+  if (!code || !outEl || !btn) return;
+
+  // First click on a program that needs input: reveal the stdin box (with a
+  // placeholder built from the input() prompt) instead of running blind.
+  if (stdinWrap && stdinWrap.style.display === 'none') {
+    stdinWrap.style.display = 'flex';
+    stdinEl?.focus();
+    outEl.style.display = 'block';
+    outEl.innerHTML = '<div class="w3-out-line w3-out-hint">✏️ Enter the input value(s) above, then click Run again.</div>';
+    return;
+  }
+
   const stdinRaw = stdinEl ? stdinEl.value : '';
   const inputCalls = (code.match(/\binput\s*\(/g) || []).length;
   // Multiple input() calls → each comma-separated value becomes its own line.
@@ -11119,7 +11145,6 @@ async function w3RunInlineExample(exId) {
   const stdin = inputCalls > 1
     ? stdinRaw.split(',').map(s => s.trim()).join('\n')
     : stdinRaw;
-  if (!code || !outEl || !btn) return;
 
   outEl.style.display = 'block';
   outEl.innerHTML = '<span class="w3-out-running">⏳ Starting Python engine…</span>';
