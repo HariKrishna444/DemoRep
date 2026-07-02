@@ -4517,10 +4517,44 @@ async function loadQuestionsFromFirestore() {
 /* ═══════════════════════════════════════════════════════════════
    ROUTING
    ═══════════════════════════════════════════════════════════════ */
+// Generic hash for pages that don't need a dynamic ID in the URL.
+// 'course-detail' and 'learn' are intentionally left out here — those
+// pages call updateUrlHash() themselves right after showPage() with a
+// more specific course/lesson hash, so we don't want to stomp on that.
+const PAGE_HASH_MAP = {
+  login:            '#/login',
+  prof:             '#/professor',
+  stu:              '#/exams',
+  catalog:          '#/courses',
+  quiz:             '#/quiz',
+  'my-learning':    '#/my-learning',
+  certificate:      '#/certificate',
+  verify:           '#/verify',
+  'chrono-catalog': '#/chronocode',
+  'chrono-take':    '#/chronocode/take',
+  'chrono-result':  '#/chronocode/result',
+};
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   window.scrollTo(0,0);
+
+  // Keep the address bar's hash in sync with whichever page is actually
+  // showing. Previously only the course/learn pages updated the hash
+  // (via updateUrlHash calls elsewhere) — every other screen (exam editor,
+  // exam result, exams list, dashboard, etc.) left the hash exactly as it
+  // was, so the URL could get "stuck" showing an old course/lesson link
+  // even while you were looking at, say, the exam result page.
+  try {
+    if (id === 'editor' && currentQ?.id) {
+      updateUrlHash('#/exam/' + currentQ.id);
+    } else if (id === 'result' && currentQ?.id) {
+      updateUrlHash('#/exam/' + currentQ.id + '/result');
+    } else if (PAGE_HASH_MAP[id]) {
+      updateUrlHash(PAGE_HASH_MAP[id]);
+    }
+  } catch (e) { /* non-fatal — never block navigation over a URL cosmetic */ }
 }
 
 /* ═══════════════════════════════════════════════════════════════
