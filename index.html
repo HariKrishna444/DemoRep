@@ -3578,7 +3578,7 @@ upgrade-insecure-requests;</pre>
       <!-- stdin input -->
       <div class="w3-stdin-row">
         <span class="w3-stdin-label">stdin</span>
-        <input class="w3-stdin-inp" id="w3-stdin" placeholder="Values for input() calls — separate with commas or new lines…">
+        <input class="w3-stdin-inp" id="w3-stdin" placeholder="One input() call → space-separated values. Multiple calls → comma-separated…">
       </div>
 
       <!-- Output -->
@@ -10456,7 +10456,7 @@ function w3RenderSections(sections) {
             </div>
             ${needsStdin ? `<div class="w3-ex-stdin-row">
               <span class="w3-stdin-label">stdin</span>
-              <input class="w3-stdin-inp" id="stdin-${exId}" placeholder="This code needs input — type value(s) here, one per input() call, separated by commas">
+              <input class="w3-stdin-inp" id="stdin-${exId}" placeholder="One input() call → space-separated values (e.g. 10 20). Multiple calls → comma-separated (e.g. 10,20)">
             </div>` : ''}
           </div>
           <div class="w3-inline-output" id="out-${exId}" style="display:none"></div>
@@ -11111,8 +11111,14 @@ async function w3RunInlineExample(exId) {
   const btn     = document.getElementById('run-' + exId);
   const code    = w3GetCodeBlockText(exId);
   const stdinEl = document.getElementById('stdin-' + exId);
-  // Convert comma-separated values into one-per-line stdin (matches input() call order)
-  const stdin   = stdinEl ? stdinEl.value.split(',').map(s => s.trim()).join('\n') : '';
+  const stdinRaw = stdinEl ? stdinEl.value : '';
+  const inputCalls = (code.match(/\binput\s*\(/g) || []).length;
+  // Multiple input() calls → each comma-separated value becomes its own line.
+  // A single input() call → pass the text through untouched (it may itself
+  // contain space-separated values for something like input().split()).
+  const stdin = inputCalls > 1
+    ? stdinRaw.split(',').map(s => s.trim()).join('\n')
+    : stdinRaw;
   if (!code || !outEl || !btn) return;
 
   outEl.style.display = 'block';
@@ -11151,8 +11157,13 @@ async function w3RunCode() {
   }
   const code      = document.getElementById('w3-code-editor')?.value || '';
   const stdinRaw  = document.getElementById('w3-stdin')?.value || '';
-  // Accept both newline-separated and comma-separated input values
-  const stdin     = stdinRaw.includes('\n') ? stdinRaw : stdinRaw.split(',').map(s => s.trim()).join('\n');
+  const inputCalls = (code.match(/\binput\s*\(/g) || []).length;
+  // Multiple input() calls → each comma-separated value becomes its own line.
+  // A single input() call → pass the text through untouched, so a pattern like
+  // "a, b = map(int, input().split())" can still read space-separated values.
+  const stdin = inputCalls > 1
+    ? stdinRaw.split(',').map(s => s.trim()).join('\n')
+    : stdinRaw;
   const out   = document.getElementById('w3-output');
   const btn   = document.getElementById('w3-run-btn');
   if (!out || !btn) return;
