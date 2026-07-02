@@ -1843,11 +1843,23 @@ select.inp option{background:var(--ink3)}
 }
 .w3-try-it-btn:hover{background:#00fbb3;transform:translateY(-1px)}
 .w3-inline-output{
-  padding:12px 20px;font-family:var(--ff-mono);font-size:.8rem;
-  background:#0c0e14;border-top:1px solid var(--line);
-  white-space:pre-wrap;line-height:1.6;max-height:200px;overflow-y:auto;
+  padding:10px 14px;font-family:var(--ff-mono);font-size:.82rem;
+  background:#1c2028;border-top:1px solid var(--line);
+  line-height:1.7;max-height:220px;overflow-y:auto;
 }
-#page-learn .w3-inline-output{background:#1e1e1e;color:#d4d4d4}
+#page-learn .w3-inline-output{background:#20242c;color:#e8eaf0}
+.w3-ex-stdin-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 14px;background:rgba(255,196,0,.06);
+  border-top:1px dashed var(--line);
+}
+.w3-ex-stdin-row .w3-stdin-label{color:#f5a623}
+.w3-ex-stdin-row .w3-stdin-inp{
+  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-radius:6px;padding:5px 9px;font-family:var(--ff-mono);
+  font-size:.72rem;color:var(--body);
+}
+.w3-ex-stdin-row .w3-stdin-inp::placeholder{color:var(--muted)}
 
 /* Skeleton loader */
 .w3-skeleton{padding:36px 44px;animation:skepulse 1.5s ease infinite}
@@ -1946,18 +1958,23 @@ select.inp option{background:var(--ink3)}
 }
 .w3-clear-btn:hover{color:var(--body);background:var(--ink3)}
 .w3-output{
-  flex:1;overflow-y:auto;padding:10px 14px;
-  font-family:var(--ff-mono);font-size:.76rem;line-height:1.75;
-  background:var(--ink);color:#a5f3c0;
-  white-space:pre-wrap;word-break:break-all;
+  flex:1;overflow-y:auto;padding:8px 10px;
+  font-family:var(--ff-mono);font-size:.78rem;line-height:1.75;
+  background:#1c2028;color:#eef1f6;
   max-height:160px;min-height:80px;
 }
 .w3-output::-webkit-scrollbar{width:3px}
 .w3-output::-webkit-scrollbar-thumb{background:var(--line)}
-.w3-out-err{color:var(--danger)}
-.w3-out-line{display:block;white-space:pre-wrap;line-height:1.7;min-height:1.2em}
-.w3-out-ok{color:#a5f3c0}
-.w3-out-info{color:var(--soft)}
+.w3-out-err{color:#ff9a9a}
+.w3-out-line{
+  display:block;width:100%;box-sizing:border-box;
+  white-space:pre-wrap;word-break:break-word;line-height:1.7;min-height:1.3em;
+  padding:2px 0 2px 10px;margin:1px 0;border-left:3px solid transparent;
+}
+.w3-out-ok{color:#8be9c9;border-left-color:#2fd8a0}
+.w3-out-err{color:#ff9a9a;border-left-color:#ff5c5c;background:rgba(255,92,92,.08)}
+.w3-out-info{color:#a9b6cc}
+.w3-out-hint{color:#ffcf7a;border-left-color:#f5a623;background:rgba(245,166,35,.08)}
 .w3-out-running{color:var(--amber);animation:blink 0.8s ease infinite}
 
 /* Hint strip */
@@ -2027,6 +2044,8 @@ select.inp option{background:var(--ink3)}
 #page-learn .w3-output{background:#fbfbfc;color:#1f2328}
 #page-learn .w3-out-ok{color:#0e7d3a}
 #page-learn .w3-out-err{color:#d32f2f}
+#page-learn .w3-out-info{color:#5b6472}
+#page-learn .w3-out-hint{color:#8a5a00;background:rgba(245,166,35,.12);border-left-color:#f5a623}
 #page-learn .w3-clear-btn:hover{background:#eef1f4;color:var(--body)}
 /* code syntax highlight tokens — used inside .w3-example-code / .article-content pre via w3Highlight() */
 #page-learn .tok-kw{color:#a626a4;font-weight:600}
@@ -3559,7 +3578,7 @@ upgrade-insecure-requests;</pre>
       <!-- stdin input -->
       <div class="w3-stdin-row">
         <span class="w3-stdin-label">stdin</span>
-        <input class="w3-stdin-inp" id="w3-stdin" placeholder="Program input (one value per line)…">
+        <input class="w3-stdin-inp" id="w3-stdin" placeholder="Values for input() calls — separate with commas or new lines…">
       </div>
 
       <!-- Output -->
@@ -3841,7 +3860,7 @@ function startPyodide() {
   // Using unpkg.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
   // errors in Edge/Safari caused by jsdelivr's cross-origin IndexedDB writes.
   // Pyodide runner HTML base64-encoded to avoid multi-layer string escaping issues.
-  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwpsb2FkUHlvZGlkZSh7IGluZGV4VVJMOiAiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsLyIgfSkudGhlbihmdW5jdGlvbihwKSB7CiAgcHkgPSBwOwogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIgfSwgIioiKTsKfSkuY2F0Y2goZnVuY3Rpb24oZSkgewogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIsIGVycm9yOiBTdHJpbmcoZSkgfSwgIioiKTsKfSk7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGV2KSB7CiAgaWYgKCFldi5kYXRhIHx8IGV2LmRhdGEudCAhPT0gInJ1biIpIHJldHVybjsKICBpZiAoIXB5KSB7CiAgICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IGZhbHNlLCBlcnJvcjogIlB5b2RpZGUgbm90IHJlYWR5IiB9LCAiKiIpOwogICAgcmV0dXJuOwogIH0KICB2YXIgbyA9ICIiLCBlciA9ICIiLCBlYyA9IDA7CiAgcHkuc2V0U3Rkb3V0KHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBvICs9IHM7IH0gfSk7CiAgcHkuc2V0U3RkZXJyKHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBlciArPSBzOyB9IH0pOwoKICB2YXIgbGluZXMgPSAoZXYuZGF0YS5zdGRpbiB8fCAiIikuc3BsaXQoIlxuIik7CiAgcHkuZ2xvYmFscy5zZXQoIl9zdGRpbl9saW5lcyIsIHB5LnRvUHkobGluZXMpKTsKICB0cnkgewogICAgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoCiAgICAgICJpbXBvcnQgYnVpbHRpbnNcbiIgKwogICAgICAiX3NsID0gbGlzdChfc3RkaW5fbGluZXMpXG4iICsKICAgICAgIl9zaSA9IFswXVxuIiArCiAgICAgICJkZWYgX2lucChwPScnKTpcbiIgKwogICAgICAiICAgIGkgPSBfc2lbMF07IF9zaVswXSArPSAxXG4iICsKICAgICAgIiAgICByZXR1cm4gX3NsW2ldIGlmIGkgPCBsZW4oX3NsKSBlbHNlICcnXG4iICsKICAgICAgImJ1aWx0aW5zLmlucHV0ID0gX2lucCIKICAgICk7CiAgfSBjYXRjaCh4KSB7fQoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhldi5kYXRhLmNvZGUpOyB9CiAgY2F0Y2goeCkgeyBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsgfQoKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4=";
+  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwpsb2FkUHlvZGlkZSh7IGluZGV4VVJMOiAiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsLyIgfSkudGhlbihmdW5jdGlvbihwKSB7CiAgcHkgPSBwOwogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIgfSwgIioiKTsKfSkuY2F0Y2goZnVuY3Rpb24oZSkgewogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIsIGVycm9yOiBTdHJpbmcoZSkgfSwgIioiKTsKfSk7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGV2KSB7CiAgaWYgKCFldi5kYXRhIHx8IGV2LmRhdGEudCAhPT0gInJ1biIpIHJldHVybjsKICBpZiAoIXB5KSB7CiAgICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IGZhbHNlLCBlcnJvcjogIlB5b2RpZGUgbm90IHJlYWR5IiB9LCAiKiIpOwogICAgcmV0dXJuOwogIH0KICB2YXIgbyA9ICIiLCBlciA9ICIiLCBlYyA9IDA7CiAgcHkuc2V0U3Rkb3V0KHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBvICs9IHM7IH0gfSk7CiAgcHkuc2V0U3RkZXJyKHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBlciArPSBzOyB9IH0pOwoKICB2YXIgbGluZXMgPSAoZXYuZGF0YS5zdGRpbiAmJiBldi5kYXRhLnN0ZGluLmxlbmd0aCA+IDApID8gZXYuZGF0YS5zdGRpbi5zcGxpdCgiXG4iKSA6IFtdOwogIHB5Lmdsb2JhbHMuc2V0KCJfc3RkaW5fbGluZXMiLCBweS50b1B5KGxpbmVzKSk7CiAgdHJ5IHsKICAgIGF3YWl0IHB5LnJ1blB5dGhvbkFzeW5jKAogICAgICAiaW1wb3J0IGJ1aWx0aW5zLCBzeXNcbiIgKwogICAgICAiX3NsID0gbGlzdChfc3RkaW5fbGluZXMpXG4iICsKICAgICAgIl9zaSA9IFswXVxuIiArCiAgICAgICJkZWYgX2lucChwPScnKTpcbiIgKwogICAgICAiICAgIHN5cy5zdGRvdXQud3JpdGUoc3RyKHApKVxuIiArCiAgICAgICIgICAgaSA9IF9zaVswXVxuIiArCiAgICAgICIgICAgaWYgaSA+PSBsZW4oX3NsKTpcbiIgKwogICAgICAiICAgICAgICByYWlzZSBFT0ZFcnJvcignRU9GIHdoZW4gcmVhZGluZyBhIGxpbmUgLS0gbm8gaW5wdXQgcHJvdmlkZWQuIEVudGVyIGEgdmFsdWUgaW4gdGhlIHN0ZGluIGJveCBhYm92ZSBhbmQgcnVuIGFnYWluLicpXG4iICsKICAgICAgIiAgICBfc2lbMF0gKz0gMVxuIiArCiAgICAgICIgICAgcmV0dXJuIF9zbFtpXVxuIiArCiAgICAgICJidWlsdGlucy5pbnB1dCA9IF9pbnAiCiAgICApOwogIH0gY2F0Y2goeCkge30KCiAgdHJ5IHsgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoZXYuZGF0YS5jb2RlKTsgfQogIGNhdGNoKHgpIHsgZXIgKz0gKHgubWVzc2FnZSB8fCBTdHJpbmcoeCkpOyBlYyA9IDE7IH0KCiAgcGFyZW50LnBvc3RNZXNzYWdlKHsgaWQ6IGV2LmRhdGEuaWQsIG9rOiB0cnVlLCBzdGRvdXQ6IG8sIHN0ZGVycjogZXIsIGVjOiBlYyB9LCAiKiIpOwp9KTsKPC9zY3JpcHQ+CjwvYm9keT48L2h0bWw+Cg==";
   var _pyBytes = atob(_pyB64);
   var _pyArr = new Uint8Array(_pyBytes.length);
   for (var i = 0; i < _pyBytes.length; i++) _pyArr[i] = _pyBytes.charCodeAt(i);
@@ -10415,6 +10434,7 @@ function w3RenderSections(sections) {
         // into an inline onclick attribute, which breaks on quotes/newlines).
         const exId = 'w3ex-' + (_exCounter++) + '-' + Math.random().toString(36).slice(2,7);
         const cb = w3BuildCodeBlock(sec.code, exId);
+        const needsStdin = /\binput\s*\(/.test(sec.code || '');
         return `<div class="w3-ex-card">
           ${(sec.title || sec.description) ? `<div class="w3-ex-card-head">
             ${sec.title ? `<div class="w3-ex-card-title">${sanitize(sec.title)}</div>` : ''}
@@ -10434,6 +10454,10 @@ function w3RenderSections(sections) {
             <div class="w3-example-code-wrap${cb.showExpand ? ' collapsed' : ''}" id="${exId}">
               <div class="w3-example-code-lines">${cb.linesHtml}</div>
             </div>
+            ${needsStdin ? `<div class="w3-ex-stdin-row">
+              <span class="w3-stdin-label">stdin</span>
+              <input class="w3-stdin-inp" id="stdin-${exId}" placeholder="This code needs input — type value(s) here, one per input() call, separated by commas">
+            </div>` : ''}
           </div>
           <div class="w3-inline-output" id="out-${exId}" style="display:none"></div>
           ${sec.expectedOutput ? `<div class="w3-ex-card-expected"><b>Expected Output</b>${sanitize(sec.expectedOutput)}</div>` : ''}
@@ -11083,9 +11107,12 @@ function w3HandleTab(e) {
    Uses the same in-browser Pyodide engine as the main playground, so it
    runs instantly with no external API call. ── */
 async function w3RunInlineExample(exId) {
-  const outEl  = document.getElementById('out-' + exId);
-  const btn    = document.getElementById('run-' + exId);
-  const code   = w3GetCodeBlockText(exId);
+  const outEl   = document.getElementById('out-' + exId);
+  const btn     = document.getElementById('run-' + exId);
+  const code    = w3GetCodeBlockText(exId);
+  const stdinEl = document.getElementById('stdin-' + exId);
+  // Convert comma-separated values into one-per-line stdin (matches input() call order)
+  const stdin   = stdinEl ? stdinEl.value.split(',').map(s => s.trim()).join('\n') : '';
   if (!code || !outEl || !btn) return;
 
   outEl.style.display = 'block';
@@ -11097,10 +11124,16 @@ async function w3RunInlineExample(exId) {
   try {
     if (!_pyFrame) startPyodide();
     await waitPyReady(60000);
-    const result = await runPy(code, '');
+    const result = await runPy(code, stdin);
     let html = '';
     if (result.stdout) html += result.stdout.split('\n').map(l => `<div class="w3-out-line w3-out-ok">${sanitize(l)}</div>`).join('');
-    if (result.stderr) html += result.stderr.split('\n').map(l => `<div class="w3-out-line w3-out-err">${sanitize(l)}</div>`).join('');
+    if (result.stderr) {
+      if (/EOFError/.test(result.stderr)) {
+        html += `<div class="w3-out-line w3-out-hint">⚠ This code is waiting for input — type a value in the stdin box above, then run again.</div>`;
+      } else {
+        html += result.stderr.split('\n').map(l => `<div class="w3-out-line w3-out-err">${sanitize(l)}</div>`).join('');
+      }
+    }
     if (!result.stdout && !result.stderr) html = '<div class="w3-out-line w3-out-info">✓ Ran successfully (no output)</div>';
     outEl.innerHTML = html;
   } catch(e) {
@@ -11116,8 +11149,10 @@ async function w3RunCode() {
     toast('Python engine still loading — please wait','warn');
     return;
   }
-  const code  = document.getElementById('w3-code-editor')?.value || '';
-  const stdin = document.getElementById('w3-stdin')?.value || '';
+  const code      = document.getElementById('w3-code-editor')?.value || '';
+  const stdinRaw  = document.getElementById('w3-stdin')?.value || '';
+  // Accept both newline-separated and comma-separated input values
+  const stdin     = stdinRaw.includes('\n') ? stdinRaw : stdinRaw.split(',').map(s => s.trim()).join('\n');
   const out   = document.getElementById('w3-output');
   const btn   = document.getElementById('w3-run-btn');
   if (!out || !btn) return;
@@ -11137,9 +11172,13 @@ async function w3RunCode() {
       ).join('');
     }
     if (result.stderr) {
-      html += result.stderr.split('\n').map(line =>
-        `<div class="w3-out-line w3-out-err">${sanitize(line)}</div>`
-      ).join('');
+      if (/EOFError/.test(result.stderr)) {
+        html += `<div class="w3-out-line w3-out-hint">⚠ This code is waiting for input — type value(s) in the stdin box above (one per input() call, separated by commas or new lines), then run again.</div>`;
+      } else {
+        html += result.stderr.split('\n').map(line =>
+          `<div class="w3-out-line w3-out-err">${sanitize(line)}</div>`
+        ).join('');
+      }
     }
     if (!result.stdout && !result.stderr) {
       html = `<div class="w3-out-line w3-out-info">✓ Ran successfully (no output)</div>`;
