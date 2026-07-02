@@ -1778,7 +1778,7 @@ select.inp option{background:var(--ink3)}
 }
 .w3-center-col::-webkit-scrollbar{width:5px}
 .w3-center-col::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}
-.w3-lesson-wrap{padding:36px 44px;max-width:860px;width:100%}
+.w3-lesson-wrap{padding:16px 44px 36px;max-width:860px;width:100%}
 
 /* Lesson header */
 .w3-lesson-type-badge{
@@ -1822,11 +1822,12 @@ select.inp option{background:var(--ink3)}
 }
 .w3-example-label{
   background:rgba(0,229,160,.07);
-  padding:8px 16px;font-size:.7rem;
+  padding:8px 16px;font-size:.8rem;font-weight:700;
   font-family:var(--ff-mono);color:var(--stu);
   text-transform:uppercase;letter-spacing:1px;
   border-bottom:1px solid var(--line);
   display:flex;align-items:center;justify-content:space-between;
+  gap:8px;
 }
 .w3-example-code{
   padding:16px 20px;font-family:var(--ff-mono);
@@ -2046,7 +2047,7 @@ select.inp option{background:var(--ink3)}
 @media(max-width:640px){
   .w3-body{grid-template-columns:1fr}
   .w3-sidebar{display:none}
-  .w3-lesson-wrap{padding:20px 18px}
+  .w3-lesson-wrap{padding:10px 18px 20px}
 }
 
 /* ═══════════════════════════════════════════════════
@@ -2087,19 +2088,6 @@ select.inp option{background:var(--ink3)}
 .w3-bookmark-btn.active{background:rgba(245,166,35,.12);border-color:var(--amber);color:var(--amber)}
 .lesson-row .w3-lesson-star{margin-left:4px;color:var(--amber);font-size:.65rem;flex-shrink:0}
 
-/* Floating table of contents */
-.w3-toc{
-  position:sticky;top:70px;float:right;width:190px;margin:0 0 16px 20px;
-  background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);
-  padding:14px 14px 14px 16px;font-size:.74rem;max-height:60vh;overflow-y:auto;
-}
-.w3-toc-title{font-family:var(--ff-mono);font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.w3-toc a{display:block;color:var(--soft);text-decoration:none;padding:4px 0 4px 10px;border-left:2px solid var(--line);line-height:1.4;transition:all .15s}
-.w3-toc a:hover{color:var(--stu);border-left-color:var(--stu)}
-.w3-toc a.w3-toc-h3{padding-left:20px;font-size:.7rem;color:var(--muted)}
-.w3-toc a.active{color:var(--stu);border-left-color:var(--stu);font-weight:700}
-@media(max-width:1200px){.w3-toc{display:none}}
-
 /* Search inside lesson */
 .w3-lesson-search{
   display:flex;align-items:center;gap:8px;background:var(--ink2);
@@ -2119,7 +2107,6 @@ mark.w3-search-hit{background:rgba(245,166,35,.35);color:inherit;border-radius:2
 mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 
 /* Code block v2: header buttons, line numbers, expand/collapse */
-.w3-example-label{gap:8px}
 .w3-cb-actions{display:flex;gap:6px;align-items:center}
 .w3-cb-icon-btn{
   background:transparent;border:1px solid var(--line2);color:var(--muted);
@@ -10722,8 +10709,8 @@ window.openLesson = function(courseId, moduleId, lessonId) {
   const noteText   = enrollment?.notes?.[lessonId] || '';
   const badges     = w3ComputeBadges(course, doneCount, totalCount, pct >= 100);
 
-  // Floating table-of-contents (only added when the article has ≥2 headings)
-  const articleHtmlWithTOC = w3InjectTOC(articleHtml);
+  // Table of contents removed per user request — render article content as-is
+  const articleHtmlWithTOC = articleHtml;
 
   area.innerHTML = `
     <div class="w3-lesson-wrap">
@@ -10856,38 +10843,6 @@ function w3ComputeBadges(course, doneCount, totalCount, courseComplete) {
   if (doneCount >= 25) badges.push({icon:'🚀', label:'25 Lessons Done'});
   if (courseComplete) badges.push({icon:'🏆', label: (course?.title||'Course') + ' Master'});
   return badges;
-}
-
-/* ── Floating Table of Contents ──
-   Scans the rendered article HTML for <h2>/<h3> headings, tags each with an
-   id, and prepends a sticky/floating nav linking to them. No-op (returns the
-   original HTML untouched) when there are fewer than 2 headings. ── */
-function w3InjectTOC(html) {
-  if (!html) return html;
-  const headings = [];
-  let counter = 0;
-  const withIds = html.replace(/<h([23])([^>]*)>([\s\S]*?)<\/h\1>/g, (m, lvl, attrs, inner) => {
-    const id = 'toc-h-' + (counter++);
-    const text = inner.replace(/<[^>]+>/g, '').trim();
-    if (text) headings.push({ id, lvl, text });
-    return `<h${lvl}${attrs} id="${id}">${inner}</h${lvl}>`;
-  });
-  if (headings.length < 2) return html;
-  const links = headings.map(h =>
-    `<a href="#${h.id}" class="${h.lvl === '3' ? 'w3-toc-h3' : ''}" onclick="w3ScrollToHeading(event,'${h.id}')">${sanitize(h.text)}</a>`
-  ).join('');
-  const toc = `<div class="w3-toc" id="w3-lesson-toc"><div class="w3-toc-title">📑 On this page</div>${links}</div>`;
-  return toc + withIds;
-}
-
-function w3ScrollToHeading(e, id) {
-  if (e) e.preventDefault();
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  document.querySelectorAll('#w3-lesson-toc a').forEach(a => a.classList.remove('active'));
-  const link = document.querySelector(`#w3-lesson-toc a[href="#${id}"]`);
-  if (link) link.classList.add('active');
 }
 
 /* ── Search inside lesson ── */
