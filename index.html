@@ -2050,6 +2050,170 @@ select.inp option{background:var(--ink3)}
 }
 
 /* ═══════════════════════════════════════════════════
+   LESSON EXPERIENCE UPGRADES
+   (TOC, code blocks v2, reading time, progress detail,
+   bookmarks, notes, search, badges, sticky bar)
+   ═══════════════════════════════════════════════════ */
+
+/* Reading time / lesson meta chips */
+.w3-meta-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--ff-mono);font-size:.66rem;color:var(--muted);
+  background:var(--ink2);border:1px solid var(--line);
+  border-radius:99px;padding:3px 10px;
+}
+
+/* Detailed progress row */
+.w3-lesson-prog-row{flex-wrap:wrap;position:sticky;top:-1px;z-index:6;background:var(--ink2);box-shadow:0 0 0 rgba(0,0,0,0);transition:box-shadow .2s}
+.w3-lesson-prog-row.is-stuck{box-shadow:0 6px 14px -6px rgba(0,0,0,.25)}
+.w3-lesson-prog-detail{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+.w3-lesson-prog-sub{font-size:.62rem;color:var(--muted);font-family:var(--ff-mono)}
+.w3-lesson-prog-fill.pulse{animation:progPulse 1s ease}
+@keyframes progPulse{
+  0%{filter:brightness(1)}
+  40%{filter:brightness(1.6);box-shadow:0 0 14px rgba(0,229,160,.65)}
+  100%{filter:brightness(1)}
+}
+.w3-remaining-chip{font-family:var(--ff-mono);font-size:.66rem;color:var(--stu)}
+
+/* Bookmark button */
+.w3-bookmark-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  background:transparent;border:1px solid var(--line);color:var(--muted);
+  border-radius:99px;padding:4px 12px;font-size:.72rem;cursor:pointer;
+  font-family:var(--ff-head);transition:all .15s;
+}
+.w3-bookmark-btn:hover{border-color:var(--amber);color:var(--amber)}
+.w3-bookmark-btn.active{background:rgba(245,166,35,.12);border-color:var(--amber);color:var(--amber)}
+.lesson-row .w3-lesson-star{margin-left:4px;color:var(--amber);font-size:.65rem;flex-shrink:0}
+
+/* Floating table of contents */
+.w3-toc{
+  position:sticky;top:70px;float:right;width:190px;margin:0 0 16px 20px;
+  background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);
+  padding:14px 14px 14px 16px;font-size:.74rem;max-height:60vh;overflow-y:auto;
+}
+.w3-toc-title{font-family:var(--ff-mono);font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.w3-toc a{display:block;color:var(--soft);text-decoration:none;padding:4px 0 4px 10px;border-left:2px solid var(--line);line-height:1.4;transition:all .15s}
+.w3-toc a:hover{color:var(--stu);border-left-color:var(--stu)}
+.w3-toc a.w3-toc-h3{padding-left:20px;font-size:.7rem;color:var(--muted)}
+.w3-toc a.active{color:var(--stu);border-left-color:var(--stu);font-weight:700}
+@media(max-width:1200px){.w3-toc{display:none}}
+
+/* Search inside lesson */
+.w3-lesson-search{
+  display:flex;align-items:center;gap:8px;background:var(--ink2);
+  border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:7px 12px;margin-bottom:20px;
+}
+.w3-lesson-search input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-size:.8rem;color:var(--body);font-family:var(--ff-body,inherit);
+}
+.w3-lesson-search input::placeholder{color:var(--muted)}
+.w3-search-nav{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.w3-search-count{font-family:var(--ff-mono);font-size:.66rem;color:var(--muted);min-width:44px;text-align:center}
+.w3-search-btn{background:none;border:1px solid var(--line);border-radius:6px;color:var(--soft);cursor:pointer;font-size:.7rem;padding:2px 7px}
+.w3-search-btn:hover{border-color:var(--stu);color:var(--stu)}
+mark.w3-search-hit{background:rgba(245,166,35,.35);color:inherit;border-radius:2px}
+mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
+
+/* Code block v2: header buttons, line numbers, expand/collapse */
+.w3-example-label{gap:8px}
+.w3-cb-actions{display:flex;gap:6px;align-items:center}
+.w3-cb-icon-btn{
+  background:transparent;border:1px solid var(--line2);color:var(--muted);
+  border-radius:6px;font-size:.66rem;padding:3px 8px;cursor:pointer;
+  font-family:var(--ff-mono);transition:all .15s;display:inline-flex;align-items:center;gap:4px;
+}
+.w3-cb-icon-btn:hover{color:var(--stu);border-color:var(--stu)}
+.w3-cb-icon-btn.copied{color:var(--stu);border-color:var(--stu)}
+.w3-example-code-wrap{position:relative;max-height:480px;overflow:auto;transition:max-height .25s ease}
+.w3-example-code-wrap.collapsed{max-height:140px}
+.w3-example-code-wrap.collapsed::after{
+  content:'';position:sticky;bottom:0;left:0;display:block;height:44px;margin-top:-44px;
+  background:linear-gradient(to bottom, transparent, var(--ink2) 92%);pointer-events:none;
+}
+.w3-example-code-lines{display:table;width:100%;font-family:var(--ff-mono);font-size:.82rem;line-height:1.75}
+.w3-cb-line{display:table-row}
+.w3-cb-line-num{display:table-cell;width:1%;padding:0 14px 0 18px;text-align:right;color:var(--muted);user-select:none;white-space:nowrap;border-right:1px solid var(--line)}
+.w3-cb-line-code{display:table-cell;padding:0 16px;white-space:pre;color:#a5f3c0}
+#page-learn .w3-cb-line-code{color:#1f2328}
+.w3-cb-dark .w3-cb-line-code,
+.w3-cb-dark.w3-example-code-wrap{background:#1e1e1e;color:#d4d4d4}
+.w3-cb-dark .w3-cb-line-code{color:#d4d4d4}
+.w3-cb-dark .w3-cb-line-num{color:#6b7280;border-color:#2d2d2d}
+
+/* Better example cards */
+.w3-ex-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);margin:22px 0;overflow:hidden}
+.w3-ex-card-head{padding:12px 18px;border-bottom:1px solid var(--line)}
+.w3-ex-card-title{font-weight:800;color:var(--head);font-size:.9rem;margin-bottom:3px}
+.w3-ex-card-desc{font-size:.8rem;color:var(--soft);line-height:1.6}
+.w3-ex-card-expected{
+  padding:10px 18px;background:rgba(6,182,212,.06);border-top:1px solid var(--line);
+  font-size:.78rem;color:var(--soft);
+}
+.w3-ex-card-expected b{color:var(--cyan);font-family:var(--ff-mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px}
+
+/* Section dividers */
+.article-content h2{
+  display:flex;align-items:center;gap:10px;margin:34px 0 14px;
+  padding-bottom:10px;border-bottom:1px solid var(--line);
+}
+.article-content h2::before{content:'';width:4px;height:18px;border-radius:99px;background:linear-gradient(180deg,var(--stu),var(--cyan));flex-shrink:0}
+
+/* Achievement badges */
+.w3-badge-strip{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 24px}
+.w3-badge-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:linear-gradient(135deg,rgba(245,166,35,.14),rgba(245,166,35,.04));
+  border:1px solid rgba(245,166,35,.35);color:var(--amber);
+  border-radius:99px;padding:5px 12px;font-size:.72rem;font-weight:700;
+  animation:badgePop .4s ease;
+}
+@keyframes badgePop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+
+/* Notes section */
+.w3-notes-box{margin:32px 0;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.w3-notes-head{
+  display:flex;align-items:center;justify-content:space-between;padding:12px 18px;
+  cursor:pointer;user-select:none;font-weight:700;font-size:.85rem;color:var(--head);
+}
+.w3-notes-head .car{transition:transform .2s}
+.w3-notes-box.open .w3-notes-head .car{transform:rotate(180deg)}
+.w3-notes-body{display:none;padding:0 18px 16px}
+.w3-notes-box.open .w3-notes-body{display:block}
+.w3-notes-ta{
+  width:100%;min-height:110px;resize:vertical;background:var(--ink);
+  border:1px solid var(--line);border-radius:var(--r-sm);color:var(--body);
+  font-size:.84rem;line-height:1.6;padding:12px 14px;outline:none;font-family:inherit;
+}
+.w3-notes-status{font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);margin-top:6px}
+
+/* Playground panel extra actions */
+.w3-try-actions{display:flex;gap:5px;align-items:center}
+.w3-try-icon-btn{
+  background:transparent;border:1px solid var(--line2);color:var(--muted);
+  border-radius:6px;padding:4px 8px;font-size:.7rem;cursor:pointer;transition:all .15s;
+}
+.w3-try-icon-btn:hover{color:var(--stu);border-color:var(--stu)}
+.w3-try-panel.w3-fullscreen{
+  position:fixed;inset:0;z-index:9999;border-left:none;width:100vw;height:100vh;
+}
+
+/* Mobile spacing improvements */
+@media(max-width:640px){
+  .w3-lesson-nav .btn{min-height:46px;padding:12px 16px}
+  .w3-lesson-nav{gap:12px;flex-wrap:wrap}
+  .w3-lesson-prog-row{padding:12px 14px;gap:10px}
+  .w3-example-label{padding:10px 14px;flex-wrap:wrap;row-gap:8px}
+  .w3-cb-icon-btn{padding:5px 10px}
+  .w3-badge-chip{padding:7px 14px}
+  .w3-lesson-h1{font-size:1.35rem}
+  .w3-bookmark-btn{padding:6px 14px}
+}
+
+/* ═══════════════════════════════════════════════════
    CHRONOCODE — 4D timeline assessment styles
    ═══════════════════════════════════════════════════ */
 .chrono-subtabs{display:flex;gap:4px;margin:16px 0 18px;border-bottom:1px solid var(--line)}
@@ -3385,8 +3549,12 @@ upgrade-insecure-requests;</pre>
           <div class="w3-try-dot w3-try-dot-g"></div>
           <span class="w3-try-title">Try it Yourself</span>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
+        <div class="w3-try-actions">
           <span id="w3-py-status" class="w3-py-badge w3-py-badge-loading">⏳ Loading Python…</span>
+          <button class="w3-try-icon-btn" title="Reset code" onclick="w3ResetCode()">↺</button>
+          <button class="w3-try-icon-btn" title="Download code" onclick="w3DownloadCode()">⬇</button>
+          <button class="w3-try-icon-btn" title="Copy code to share" onclick="w3ShareCode()">🔗</button>
+          <button class="w3-try-icon-btn" id="w3-fullscreen-btn" title="Toggle fullscreen" onclick="w3ToggleFullscreen()">⤢</button>
           <button class="w3-run-btn" id="w3-run-btn" onclick="w3RunCode()" disabled>▶ Run</button>
         </div>
       </div>
@@ -10111,6 +10279,67 @@ function w3Highlight(code) {
   });
 }
 
+/* ── Code block v2: line numbers, copy, expand/collapse, theme toggle ──────
+   Shared by w3RenderSections('example') and formatLessonContent() so every
+   static code block in a lesson gets the same controls. ── */
+function w3BuildCodeBlock(code, id) {
+  const highlighted = w3Highlight(code || '');
+  const lines = highlighted.split('\n');
+  const linesHtml = lines.map((l, i) =>
+    `<div class="w3-cb-line"><div class="w3-cb-line-num">${i + 1}</div><div class="w3-cb-line-code">${l || ' '}</div></div>`
+  ).join('');
+  return { id, linesHtml, showExpand: lines.length > 14, lineCount: lines.length };
+}
+
+let _w3StaticCbCounter = 0;
+function w3StaticCodeBoxHtml(code) {
+  const id = 'w3scb-' + (++_w3StaticCbCounter) + '-' + Math.random().toString(36).slice(2, 6);
+  const cb = w3BuildCodeBlock(code, id);
+  return `<div class="w3-example-box">
+    <div class="w3-example-label">
+      <span>Code Example</span>
+      <div class="w3-cb-actions">
+        <button class="w3-cb-icon-btn" onclick="w3CopyCodeBlock('${id}',this)">⧉ Copy</button>
+        ${cb.showExpand ? `<button class="w3-cb-icon-btn" onclick="w3ToggleCbExpand('${id}',this)">⌄ Expand</button>` : ''}
+        <button class="w3-cb-icon-btn" onclick="w3ToggleCbTheme('${id}',this)">🌙</button>
+        <button class="w3-try-it-btn" onclick="w3LoadCode(w3GetCodeBlockText('${id}'))">&#9654; Try it</button>
+      </div>
+    </div>
+    <div class="w3-example-code-wrap${cb.showExpand ? ' collapsed' : ''}" id="${id}">
+      <div class="w3-example-code-lines">${cb.linesHtml}</div>
+    </div>
+  </div>`;
+}
+
+function w3GetCodeBlockText(id) {
+  const wrap = document.getElementById(id);
+  if (!wrap) return '';
+  return Array.from(wrap.querySelectorAll('.w3-cb-line-code')).map(el => el.textContent).join('\n');
+}
+
+function w3CopyCodeBlock(id, btn) {
+  const text = w3GetCodeBlockText(id);
+  if (!text) return;
+  navigator.clipboard?.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+  }).catch(() => toast('Copy failed','err'));
+}
+
+function w3ToggleCbExpand(id, btn) {
+  const wrap = document.getElementById(id);
+  if (!wrap) return;
+  wrap.classList.toggle('collapsed');
+  btn.innerHTML = wrap.classList.contains('collapsed') ? '⌄ Expand' : '⌃ Collapse';
+}
+
+function w3ToggleCbTheme(id, btn) {
+  const wrap = document.getElementById(id);
+  if (!wrap) return;
+  wrap.classList.toggle('w3-cb-dark');
+}
+
 /* ── Smart lesson content formatter ───────────────────────────────────────── */
 function formatLessonContent(raw) {
   if (!raw) return '';
@@ -10121,9 +10350,7 @@ function formatLessonContent(raw) {
   const closeCode = () => {
     if (!inCode) return;
     const j = codeLines.join('\n');
-    html += '<div class="w3-example-box"><div class="w3-example-label"><span>Code Example</span>'
-          + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(j) + ')">&#9654; Try it</button>'
-          + '</div><div class="w3-example-code">' + w3Highlight(j) + '</div></div>';
+    html += w3StaticCodeBoxHtml(j);
     inCode = false; codeLines = [];
   };
 
@@ -10146,9 +10373,7 @@ function formatLessonContent(raw) {
       }
       i--;
       const bj = block.join('\n');
-      html += '<div class="w3-example-box"><div class="w3-example-label"><span>Code Example</span>'
-            + '<button class="w3-try-it-btn" onclick="w3LoadCode(' + JSON.stringify(bj) + ')">&#9654; Try it</button>'
-            + '</div><div class="w3-example-code">' + w3Highlight(bj) + '</div></div>';
+      html += w3StaticCodeBoxHtml(bj);
       continue;
     }
 
@@ -10202,16 +10427,29 @@ function w3RenderSections(sections) {
         // element's textContent at click-time (avoids escaping a code string
         // into an inline onclick attribute, which breaks on quotes/newlines).
         const exId = 'w3ex-' + (_exCounter++) + '-' + Math.random().toString(36).slice(2,7);
-        return `<div class="w3-example-box" id="box-${exId}">
-          <div class="w3-example-label">
-            <span>Example — ${sanitize(sec.label||'')}</span>
-            <div style="display:flex;gap:6px">
-              <button class="w3-try-it-btn" id="run-${exId}" onclick="w3RunInlineExample('${exId}')">▶ Run</button>
-              <button class="w3-try-it-btn" onclick="w3LoadCode(document.querySelector('#box-${exId} .w3-example-code').textContent)" style="opacity:.85">✎ Edit in Playground</button>
+        const cb = w3BuildCodeBlock(sec.code, exId);
+        return `<div class="w3-ex-card">
+          ${(sec.title || sec.description) ? `<div class="w3-ex-card-head">
+            ${sec.title ? `<div class="w3-ex-card-title">${sanitize(sec.title)}</div>` : ''}
+            ${sec.description ? `<div class="w3-ex-card-desc">${sanitize(sec.description)}</div>` : ''}
+          </div>` : ''}
+          <div class="w3-example-box" id="box-${exId}">
+            <div class="w3-example-label">
+              <span>Example — ${sanitize(sec.label||'')}</span>
+              <div class="w3-cb-actions">
+                <button class="w3-cb-icon-btn" onclick="w3CopyCodeBlock('${exId}',this)">⧉ Copy</button>
+                ${cb.showExpand ? `<button class="w3-cb-icon-btn" onclick="w3ToggleCbExpand('${exId}',this)">⌄ Expand</button>` : ''}
+                <button class="w3-cb-icon-btn" onclick="w3ToggleCbTheme('${exId}',this)">🌙</button>
+                <button class="w3-try-it-btn" id="run-${exId}" onclick="w3RunInlineExample('${exId}')">▶ Run</button>
+                <button class="w3-try-it-btn" onclick="w3LoadCode(w3GetCodeBlockText('${exId}'))" style="opacity:.85">✎ Edit in Playground</button>
+              </div>
+            </div>
+            <div class="w3-example-code-wrap${cb.showExpand ? ' collapsed' : ''}" id="${exId}">
+              <div class="w3-example-code-lines">${cb.linesHtml}</div>
             </div>
           </div>
-          <div class="w3-example-code">${w3Highlight(sec.code)}</div>
           <div class="w3-inline-output" id="out-${exId}" style="display:none"></div>
+          ${sec.expectedOutput ? `<div class="w3-ex-card-expected"><b>Expected Output</b>${sanitize(sec.expectedOutput)}</div>` : ''}
         </div>`;
       }
       case 'vidblock': {
@@ -10349,12 +10587,15 @@ window.renderLearnSidebar = function(course) {
       const isDone    = completed.includes(lesson.id);
       const isCurrent = lesson.id === currentLessonId;
       const icon      = isDone ? '✓' : lesson.type === 'video' ? '▶' : '◉';
+      const isMarked  = (enrollment?.bookmarks||[]).includes(lesson.id);
+      const readMins  = lesson.type === 'video' ? null : w3EstimateReadTime(lesson);
       return `
         <div class="lesson-row ${isCurrent?'active':''} ${isDone?'done':''}"
              onclick="openLesson('${currentCourseId}','${mod.id}','${lesson.id}')">
           <div class="lesson-icon">${icon}</div>
           <span class="lesson-title">${sanitize(lesson.title||'Lesson')}</span>
-          <span class="lesson-dur">${lesson.duration||''}</span>
+          ${isMarked ? '<span class="w3-lesson-star">★</span>' : ''}
+          <span class="lesson-dur">${readMins ? readMins + ' min' : (lesson.duration||'')}</span>
         </div>`;
     }).join('');
 
@@ -10459,6 +10700,7 @@ window.openLesson = function(courseId, moduleId, lessonId) {
 
   // Load starter code into editor
   const starterCode = w3Data.starterCode || `# ${sanitize(lesson.title)}\nprint("Hello, World!")`;
+  _w3CurrentStarterCode = starterCode;
   w3SetEditorCode(starterCode);
 
   // Update hint
@@ -10471,25 +10713,67 @@ window.openLesson = function(courseId, moduleId, lessonId) {
     hintEl.style.display = 'none';
   }
 
+  // Reading time / remaining time / progress detail
+  const readMins   = lesson.type === 'video' ? null : w3EstimateReadTime(lesson);
+  const doneCount  = completed.length;
+  const totalCount = allLessons.length;
+  const remainMins = w3RemainingMinutes(course, completed);
+  const isMarked   = (enrollment?.bookmarks||[]).includes(lessonId);
+  const noteText   = enrollment?.notes?.[lessonId] || '';
+  const badges     = w3ComputeBadges(course, doneCount, totalCount, pct >= 100);
+
+  // Floating table-of-contents (only added when the article has ≥2 headings)
+  const articleHtmlWithTOC = w3InjectTOC(articleHtml);
+
   area.innerHTML = `
     <div class="w3-lesson-wrap">
-      <div class="w3-lesson-type-badge">
-        <span>${typeIcon}</span>
-        <span style="color:var(--line2)">·</span>
-        <span>${sanitize(mod?.title||'')}</span>
-        ${lesson.duration ? `<span style="color:var(--line2)">·</span><span>${lesson.duration}</span>` : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div class="w3-lesson-type-badge" style="margin-bottom:0">
+          <span>${typeIcon}</span>
+          <span style="color:var(--line2)">·</span>
+          <span>${sanitize(mod?.title||'')}</span>
+          ${readMins ? `<span style="color:var(--line2)">·</span><span>⏱ ${readMins} min read</span>` : (lesson.duration ? `<span style="color:var(--line2)">·</span><span>${lesson.duration}</span>` : '')}
+        </div>
+        <button class="w3-bookmark-btn${isMarked?' active':''}" id="w3-bookmark-btn"
+          onclick="w3ToggleBookmark('${courseId}','${lessonId}',this)">${isMarked ? '★ Saved' : '☆ Save Lesson'}</button>
       </div>
-      <h1 class="w3-lesson-h1">${sanitize(lesson.title)}</h1>
+      <h1 class="w3-lesson-h1" style="margin-top:12px">${sanitize(lesson.title)}</h1>
 
-      <div class="w3-lesson-prog-row">
-        <span style="font-size:.72rem;font-family:var(--ff-mono);color:var(--muted)">Course progress</span>
-        <div class="w3-lesson-prog-bar"><div class="w3-lesson-prog-fill" style="width:${pct}%"></div></div>
+      ${badges.length ? `<div class="w3-badge-strip">${badges.map(b=>`<span class="w3-badge-chip">${b.icon} ${sanitize(b.label)}</span>`).join('')}</div>` : ''}
+
+      <div class="w3-lesson-prog-row" id="w3-lesson-prog-row">
+        <div class="w3-lesson-prog-detail">
+          <span style="font-size:.72rem;font-family:var(--ff-mono);color:var(--muted)">Lesson ${idx+1} of ${totalCount}</span>
+          <span class="w3-lesson-prog-sub">Completed ${doneCount}/${totalCount} lessons</span>
+        </div>
+        <div class="w3-lesson-prog-bar"><div class="w3-lesson-prog-fill" id="w3-lesson-prog-fill" style="width:${pct}%"></div></div>
         <span style="font-size:.72rem;font-family:var(--ff-mono);color:var(--stu);font-weight:700">${pct}%</span>
+        ${remainMins > 0 ? `<span class="w3-remaining-chip">⏳ ${remainMins} min left</span>` : ''}
       </div>
+
+      ${articleHtml ? `<div class="w3-lesson-search">
+        <span style="color:var(--muted)">🔍</span>
+        <input id="w3-lesson-search-input" placeholder="Search in this lesson…"
+          oninput="w3SearchLesson()" onkeydown="if(event.key==='Enter'){event.preventDefault();event.shiftKey?w3SearchPrev():w3SearchNext();}">
+        <div class="w3-search-nav">
+          <span class="w3-search-count" id="w3-search-count"></span>
+          <button class="w3-search-btn" onclick="w3SearchPrev()" title="Previous match">↑</button>
+          <button class="w3-search-btn" onclick="w3SearchNext()" title="Next match">↓</button>
+        </div>
+      </div>` : ''}
 
       ${videoHtml}
-      ${articleHtml}
+      ${articleHtmlWithTOC}
       ${srcLink}
+
+      ${articleHtml ? `<div class="w3-notes-box" id="w3-notes-box">
+        <div class="w3-notes-head" onclick="w3ToggleNotes()"><span>📝 My Notes</span><span class="car">⌄</span></div>
+        <div class="w3-notes-body">
+          <textarea class="w3-notes-ta" id="w3-notes-ta" placeholder="Write your notes for this lesson…"
+            oninput="w3QueueSaveNote('${courseId}','${lessonId}')">${sanitize(noteText)}</textarea>
+          <div class="w3-notes-status" id="w3-notes-status"></div>
+        </div>
+      </div>` : ''}
 
       <div class="w3-lesson-nav">
         ${prev
@@ -10512,10 +10796,14 @@ window.openLesson = function(courseId, moduleId, lessonId) {
         }
       </div>
     </div>`;
+
+  w3InitStickyProgress();
 };
 
 /* ── Mark lesson complete + advance ── */
 async function w3MarkAndAdvance(courseId, moduleId, lessonId, nextModId, nextLesId) {
+  const fillBefore = document.getElementById('w3-lesson-prog-fill');
+  if (fillBefore) fillBefore.classList.add('pulse');
   await markLessonComplete(courseId, moduleId, lessonId);
   if (nextLesId) {
     openLesson(courseId, nextModId, nextLesId);
@@ -10524,6 +10812,268 @@ async function w3MarkAndAdvance(courseId, moduleId, lessonId, nextModId, nextLes
     renderLearnSidebar(coursesCatalog.find(c=>c.id===courseId));
     toast('🎓 Course complete! Certificate on its way.','ok',4000);
   }
+}
+
+/* ═══════════════════════════════════════════════════
+   LESSON EXPERIENCE UPGRADES — helper functions
+   (reading time, remaining time, badges, TOC, search,
+   bookmarks, notes, sticky progress bar)
+   ═══════════════════════════════════════════════════ */
+
+/* ── Reading time estimate (≈200 wpm) ── */
+function w3EstimateReadTime(lesson) {
+  if (!lesson) return 1;
+  let text = '';
+  if (lesson.sections && lesson.sections.length) {
+    lesson.sections.forEach(s => {
+      text += ' ' + (s.text||'') + ' ' + (s.code||'') + ' ' + (s.note||'') + ' ' + (s.title||'');
+      if (s.items) text += ' ' + s.items.join(' ');
+    });
+  } else if (lesson.content) {
+    text = lesson.content;
+  }
+  const words = (text.match(/\S+/g) || []).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
+/* ── Total remaining minutes across incomplete lessons in a course ── */
+function w3RemainingMinutes(course, completedIds) {
+  let total = 0;
+  (course?.modules||[]).forEach(m => (m.lessons||[]).forEach(l => {
+    if (!(completedIds||[]).includes(l.id)) {
+      total += l.type === 'video' ? 5 : w3EstimateReadTime(l);
+    }
+  }));
+  return total;
+}
+
+/* ── Achievement badges (simple milestone-based gamification) ── */
+function w3ComputeBadges(course, doneCount, totalCount, courseComplete) {
+  const badges = [];
+  if (doneCount >= 1) badges.push({icon:'🏁', label:'First Step'});
+  if (doneCount >= 5) badges.push({icon:'🔥', label:'5 Lessons Done'});
+  if (doneCount >= 10) badges.push({icon:'💪', label:'10 Lessons Done'});
+  if (doneCount >= 25) badges.push({icon:'🚀', label:'25 Lessons Done'});
+  if (courseComplete) badges.push({icon:'🏆', label: (course?.title||'Course') + ' Master'});
+  return badges;
+}
+
+/* ── Floating Table of Contents ──
+   Scans the rendered article HTML for <h2>/<h3> headings, tags each with an
+   id, and prepends a sticky/floating nav linking to them. No-op (returns the
+   original HTML untouched) when there are fewer than 2 headings. ── */
+function w3InjectTOC(html) {
+  if (!html) return html;
+  const headings = [];
+  let counter = 0;
+  const withIds = html.replace(/<h([23])([^>]*)>([\s\S]*?)<\/h\1>/g, (m, lvl, attrs, inner) => {
+    const id = 'toc-h-' + (counter++);
+    const text = inner.replace(/<[^>]+>/g, '').trim();
+    if (text) headings.push({ id, lvl, text });
+    return `<h${lvl}${attrs} id="${id}">${inner}</h${lvl}>`;
+  });
+  if (headings.length < 2) return html;
+  const links = headings.map(h =>
+    `<a href="#${h.id}" class="${h.lvl === '3' ? 'w3-toc-h3' : ''}" onclick="w3ScrollToHeading(event,'${h.id}')">${sanitize(h.text)}</a>`
+  ).join('');
+  const toc = `<div class="w3-toc" id="w3-lesson-toc"><div class="w3-toc-title">📑 On this page</div>${links}</div>`;
+  return toc + withIds;
+}
+
+function w3ScrollToHeading(e, id) {
+  if (e) e.preventDefault();
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelectorAll('#w3-lesson-toc a').forEach(a => a.classList.remove('active'));
+  const link = document.querySelector(`#w3-lesson-toc a[href="#${id}"]`);
+  if (link) link.classList.add('active');
+}
+
+/* ── Search inside lesson ── */
+let _w3SearchMatches = [], _w3SearchIdx = -1;
+
+function w3ClearSearchHighlights() {
+  document.querySelectorAll('#lesson-content-area mark.w3-search-hit').forEach(m => {
+    const parent = m.parentNode;
+    if (!parent) return;
+    parent.replaceChild(document.createTextNode(m.textContent), m);
+    parent.normalize();
+  });
+  _w3SearchMatches = []; _w3SearchIdx = -1;
+}
+
+function w3SearchLesson() {
+  const term = (document.getElementById('w3-lesson-search-input')?.value || '').trim();
+  w3ClearSearchHighlights();
+  const countEl = document.getElementById('w3-search-count');
+  if (!term) { if (countEl) countEl.textContent = ''; return; }
+  const root = document.querySelector('#lesson-content-area .article-content');
+  if (!root) return;
+  const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) { if (n.nodeValue.trim() && re.test(n.nodeValue)) nodes.push(n); }
+  nodes.forEach(node => {
+    const text = node.nodeValue;
+    const frag = document.createDocumentFragment();
+    let lastIdx = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(text))) {
+      frag.appendChild(document.createTextNode(text.slice(lastIdx, m.index)));
+      const mark = document.createElement('mark');
+      mark.className = 'w3-search-hit';
+      mark.textContent = m[0];
+      frag.appendChild(mark);
+      _w3SearchMatches.push(mark);
+      lastIdx = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+    node.parentNode.replaceChild(frag, node);
+  });
+  if (countEl) countEl.textContent = _w3SearchMatches.length ? `1/${_w3SearchMatches.length}` : '0/0';
+  if (_w3SearchMatches.length) { _w3SearchIdx = 0; w3FocusSearchMatch(); }
+}
+
+function w3FocusSearchMatch() {
+  _w3SearchMatches.forEach(m => m.classList.remove('current'));
+  const cur = _w3SearchMatches[_w3SearchIdx];
+  if (!cur) return;
+  cur.classList.add('current');
+  cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  const countEl = document.getElementById('w3-search-count');
+  if (countEl) countEl.textContent = `${_w3SearchIdx + 1}/${_w3SearchMatches.length}`;
+}
+
+function w3SearchNext() {
+  if (!_w3SearchMatches.length) return;
+  _w3SearchIdx = (_w3SearchIdx + 1) % _w3SearchMatches.length;
+  w3FocusSearchMatch();
+}
+
+function w3SearchPrev() {
+  if (!_w3SearchMatches.length) return;
+  _w3SearchIdx = (_w3SearchIdx - 1 + _w3SearchMatches.length) % _w3SearchMatches.length;
+  w3FocusSearchMatch();
+}
+
+/* ── Bookmark lessons (persisted on the enrollment doc) ── */
+function w3IsBookmarked(courseId, lessonId) {
+  const enrollment = myEnrollments[courseId];
+  return !!(enrollment?.bookmarks || []).includes(lessonId);
+}
+
+async function w3ToggleBookmark(courseId, lessonId, btn) {
+  if (!currentUser) { toast('Sign in to bookmark lessons','err'); return; }
+  const enrollment = myEnrollments[courseId];
+  if (!enrollment) return;
+  const list = enrollment.bookmarks || [];
+  const has = list.includes(lessonId);
+  const updated = has ? list.filter(id => id !== lessonId) : [...list, lessonId];
+  enrollment.bookmarks = updated;
+  if (btn) {
+    btn.classList.toggle('active', !has);
+    btn.innerHTML = !has ? '★ Saved' : '☆ Save Lesson';
+  }
+  if (fsReady()) {
+    try {
+      const docId = currentUser.uid + '_' + courseId;
+      await db.collection('enrollments').doc(docId).update({ bookmarks: updated });
+    } catch(e) { console.warn('bookmark error:', e); }
+  }
+  toast(has ? 'Bookmark removed' : '⭐ Lesson saved','ok',1500);
+  const sidebarCourse = coursesCatalog.find(c=>c.id===courseId);
+  if (sidebarCourse) renderLearnSidebar(sidebarCourse);
+}
+
+/* ── Notes (per-lesson, debounced autosave, synced to Firestore) ── */
+let _w3NoteSaveTimer = null;
+
+function w3ToggleNotes() {
+  document.getElementById('w3-notes-box')?.classList.toggle('open');
+}
+
+function w3QueueSaveNote(courseId, lessonId) {
+  const statusEl = document.getElementById('w3-notes-status');
+  if (statusEl) statusEl.textContent = 'Saving…';
+  clearTimeout(_w3NoteSaveTimer);
+  _w3NoteSaveTimer = setTimeout(() => w3SaveNote(courseId, lessonId), 800);
+}
+
+async function w3SaveNote(courseId, lessonId) {
+  const ta = document.getElementById('w3-notes-ta');
+  const statusEl = document.getElementById('w3-notes-status');
+  if (!ta) return;
+  const text = ta.value;
+  const enrollment = myEnrollments[courseId];
+  if (enrollment) {
+    if (!enrollment.notes) enrollment.notes = {};
+    enrollment.notes[lessonId] = text;
+  }
+  if (!currentUser) { if (statusEl) statusEl.textContent = 'Sign in to sync notes'; return; }
+  if (fsReady()) {
+    try {
+      const docId = currentUser.uid + '_' + courseId;
+      await db.collection('enrollments').doc(docId).update({ [`notes.${lessonId}`]: text });
+      if (statusEl) statusEl.textContent = 'Saved ✓ ' + new Date().toLocaleTimeString();
+    } catch(e) {
+      console.warn('saveNote error:', e);
+      if (statusEl) statusEl.textContent = 'Save failed — will retry next edit';
+    }
+  } else if (statusEl) {
+    statusEl.textContent = 'Saved locally (offline)';
+  }
+}
+
+/* ── Sticky progress bar shadow-on-scroll ── */
+let _w3StickyScrollBound = false;
+function w3InitStickyProgress() {
+  if (_w3StickyScrollBound) return;
+  const scrollHost = document.getElementById('w3-center-col');
+  if (!scrollHost) return;
+  scrollHost.addEventListener('scroll', () => {
+    const row = document.getElementById('w3-lesson-prog-row');
+    if (!row) return;
+    row.classList.toggle('is-stuck', scrollHost.scrollTop > 4);
+  });
+  _w3StickyScrollBound = true;
+}
+
+/* ── "Try it Yourself" playground panel actions: reset / download / share / fullscreen ── */
+let _w3CurrentStarterCode = '';
+
+function w3ResetCode() {
+  w3SetEditorCode(_w3CurrentStarterCode);
+  toast('Code reset to starting point','ok',1200);
+}
+
+function w3DownloadCode() {
+  const code = document.getElementById('w3-code-editor')?.value || '';
+  const blob = new Blob([code], { type: 'text/x-python' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (currentLessonId || 'codinghub-code') + '.py';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function w3ShareCode() {
+  const code = document.getElementById('w3-code-editor')?.value || '';
+  if (!code.trim()) { toast('Nothing to share yet','err'); return; }
+  navigator.clipboard?.writeText(code)
+    .then(() => toast('📋 Code copied to clipboard — paste it anywhere to share!','ok',2500))
+    .catch(() => toast('Copy failed','err'));
+}
+
+function w3ToggleFullscreen() {
+  const panel = document.getElementById('w3-try-panel');
+  const btn = document.getElementById('w3-fullscreen-btn');
+  if (!panel) return;
+  const isFs = panel.classList.toggle('w3-fullscreen');
+  if (btn) btn.textContent = isFs ? '⤡' : '⤢';
 }
 
 /* ── Pyodide status ── */
@@ -10578,11 +11128,10 @@ function w3HandleTab(e) {
    Uses the same in-browser Pyodide engine as the main playground, so it
    runs instantly with no external API call. ── */
 async function w3RunInlineExample(exId) {
-  const codeEl = document.querySelector(`#box-${exId} .w3-example-code`);
   const outEl  = document.getElementById('out-' + exId);
   const btn    = document.getElementById('run-' + exId);
-  if (!codeEl || !outEl || !btn) return;
-  const code = codeEl.textContent;
+  const code   = w3GetCodeBlockText(exId);
+  if (!code || !outEl || !btn) return;
 
   outEl.style.display = 'block';
   outEl.innerHTML = '<span class="w3-out-running">⏳ Starting Python engine…</span>';
