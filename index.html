@@ -7853,12 +7853,14 @@ function showStuSection(section) {
     document.getElementById('cat-av').textContent  = name[0].toUpperCase();
     document.getElementById('cat-name').textContent = name;
     renderCatalog();
+    updateUrlHash(PAGE_HASH_MAP.catalog);
   } else if (section === 'my-learning') {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('page-my-learning').classList.add('active');
     document.getElementById('ml-av').textContent  = name[0].toUpperCase();
     document.getElementById('ml-name').textContent = name;
     renderMyLearning();
+    updateUrlHash(PAGE_HASH_MAP['my-learning']);
   }
 }
 
@@ -11674,6 +11676,7 @@ function openChronoStudent() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-chrono-catalog').classList.add('active');
   chronoRenderCatalogGrid();
+  updateUrlHash(PAGE_HASH_MAP['chrono-catalog']);
 }
 async function chronoRenderCatalogGrid() {
   const el = document.getElementById('chrono-catalog-grid');
@@ -12015,6 +12018,7 @@ async function chronoEndSession(challenge, sessionId, elapsedGetter, stageGetter
   await chronoUpdateSession(sessionId, { status: 'submitted', finalCode, events, endedAt: Date.now() });
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-chrono-result').classList.add('active');
+  updateUrlHash(PAGE_HASH_MAP['chrono-result']);
   chronoTriggerAIEval(sessionId, challenge).catch(e => console.warn('AI eval failed', e));
 }
 
