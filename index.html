@@ -3927,6 +3927,28 @@ function runPy(code, stdin) {
   });
 }
 
+// Pyodide executes Python synchronously inside its iframe's single JS
+// thread. A script with no yield points (e.g. `while True: pass`) blocks
+// that thread forever — it's not just slow, the whole iframe becomes
+// permanently unresponsive. postMessage calls sent to a wedged frame never
+// get a reply, so every *future* run would also silently hang until its
+// own timeout fires, one after another, for the rest of the session.
+// This tears the frozen iframe down and spins up a fresh one so the next
+// run actually has a working engine to run against, instead of just
+// re-enabling a button that then hangs again on the very next click.
+function resetPyodideEngine() {
+  if (_pyFrame) { try { _pyFrame.remove(); } catch(e) {} }
+  _pyFrame = null;
+  _pyReady = false;
+  // Any callbacks still waiting on the old frame will never hear back now
+  // — reject them immediately rather than let them time out naturally.
+  Object.keys(_pyCbs).forEach(function(id) {
+    try { _pyCbs[id]({ ok:false, error:'Python engine was reset after a timeout.' }); } catch(e) {}
+    delete _pyCbs[id];
+  });
+  startPyodide();
+}
+
 function _animatePyLoader() {
   var bar=document.getElementById('py-loader-bar');
   var sub=document.getElementById('py-loader-sub');
@@ -8533,11 +8555,21 @@ function _makePyPlayground(code) {
   </div>`;
 }
 
+// Execution fencing for the markdown playground: every click gets a
+// unique token. If a student rapidly re-clicks ▶ Run, older in-flight
+// evaluations are simply ignored when they eventually settle — only the
+// result matching the *current* token is ever written to the output
+// panel, so a slow/stale response can't clobber a newer one.
+let _pyExecutionToken = 0;
+
 async function runMdPlayground(pid, btn) {
   const codeEl = document.getElementById(pid + '-code');
   const outEl  = document.getElementById(pid + '-out');
   const code   = codeEl?.value || '';
   if (!code.trim()) return;
+
+  const currentToken = ++_pyExecutionToken;
+
   btn.disabled = true; btn.textContent = '⏳ Running…';
   outEl.style.color = 'var(--soft)'; outEl.textContent = 'Running…';
   try {
@@ -8550,13 +8582,46 @@ async function runMdPlayground(pid, btn) {
       try {
         await waitPyReady(75000);
       } catch(e) {
+        if (currentToken !== _pyExecutionToken) return; // a newer click superseded this one
         outEl.style.color = '#f87171';
         outEl.textContent = '⚠ Python engine failed to load — reload the page and try again.';
         btn.disabled = false; btn.textContent = '▶ Run';
         return;
       }
     }
-    const result = await runPy(code, '');
+
+    // A newer click already started while we were waiting for the engine —
+    // let that one own the output panel instead.
+    if (currentToken !== _pyExecutionToken) return;
+
+    // 12s local safety rail so a runaway loop (`while True: pass`) doesn't
+    // leave a course-lesson playground looking frozen for a full minute —
+    // runPy() itself still has its own 60s timeout as a backstop, but for
+    // this quick-feedback widget we want to surface the problem faster.
+    let timedOut = false;
+    const executionPromise = runPy(code, '');
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => { timedOut = true; reject(new Error('TIMEOUT')); }, 12000)
+    );
+
+    let result;
+    try {
+      result = await Promise.race([executionPromise, timeoutPromise]);
+    } catch (e) {
+      if (timedOut) {
+        // The iframe's JS thread is almost certainly blocked forever by
+        // whatever just ran (no yield points = no way to interrupt it) —
+        // recover it now so the *next* run isn't doomed to hang too.
+        resetPyodideEngine();
+      }
+      throw e;
+    }
+
+    if (currentToken !== _pyExecutionToken) {
+      console.warn('Discarded stale playground run: token ' + currentToken);
+      return;
+    }
+
     if (result.ec !== 0 || result.stderr) {
       outEl.style.color = '#f87171';
       outEl.textContent = (result.stderr || 'Error').trim();
@@ -8565,10 +8630,15 @@ async function runMdPlayground(pid, btn) {
       outEl.textContent = result.stdout || '(no output)';
     }
   } catch(e) {
+    if (currentToken !== _pyExecutionToken) return;
     outEl.style.color = '#f87171';
-    outEl.textContent = '⚠ ' + e.message;
+    outEl.textContent = e.message === 'TIMEOUT'
+      ? '❌ Execution timed out (12s) — likely an infinite loop. Python engine has been reset; try again.'
+      : '⚠ ' + e.message;
   }
-  btn.disabled = false; btn.textContent = '▶ Run';
+  if (currentToken === _pyExecutionToken) {
+    btn.disabled = false; btn.textContent = '▶ Run';
+  }
 }
 
 function renderMarkdown(raw) {
