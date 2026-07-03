@@ -3804,6 +3804,7 @@ upgrade-insecure-requests;</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js" defer></script>
 <script>
 // Load Monaco loader directly — faster than fetch-to-blob on GitHub Pages.
 // We inject it lazily after DOMContentLoaded so it never blocks the login paint.
@@ -4085,7 +4086,7 @@ let _authHandled  = false;  // prevents onAuthStateChanged double-firing after m
 // from yanking them to the login page — free courses stay browsable
 // without login; only enroll/progress/certificate actions require login.
 let _publicDeepLinkActive = false;
-let auth, db;
+let auth, db, functionsRef;
 let currentUser = null;
 let currentRole = 'prof';        // 'prof' | 'stu'
 let questions   = [];            // professor's question bank
@@ -4335,6 +4336,10 @@ async function initApp() {
       }
       auth = firebase.auth();
       db   = firebase.firestore();
+      // STEP 1: secure grading — all code execution/scoring now happens
+      // inside a Cloud Function (see functions/index.js), never in the
+      // browser, so test case answers never touch the client at all.
+      functionsRef = firebase.functions();
       // Force plain long-polling instead of the streaming WebChannel transport.
       // GitHub Pages + browser extensions / tracking prevention frequently break
       // the streaming RPC with "400 Bad Request" on the Write channel — this
@@ -5107,27 +5112,34 @@ async function saveQuestion() {
       difficulty:  q.diff,
       tags:        q.tags,
       templates:   q.templates,       // starter code per language
-      // FIX: test cases were previously ONLY written to questions_private
-      // (below), so questions_public.testcases was always undefined.
-      // loadQuestionsFromFirestore() reads d.testcases from questions_public,
-      // so every reload (i.e. every real exam session) silently got an
-      // empty testcases array -> students' correct submissions had nothing
-      // to grade against and failed, or hit the "No test cases" guard.
-      // Writing the same test cases here keeps grading working after reload.
-      testcases:   q.testcases,
+      // STEP 1 — SECURE GRADING:
+      // The public doc only ever gets the INPUT half of each test case, so
+      // the "Test Cases" panel can still show students what input each
+      // case uses. It never gets `expected` — that value never reaches the
+      // browser at all now. All actual grading happens server-side in the
+      // gradeSubmission Cloud Function (see functions/index.js), which
+      // reads the authoritative test cases (with expected outputs) from
+      // questions_private and returns only pass/fail + timing back to the
+      // client. This replaces the earlier approach of writing full
+      // input+expected pairs to the public doc, which made every answer
+      // readable via devtools regardless of a "hidden" label in the UI.
+      testcases:   q.testcases.map(tc => ({ input: tc.input })),
       createdBy:   currentUser?.uid || 'unknown',
       createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
     };
 
     const privateData = {
-      // Kept as a secondary copy (e.g. for future server-side/hidden grading).
-      // NOTE: with the fix above, questions_public.testcases is now the
-      // source of truth actually used by submitCode()/runCode() -- anything
-      // stored here is client-readable by profs only, but since grading
-      // currently runs in the browser, expected outputs in publicData are
-      // technically inspectable by students via devtools regardless of
-      // which collection they live in. True secrecy would require grading
-      // via a Cloud Function instead of comparing tc.expected in-browser.
+      // Sole source of truth for grading. Only readable by profs directly
+      // (Firestore rules) or by the Cloud Function via the Admin SDK, which
+      // bypasses security rules entirely — students never read this
+      // collection, and the callable function never echoes `expected`
+      // values back in its response.
+      testcases: q.testcases.map(tc => ({
+        input:    tc.input,
+        expected: tc.expected,
+      })),
+      // Kept for backward compatibility with any older client/function
+      // code still expecting this field name.
       hiddenTestcases: q.testcases.map(tc => ({
         input:          tc.input,
         expectedOutput: tc.expected,
@@ -5986,20 +5998,57 @@ function renderProbStmt() {
   `;
 }
 
+// STEP 2 — COMPONENT-BASED RE-RENDERING (Test Cases panel):
+// Instead of rebuilding the whole tc-list innerHTML on every status change,
+// each test case gets one persistent DOM node, and we keep a reference to
+// its status <span> in _tcElements (index -> element). renderTC() only
+// rebuilds the DOM when the underlying question/test-case set actually
+// changed (a new question was loaded); on every subsequent grading run we
+// just look the element up in the map and mutate its textContent/className
+// directly via setTCStatus(), with no innerHTML rewrite and no repeated
+// document.getElementById() lookups.
+let _tcElements  = new Map();  // index -> { statusEl }
+let _tcSignature = null;       // identifies which question's TCs are mounted
+
 function renderTC() {
-  const el = document.getElementById('tc-list');
-  el.innerHTML = (currentQ?.testcases||[]).map((tc,i)=>`
-    <div class="tc-item" id="tc-${i}">
-      <div class="tc-head">
-        <span style="color:#6b7280;font-family:var(--ff-mono);font-size:.72rem">Test ${i+1}</span>
-        <span class="tc-stat pending" id="tcs-${i}">Pending</span>
+  const el  = document.getElementById('tc-list');
+  const tcs = currentQ?.testcases || [];
+  const signature = (currentQ?.id || '') + ':' + tcs.length;
+
+  if (signature !== _tcSignature) {
+    // Different question (or first load) — the DOM nodes themselves need
+    // to change, so this is the one case where a full rebuild is correct.
+    _tcElements.clear();
+    el.innerHTML = tcs.map((tc,i)=>`
+      <div class="tc-item" id="tc-${i}">
+        <div class="tc-head">
+          <span style="color:#6b7280;font-family:var(--ff-mono);font-size:.72rem">Test ${i+1}</span>
+          <span class="tc-stat pending" id="tcs-${i}">Pending</span>
+        </div>
+        <div class="tc-body">
+          <div class="tc-lbl">Input</div><div class="tc-val">${escH(tc.input)}</div>
+          <div class="tc-lbl">Expected</div><div style="color:#9ca3af">🔒 Graded on submit</div>
+        </div>
       </div>
-      <div class="tc-body">
-        <div class="tc-lbl">Input</div><div class="tc-val">${escH(tc.input)}</div>
-        <div class="tc-lbl">Expected</div><div style="color:#374151">${escH(tc.expected)}</div>
-      </div>
-    </div>
-  `).join('');
+    `).join('');
+    tcs.forEach((_,i) => {
+      _tcElements.set(i, { statusEl: document.getElementById(`tcs-${i}`) });
+    });
+    _tcSignature = signature;
+    return;
+  }
+
+  // Same question already mounted — just reset each cached status node's
+  // attributes in place, no template re-render.
+  tcs.forEach((_,i) => setTCStatus(i, 'Pending', 'pending'));
+}
+
+// Mutates one test case's status badge directly via the cached element
+// reference — this is the "internal element map index" lookup used by
+// submitCode() instead of calling document.getElementById() per update.
+function setTCStatus(i, label, cls) {
+  const ref = _tcElements.get(i);
+  if (ref?.statusEl) { ref.statusEl.textContent = label; ref.statusEl.className = `tc-stat ${cls}`; }
 }
 
 function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -6228,26 +6277,6 @@ async function runCode() {
   btn.disabled=false; btn.textContent='▶ Run';
 }
 
-async function fetchHiddenTestcases(questionId) {
-  // Demo / offline mode — no hidden TCs available
-  if (!firebaseReady || !db) return { tcs: [], denied: false };
-  try {
-    const snap = await db.collection('questions_private').doc(questionId).get();
-    if (!snap.exists) return { tcs: [], denied: false };
-    const data = snap.data();
-    const tcs  = data.hiddenTestcases || data.testcases || [];
-    return { tcs, denied: false };
-  } catch(e) {
-    // permission-denied is the normal student path — Firestore rules block them.
-    // Any other error (network, unavailable) is also handled gracefully.
-    // We do NOT log to console for permission-denied — it's expected and noisy.
-    if (e.code !== 'permission-denied') {
-      console.warn('fetchHiddenTestcases unexpected error:', e.code);
-    }
-    return { tcs: [], denied: e.code === 'permission-denied' };
-  }
-}
-
 async function submitCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
@@ -6263,30 +6292,56 @@ async function submitCode() {
   // Save a code snapshot at the moment of submit
   saveSnapshot('submit');
 
-  // ── Assemble testcase list ─────────────────────────────────
-  // Visible TCs come from the local questions[] array.
-  // Hidden TCs are fetched from Firestore questions_private/ now.
-  // For professors they load fine; for students they get [] back
-  // (Firestore rules deny read), and grading runs on visible TCs only.
-  outLine('info', '🔍 Fetching test cases...');
-  const visibleTCs = currentQ.testcases || [];
-  const { tcs: hiddenTCs, denied: hiddenDenied } = await fetchHiddenTestcases(currentQ.id);
-
-  if (hiddenDenied) {
-    outLine('warn', `⚠ Hidden test cases are graded server-side — running ${visibleTCs.length} visible test case${visibleTCs.length !== 1 ? 's' : ''} locally.`);
+  // STEP 1 — SECURE GRADING:
+  // No test cases are fetched or compared in the browser anymore. We hand
+  // the code + language + questionId to the gradeSubmission Cloud Function
+  // (functions/index.js), which reads the authoritative test cases from
+  // questions_private via the Admin SDK (bypassing client security rules
+  // entirely — nothing to "deny" or leak), executes them itself, and
+  // returns only pass/fail + timing. `expected` output is never sent to
+  // the client, for visible or hidden test cases alike.
+  if (!functionsRef) {
+    outLine('err', '⛔ Grading service unavailable — Firebase Functions not initialized (demo/offline mode).');
+    toast('Grading service unavailable', 'err', 6000);
+    btn.disabled = false; btn.textContent = '✓ Submit';
+    return;
   }
 
-  // Merge: visible first, then hidden (empty for students — that's correct).
-  const allTCs = [
-    ...visibleTCs.map(tc => ({ input: tc.input, expected: tc.expected,       hidden: false })),
-    ...hiddenTCs.map(tc  => ({ input: tc.input, expected: tc.expectedOutput, hidden: true  })),
-  ];
+  const visibleTCCount = (currentQ.testcases || []).length;
 
-  const totalTC = allTCs.length;
+  // Reset visible TC status badges via the cached element map (Step 2) —
+  // no DOM lookups, no innerHTML rewrite, just direct attribute mutation.
+  for (let i = 0; i < visibleTCCount; i++) setTCStatus(i, 'Running…', 'pending');
 
-  // Guard: if there are genuinely no test cases at all, refuse to submit rather
-  // than silently accepting (0 passed === 0 total → allOk = true).
-  if (totalTC === 0) {
+  outLine('info', `☁ Submitting "${currentQ.title}" for secure server-side grading…`);
+  outRunning();
+
+  let response;
+  try {
+    const gradeSubmission = functionsRef.httpsCallable('gradeSubmission');
+    const callResult = await gradeSubmission({
+      questionId: currentQ.id,
+      code,
+      language: currentLang,
+    });
+    response = callResult.data;
+  } catch (e) {
+    removeRunning();
+    outLine('err', '⛔ ' + (e.message || 'Grading service error'));
+    toast('Submission failed — grading service error', 'err', 6000);
+    for (let i = 0; i < visibleTCCount; i++) setTCStatus(i, '⚠ Error', 'fail');
+    btn.disabled = false; btn.textContent = '✓ Submit';
+    return;
+  }
+
+  removeRunning();
+
+  // response shape (returned by functions/index.js):
+  // { results: [{n, ok, hidden, status, time}], passed, total, score }
+  // Note: no `out` / `expected` fields — those never leave the server.
+  const { results = [], passed = 0, total = 0, score = 0 } = response || {};
+
+  if (total === 0) {
     outLine('warn', '⚠ No test cases found for this question. Cannot grade submission.');
     outLine('warn', 'If you are a student, test cases may not have been published yet. Contact your professor.');
     toast('No test cases — cannot grade', 'warn', 6000);
@@ -6294,86 +6349,21 @@ async function submitCode() {
     return;
   }
 
-  if (!hiddenDenied) {
-    outLine('info', `✓ Submitting "${currentQ.title}"… running ${totalTC} test case${totalTC !== 1 ? 's' : ''} (${hiddenTCs.length} hidden)`);
-  }
-  outRunning();
+  const totalMs = results.reduce((sum, r) => sum + (parseFloat(r.time) || 0), 0);
 
-  const results = [];
-  let passed = 0, totalMs = 0;
-  let hiddenPassed = 0;
-
-  // Reset visible TC status badges in the Test Cases tab
-  visibleTCs.forEach((_,i) => {
-    const el = document.getElementById(`tcs-${i}`);
-    if (el) { el.textContent = 'Running…'; el.className = 'tc-stat pending'; }
+  // Update visible TC badges from the server's verdicts, via the same
+  // element-map lookup used to set them to "Running…" above.
+  results.forEach(r => {
+    if (!r.hidden && r.n - 1 < visibleTCCount) {
+      setTCStatus(r.n - 1, r.ok ? '✓ Pass' : '✗ Fail', r.ok ? 'pass' : 'fail');
+    }
   });
 
-  for (let i = 0; i < allTCs.length; i++) {
-    const tc    = allTCs[i];
-    const visEl = !tc.hidden ? document.getElementById(`tcs-${i}`) : null;
+  const hiddenResults = results.filter(r => r.hidden);
+  const hiddenPassed  = hiddenResults.filter(r => r.ok).length;
 
-    try {
-      const result  = await pistonExecute(code, currentLang, tc.input);
-      const run     = result.run || {};
-
-      // Normalize: trim each line, drop trailing blank lines, unify line endings
-      const normalize = s => (s || '')
-        .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-        .split('\n').map(l => l.trimEnd())
-        .join('\n').trim();
-
-      const out = normalize(run.stdout);
-      const exp = normalize(tc.expected);
-      const ok  = out === exp;
-      const ms      = 50 + Math.random() * 80; // Piston doesn't expose wall time
-      totalMs      += ms;
-      if (ok) { passed++; if (tc.hidden) hiddenPassed++; }
-
-      // Update the visible TC badge (hidden TCs have no badge to update)
-      if (visEl) {
-        visEl.textContent = ok ? '✓ Pass' : '✗ Fail';
-        visEl.className   = `tc-stat ${ok ? 'pass' : 'fail'}`;
-      }
-
-      const exitCode = run.code;
-      const status   = exitCode === 0 ? 'Accepted' : `Runtime Error (exit ${exitCode})`;
-
-      results.push({
-        n:       i + 1,
-        ok,
-        hidden:  tc.hidden,
-        out:     tc.hidden ? null : out,
-        expected:tc.hidden ? null : tc.expected,
-        time:    ms.toFixed(0),
-        status,
-      });
-
-    } catch(e) {
-      // Piston unreachable — mark TC as error, never fake a pass
-      if (visEl) { visEl.textContent = '⚠ Error'; visEl.className = 'tc-stat fail'; }
-      if (!tc.hidden) {
-        results.push({ n:i+1, ok:false, hidden:false, out:'[Execution error]', expected:tc.expected, time:'0', status:'Network Error' });
-      }
-      outLine('err', `TC${i+1}: Execution error — ${e.message}`);
-    }
-  }
-
-  removeRunning();
-
-  // If every TC hit a network error (Piston unreachable), abort — don't save a fake submission
-  const networkErrors = results.filter(r => r.status === 'Network Error').length;
-  if (networkErrors === results.length && results.length > 0) {
-    outLine('err', '⛔ Submission aborted — Code execution failed for all test cases.');
-    outLine('warn', 'Reload the page and wait for Python engine to load.');
-    toast('Submission failed — execution error', 'err', 6000);
-    btn.disabled=false; btn.textContent='✓ Submit';
-    return;
-  }
-
-  // Score over ALL test cases (visible + hidden)
-  const score  = totalTC > 0 ? Math.round((passed / totalTC) * 100) : 0;
-  const allOk  = passed === totalTC;
+  const score2 = total > 0 ? Math.round((passed / total) * 100) : score;
+  const allOk  = passed === total;
 
   // Record submission
   const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
@@ -6382,10 +6372,10 @@ async function submitCode() {
     problem:  currentQ.title,
     lang:     currentLang,
     status:   allOk ? 'Accepted' : passed > 0 ? 'Partial' : 'Wrong Answer',
-    score,
+    score:    score2,
     passed,
-    total:      totalTC,          // includes hidden TCs
-    hiddenTotal: hiddenTCs.length,
+    total,                         // includes hidden TCs
+    hiddenTotal: hiddenResults.length,
     hiddenPassed,
     vios:     totalVioCount,
     time:     new Date().toLocaleTimeString(),
@@ -6421,7 +6411,7 @@ async function submitCode() {
   // Exit fullscreen
   if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
 
-  showResults(results, passed, totalTC, totalMs, score, allOk);
+  showResults(results, passed, total, totalMs, score2, allOk);
   btn.disabled=false; btn.textContent='✓ Submit';
 }
 
