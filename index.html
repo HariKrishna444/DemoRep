@@ -2995,8 +2995,25 @@ service cloud.firestore {
       allow write: if isProf();
     }
     match /courses/{courseId}/quizzes/{quizId} {
-      allow read:  if isSignedIn(); // quiz answers — require login
+      // SECURITY FIX: this doc now only ever contains question text +
+      // options (see saveQuiz() in the client) — correctIndex was removed
+      // and moved to quiz_answers/ below. Any signed-in student reading
+      // this doc directly (e.g. via devtools) no longer gets the answer key.
+      allow read:  if isSignedIn();
       allow write: if isProf();
+    }
+    match /quiz_answers/{docId} {
+      // Answer key — never readable by the client, signed in or not.
+      // Only the verifyQuiz Cloud Function reads this, via the Admin SDK
+      // (which bypasses these rules entirely).
+      allow read:  if false;
+      allow write: if isProf();
+    }
+    match /rateLimits/{uid} {
+      // Per-user sliding-window counters used by the runCodeSandbox Cloud
+      // Function. Written only by the Function (Admin SDK bypasses rules);
+      // no client read/write needed at all.
+      allow read, write: if false;
     }
 
     // ── enrollments/ — student progress ──────────────────────────
@@ -3935,8 +3952,11 @@ const LANG_MONACO = {
 };
 
 // ─── Judge0 Sandbox Compiler ────────────────────────────────────────────────
-// Uses the official free Judge0 CE public instance (no API key required).
-// Submit → poll → result pattern for reliability.
+// SECURITY: this no longer calls Judge0 directly from the browser. All
+// submit+poll network calls now happen server-side inside the
+// runCodeSandbox Cloud Function (see functions/index.js), which requires
+// auth and applies a per-user rate limit before proxying to Judge0. The
+// client only ever talks to Firebase, never to ce.judge0.com directly.
 // Docs: https://ce.judge0.com  |  Language list: https://ce.judge0.com/languages
 
 const JUDGE0_LANG_IDS = {
@@ -3964,80 +3984,38 @@ const J0_STATUS = {
   14: 'Exec Format Error',
 };
 
-// Primary: official free CE instance. Fallback: extra-ce instance.
-const JUDGE0_HOSTS = [
-  'https://ce.judge0.com',
-  'https://extra-ce.judge0.com',
-];
-
 async function judge0Execute(code, lang, stdin) {
   const langId = JUDGE0_LANG_IDS[lang];
   if (!langId) throw new Error('Language "' + lang + '" is not supported.');
 
-  const encode = s => btoa(unescape(encodeURIComponent(s || '')));
-  const decode = s => {
-    if (!s) return '';
-    try { return decodeURIComponent(escape(atob(s))); } catch(e) { return atob(s); }
-  };
-
-  const headers = { 'Content-Type': 'application/json' };
-  const body = JSON.stringify({
-    language_id:    langId,
-    source_code:    encode(code),
-    stdin:          encode(stdin),
-    cpu_time_limit: 10,          // seconds
-    memory_limit:   256000,      // KB (~256 MB)
-    wall_time_limit: 15,
-  });
-
-  let token = null;
-  let lastErr = null;
-
-  // ── Step 1: Submit to whichever host responds ────────────────
-  for (const host of JUDGE0_HOSTS) {
-    try {
-      const res = await fetch(`${host}/submissions?base64_encoded=true`, {
-        method: 'POST', headers, body,
-      });
-      if (!res.ok) { lastErr = new Error(`Judge0 submit HTTP ${res.status}`); continue; }
-      const data = await res.json();
-      if (data.token) { token = { value: data.token, host }; break; }
-    } catch(e) { lastErr = e; }
-  }
-
-  if (!token) {
+  if (!functionsRef) {
     throw new Error(
-      (lastErr?.message || 'All Judge0 endpoints unreachable.') +
-      '\n\nTip: Judge0 free instances have rate limits. Try again in a moment.'
+      'Sandbox service unavailable — Firebase Functions not initialized.\n' +
+      'Running C/C++/Java/JS requires the runCodeSandbox Cloud Function to be deployed.'
     );
   }
 
-  // ── Step 2: Poll until finished (status.id > 2 means done) ──
-  const MAX_POLLS  = 20;
-  const POLL_MS    = 1000;   // 1 s between polls
-  let result       = null;
-
-  for (let i = 0; i < MAX_POLLS; i++) {
-    await new Promise(r => setTimeout(r, POLL_MS));
-    try {
-      const res = await fetch(
-        `${token.host}/submissions/${token.value}?base64_encoded=true&fields=status,stdout,stderr,compile_output,exit_code,time,memory`,
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data.status && data.status.id > 2) { result = data; break; }
-    } catch(e) { /* keep polling */ }
+  // Single call — auth + rate limiting + Judge0 submit/poll all happen
+  // inside the Cloud Function. Response is already base64-decoded.
+  let result;
+  try {
+    const runCodeSandbox = functionsRef.httpsCallable('runCodeSandbox');
+    const callResult = await runCodeSandbox({ code, lang, stdin: stdin || '' });
+    result = callResult.data; // { status:{id,description}, stdout, stderr, compile_output, time, memory }
+  } catch (e) {
+    const rateLimited = e?.code === 'functions/resource-exhausted' || e?.code === 'resource-exhausted';
+    throw new Error(
+      (e?.message || 'Sandbox execution failed.') +
+      (rateLimited ? '' : '\n\nTip: Judge0 free instances have rate limits. Try again in a moment.')
+    );
   }
 
-  if (!result) throw new Error('Judge0 timed out waiting for result (>20s).');
-
-  // ── Step 3: Parse result ──────────────────────────────────────
+  // ── Parse result (same logic as before — source is now the Cloud Function) ──
   const statusId   = result.status?.id ?? 0;
   const statusName = J0_STATUS[statusId] || result.status?.description || 'Unknown';
-  const stdout     = decode(result.stdout);
-  const compileOut = decode(result.compile_output);
-  const stderrOut  = decode(result.stderr);
+  const stdout     = result.stdout || '';
+  const compileOut = result.compile_output || '';
+  const stderrOut  = result.stderr || '';
   const exitCode   = statusId === 3 ? 0 : 1;
 
   // Build a helpful stderr/error message based on status
@@ -4340,12 +4318,22 @@ async function initApp() {
       // inside a Cloud Function (see functions/index.js), never in the
       // browser, so test case answers never touch the client at all.
       functionsRef = firebase.functions();
-      // Force plain long-polling instead of the streaming WebChannel transport.
-      // GitHub Pages + browser extensions / tracking prevention frequently break
-      // the streaming RPC with "400 Bad Request" on the Write channel — this
-      // setting avoids that failure mode entirely at a small latency cost.
+      // Long-polling detection: Safari/Edge on GitHub Pages + browser
+      // extensions / tracking prevention frequently break the streaming
+      // WebChannel transport with "400 Bad Request" on the Write channel.
+      // experimentalAutoDetectLongPolling already only *activates*
+      // long-polling when the environment actually needs it — it doesn't
+      // force it — but we still only pay the (tiny) detection cost for the
+      // browsers that actually hit this issue. Chrome/Firefox skip this
+      // setting entirely and use the default streaming transport, avoiding
+      // any extra request volume during heavy sessions like an exam.
       try {
-        db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+        const ua = navigator.userAgent || '';
+        const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+        const isEdge   = /Edg\//.test(ua);
+        if (isSafari || isEdge) {
+          db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+        }
       } catch (e) { /* settings must be called before first use — ignore if too late */ }
 
       // ── Offline persistence ───────────────────────────────────────────
@@ -4864,7 +4852,19 @@ function stopMonitorListener() {
    Renders the live grid. When Firestore is active, liveStudentMap
    is populated by the listeners above. In demo mode, falls back
    to DEMO_STUDENTS.
+
+   PERFORMANCE: this used to be `g.innerHTML = students.map(...).join('')`
+   on every single Firestore snapshot — with 60+ students all typing,
+   updating timestamps, and triggering focus events, that rebuilt and
+   reflowed the entire DOM grid several times a second (layout thrashing),
+   locking up the professor's tab. Now each student keeps one persistent
+   card element cached in monitorCardCache (uid -> refs to its sub-nodes),
+   and every update just patches the handful of text/class values that
+   actually changed on that one card — no full-grid rebuild, ever, after
+   the very first render.
    ─────────────────────────────────────────────────────────────── */
+const monitorCardCache = new Map(); // uid -> { el, pulseEl, avatarEl, nameEl, statusEl, vioCountEl, scoreEl, lastVioEl }
+
 function renderMonitor() {
   const g = document.getElementById('monitor-grid');
 
@@ -4879,6 +4879,8 @@ function renderMonitor() {
   document.getElementById('live-count').textContent = students.length;
 
   if (!students.length) {
+    monitorCardCache.forEach(card => card.el.remove());
+    monitorCardCache.clear();
     const msg = firebaseReady
       ? 'No students in exam yet. Waiting for activity…'
       : 'Connect Firebase to see live student activity. No students to display.';
@@ -4886,36 +4888,97 @@ function renderMonitor() {
     return;
   }
 
-  g.innerHTML = students.map(s => {
-    const vioCount = Array.isArray(s.vios) ? s.vios.length : (s.vios || 0);
-    const isFlagged = vioCount >= 2 || s.status === 'flagged';
-    const statusLabel = s.status === 'flagged'    ? '⚠ Flagged'
-                      : s.status === 'submitted'  ? '✓ Submitted'
-                      : s.status === 'idle'        ? '◌ Idle'
-                      : '● Active';
-    const statusClass = s.status === 'flagged'   ? 'flagged'
-                      : s.status === 'submitted' ? 'online'
-                      : s.status === 'idle'      ? 'idle'
-                      : 'online';
-    const scoreTag = s.score !== null && s.score !== undefined
-      ? `<div style="margin-top:6px;font-size:.72rem;font-family:var(--ff-mono);color:var(--stu)">${s.score}% score</div>`
-      : '';
-    // Last violation type tag
-    const lastVio = Array.isArray(s.vios) && s.vios.length
-      ? `<div style="font-size:.68rem;color:var(--danger);margin-top:4px;font-family:var(--ff-mono)">Last: ${s.vios[s.vios.length-1].type || 'violation'}</div>`
-      : '';
-    return `
-      <div class="mon-card ${isFlagged?'flagged':'ok'}"
-           onclick="openStudentDetail('${s.uid||s.name}')"
-           style="cursor:pointer" title="Click for detail">
-        <div class="mon-pulse ${isFlagged?'alert':''}"></div>
-        <div class="mon-avatar">${(s.name||'?')[0].toUpperCase()}</div>
-        <div class="mon-name">${s.name}</div>
-        <div class="mon-status ${statusClass}">${statusLabel}</div>
-        <div class="mon-vios">Violations: <span>${vioCount}</span></div>
-        ${scoreTag}${lastVio}
-      </div>`;
-  }).join('');
+  // Clear a stale "empty" placeholder message if we're about to mount cards
+  if (!monitorCardCache.size && g.children.length && !g.querySelector('.mon-card')) {
+    g.innerHTML = '';
+  }
+
+  const seenUids = new Set();
+  students.forEach(s => {
+    const uid = s.uid || s.name;
+    seenUids.add(uid);
+    updateLiveMonitorNode(g, uid, s);
+  });
+
+  // Remove cards for students who dropped out of liveStudentMap
+  monitorCardCache.forEach((card, uid) => {
+    if (!seenUids.has(uid)) { card.el.remove(); monitorCardCache.delete(uid); }
+  });
+}
+
+// Creates (once) or patches (every other time) a single student's monitor
+// card, via the cached element references in monitorCardCache — this is
+// the "internal element map index" lookup that replaces full innerHTML
+// rewrites on every mutation event.
+function updateLiveMonitorNode(container, uid, s) {
+  let card = monitorCardCache.get(uid);
+  if (!card) {
+    const el = document.createElement('div');
+    el.style.cursor = 'pointer';
+    el.title = 'Click for detail';
+    el.onclick = () => openStudentDetail(uid);
+    el.innerHTML = `
+      <div class="mon-pulse"></div>
+      <div class="mon-avatar"></div>
+      <div class="mon-name"></div>
+      <div class="mon-status"></div>
+      <div class="mon-vios">Violations: <span></span></div>
+      <div class="mon-score" style="margin-top:6px;font-size:.72rem;font-family:var(--ff-mono);color:var(--stu)"></div>
+      <div class="mon-last-vio" style="font-size:.68rem;color:var(--danger);margin-top:4px;font-family:var(--ff-mono)"></div>
+    `;
+    container.appendChild(el);
+    card = {
+      el,
+      pulseEl:    el.querySelector('.mon-pulse'),
+      avatarEl:   el.querySelector('.mon-avatar'),
+      nameEl:     el.querySelector('.mon-name'),
+      statusEl:   el.querySelector('.mon-status'),
+      vioCountEl: el.querySelector('.mon-vios span'),
+      scoreEl:    el.querySelector('.mon-score'),
+      lastVioEl:  el.querySelector('.mon-last-vio'),
+    };
+    monitorCardCache.set(uid, card);
+  }
+
+  const vioCount = Array.isArray(s.vios) ? s.vios.length : (s.vios || 0);
+  const isFlagged = vioCount >= 2 || s.status === 'flagged';
+  const statusLabel = s.status === 'flagged'    ? '⚠ Flagged'
+                    : s.status === 'submitted'  ? '✓ Submitted'
+                    : s.status === 'idle'        ? '◌ Idle'
+                    : '● Active';
+  const statusClass = s.status === 'flagged'   ? 'flagged'
+                    : s.status === 'submitted' ? 'online'
+                    : s.status === 'idle'      ? 'idle'
+                    : 'online';
+
+  // Patch only what actually changed — no innerHTML rewrite of this card,
+  // let alone the whole grid.
+  const cardCls = 'mon-card ' + (isFlagged ? 'flagged' : 'ok');
+  if (card.el.className !== cardCls) card.el.className = cardCls;
+
+  const pulseCls = 'mon-pulse' + (isFlagged ? ' alert' : '');
+  if (card.pulseEl.className !== pulseCls) card.pulseEl.className = pulseCls;
+
+  const avatarChar = (s.name || '?')[0].toUpperCase();
+  if (card.avatarEl.textContent !== avatarChar) card.avatarEl.textContent = avatarChar;
+
+  if (card.nameEl.textContent !== s.name) card.nameEl.textContent = s.name;
+
+  const statusCls = 'mon-status ' + statusClass;
+  if (card.statusEl.className !== statusCls) card.statusEl.className = statusCls;
+  if (card.statusEl.textContent !== statusLabel) card.statusEl.textContent = statusLabel;
+
+  const vioText = String(vioCount);
+  if (card.vioCountEl.textContent !== vioText) card.vioCountEl.textContent = vioText;
+
+  const scoreText = (s.score !== null && s.score !== undefined) ? `${s.score}% score` : '';
+  if (card.scoreEl.textContent !== scoreText) card.scoreEl.textContent = scoreText;
+  card.scoreEl.style.display = scoreText ? '' : 'none';
+
+  const lastVioText = (Array.isArray(s.vios) && s.vios.length)
+    ? `Last: ${s.vios[s.vios.length-1].type || 'violation'}` : '';
+  if (card.lastVioEl.textContent !== lastVioText) card.lastVioEl.textContent = lastVioText;
+  card.lastVioEl.style.display = lastVioText ? '' : 'none';
 }
 
 /* ── openStudentDetail ────────────────────────────────────────
@@ -8650,11 +8713,18 @@ async function openQuiz(courseId, moduleId) {
     try {
       const snap = await db.collection('courses').doc(courseId)
         .collection('quizzes').doc(moduleId).get();
+      // Public doc now only ever contains {question, options} — no
+      // correctIndex. Grading for real quizzes happens server-side in
+      // verifyQuiz (see submitQuizAnswer below).
       if (snap.exists) questions = snap.data().questions || [];
     } catch(e) { console.warn('loadQuiz error:', e); }
   }
-  if (!questions.length) questions = getDemoQuizQuestions();
-  quizState = { courseId, moduleId, questions, current: 0, answers: [], score: null };
+  // isDemo: true only when no real quiz doc exists yet, in which case we
+  // fall back to local demo questions/grading (getDemoQuizQuestions()
+  // ships its own correctIndex — there's no real backend record to leak).
+  const isDemo = !questions.length;
+  if (isDemo) questions = getDemoQuizQuestions();
+  quizState = { courseId, moduleId, questions, current: 0, answers: [], score: null, isDemo };
   renderQuizQuestion();
 }
 
@@ -8701,8 +8771,9 @@ async function submitQuizAnswer() {
   quizState.current++;
   if (quizState.current < quizState.questions.length) {
     renderQuizQuestion();
-  } else {
-    // Calculate score
+  } else if (quizState.isDemo || !functionsRef) {
+    // Demo fallback (no real quiz doc / functions unavailable) — grade
+    // locally using the correctIndex that ships with the demo data only.
     let correct = 0;
     quizState.questions.forEach((q,i)=>{
       if (q.correctIndex === quizState.answers[i]) correct++;
@@ -8711,6 +8782,25 @@ async function submitQuizAnswer() {
     quizState.score = score;
     await saveQuizScore(quizState.courseId, quizState.moduleId, score);
     showQuizResult(correct, quizState.questions.length, score);
+  } else {
+    // SECURITY: real quizzes are graded server-side. The client only ever
+    // sends the option indexes it picked — it never had the answer key to
+    // begin with (see saveQuiz / openQuiz above), so there's nothing to
+    // read out of quizState via devtools that would give the answers away.
+    try {
+      const verifyQuiz = functionsRef.httpsCallable('verifyQuiz');
+      const callResult = await verifyQuiz({
+        courseId: quizState.courseId,
+        moduleId: quizState.moduleId,
+        answers:  quizState.answers,
+      });
+      const { correct, total, score } = callResult.data;
+      quizState.score = score;
+      await saveQuizScore(quizState.courseId, quizState.moduleId, score);
+      showQuizResult(correct, total, score);
+    } catch (e) {
+      toast('Could not grade quiz: ' + (e.message || 'server error'), 'err', 6000);
+    }
   }
 }
 
@@ -9596,9 +9686,28 @@ async function saveQuiz() {
   if (!quizBuilderQuestions.length) { toast('Add at least one question','warn'); return; }
   if (fsReady()) {
     try {
+      // SECURITY: quiz answers used to live in the same doc as the
+      // question text, and that doc was readable by any signed-in
+      // student (allow read: if isSignedIn()) — meaning correctIndex was
+      // sitting right there in a console.log(quizState.questions) before
+      // the student even answered. Now the public doc only ever gets
+      // question text + options; correctIndex goes to a separate
+      // quiz_answers/ collection that the client never reads at all
+      // (Firestore rules: allow read: if false — only the verifyQuiz
+      // Cloud Function reads it, via the Admin SDK).
+      const publicQuestions = quizBuilderQuestions.map(q => ({
+        question: q.question,
+        options:  q.options,
+      }));
+      const answerKey = quizBuilderQuestions.map(q => q.correctIndex);
+
       await db.collection('courses').doc(courseId)
         .collection('quizzes').doc(moduleId)
-        .set({ questions: quizBuilderQuestions, moduleId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        .set({ questions: publicQuestions, moduleId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+      await db.collection('quiz_answers').doc(courseId + '_' + moduleId)
+        .set({ courseId, moduleId, answers: answerKey, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+
       toast('Quiz saved!','ok');
     } catch(e) { toast('Save failed: '+e.message,'err'); return; }
   } else {
