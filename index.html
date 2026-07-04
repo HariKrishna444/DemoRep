@@ -4666,7 +4666,13 @@ async function loadQuestionsFromFirestore() {
 async function loadPracticeQuestionsFromFirestore() {
   if (!firebaseReady || !db) return;
   try {
-    const snap = await db.collection('practice_questions').orderBy('createdAt', 'asc').get();
+    // NOTE: intentionally no .orderBy('createdAt') here — Firestore silently
+    // excludes any document missing the sort field from an orderBy() query
+    // (no error, it just never comes back), which would make a practice
+    // question permanently invisible/unfindable if it was ever created
+    // without a createdAt timestamp. Fetch everything, then sort client-side
+    // (docs without createdAt sort to the end instead of vanishing).
+    const snap = await db.collection('practice_questions').get();
     practiceQuestions = snap.docs.map(doc => {
       const d = doc.data();
       return {
@@ -4681,12 +4687,14 @@ async function loadPracticeQuestionsFromFirestore() {
         tags:          Array.isArray(d.tags)      ? d.tags      : [],
         testcases:     Array.isArray(d.testcases) ? d.testcases : [],
         templates:     d.templates    || {},
+        _createdAt:    d.createdAt?.seconds || 0,
       };
-    });
+    }).sort((a, b) => a._createdAt - b._createdAt);
   } catch(e) {
     console.warn('loadPracticeQuestionsFromFirestore failed (using demo data):', e);
   }
 }
+
 
 /* ─────────────────────────────────────────────────────────────
    LIVE SYNC — practice_questions
@@ -4697,8 +4705,9 @@ async function loadPracticeQuestionsFromFirestore() {
    ───────────────────────────────────────────────────────────── */
 function startPracticeQuestionsListener() {
   if (!firebaseReady || !db || practiceQuestionsUnsub) return;
+  // No .orderBy('createdAt') here either — see loadPracticeQuestionsFromFirestore()
+  // for why: it would silently hide any doc missing that field, forever.
   practiceQuestionsUnsub = db.collection('practice_questions')
-    .orderBy('createdAt', 'asc')
     .onSnapshot(snap => {
       practiceQuestions = snap.docs.map(doc => {
         const d = doc.data();
@@ -4714,8 +4723,9 @@ function startPracticeQuestionsListener() {
           tags:          Array.isArray(d.tags)      ? d.tags      : [],
           testcases:     Array.isArray(d.testcases) ? d.testcases : [],
           templates:     d.templates    || {},
+          _createdAt:    d.createdAt?.seconds || 0,
         };
-      });
+      }).sort((a, b) => a._createdAt - b._createdAt);
       // Refresh whichever practice view is currently on screen
       if (currentRole === 'prof') {
         renderPQList();
