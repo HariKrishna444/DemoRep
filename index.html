@@ -3041,6 +3041,16 @@ service cloud.firestore {
       allow update: if isProf();
     }
 
+    // ── practice_questions/ ────────────────────────────────────────
+    // Untimed self-practice bank. Anyone signed in can read (students
+    // need this to browse/solve practice problems); testcases include
+    // `expected` output here since grading happens client-side, not
+    // via a secure Cloud Function like exam questions. Only profs write.
+    match /practice_questions/{pqId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
     // ── module_progress/ — per-module completion tracking ─────────
     match /module_progress/{docId} {
       allow read:  if isProf() || (isSignedIn() && resource.data.userId == uid());
@@ -4180,6 +4190,7 @@ let solvedIds   = new Set();
 let practiceQuestions = [];       // untimed self-practice problem bank (separate from exam questions)
 let practiceSolvedIds = new Set();
 let practiceMode      = false;    // true while student is solving a practice problem — disables timer/anti-cheat
+let practiceQuestionsUnsub = null; // Firestore onSnapshot unsubscribe handle — live-syncs prof edits to students
 
 // Exam session (student)
 let examActive     = false;
@@ -4650,6 +4661,48 @@ async function loadPracticeQuestionsFromFirestore() {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   LIVE SYNC — practice_questions
+   A real-time onSnapshot listener so a practice question added
+   (or deleted) on the professor's dashboard shows up for students
+   immediately, without needing to log out/in or refresh. Started
+   once after login (either role) and torn down on logout.
+   ───────────────────────────────────────────────────────────── */
+function startPracticeQuestionsListener() {
+  if (!firebaseReady || !db || practiceQuestionsUnsub) return;
+  practiceQuestionsUnsub = db.collection('practice_questions')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(snap => {
+      practiceQuestions = snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id:            doc.id,
+          title:         d.title        || '',
+          desc:          d.description  || d.desc    || '',
+          example:       d.exampleInput || d.example || '',
+          exampleOutput: d.exampleOutput || '',
+          constraints:   Array.isArray(d.constraints) ? d.constraints : [],
+          points:        d.marks        ?? d.points  ?? 0,
+          diff:          d.difficulty   || d.diff    || 'easy',
+          tags:          Array.isArray(d.tags)      ? d.tags      : [],
+          testcases:     Array.isArray(d.testcases) ? d.testcases : [],
+          templates:     d.templates    || {},
+        };
+      });
+      // Refresh whichever practice view is currently on screen
+      if (currentRole === 'prof') {
+        renderPQList();
+      } else {
+        const pg = document.getElementById('page-practice');
+        if (pg && pg.classList.contains('active')) renderPracticeList();
+      }
+    }, e => console.warn('practice_questions listener error:', e));
+}
+
+function stopPracticeQuestionsListener() {
+  if (practiceQuestionsUnsub) { practiceQuestionsUnsub(); practiceQuestionsUnsub = null; }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    ROUTING
    ═══════════════════════════════════════════════════════════════ */
@@ -4821,6 +4874,7 @@ async function handleRegister() {
 
 function onAuthSuccess() {
   const name = currentUser.displayName || currentUser.email.split('@')[0];
+  startPracticeQuestionsListener(); // live-sync practice bank for prof + student views
   if (currentRole === 'prof') {
     document.getElementById('prof-av').textContent   = name[0].toUpperCase();
     document.getElementById('prof-name').textContent = name;
@@ -4851,6 +4905,7 @@ function logout() {
   currentUser = null; examActive = false;
   stopTimer(); stopSnapshots();
   disableAntiCheat(); disableDOMGuard();
+  stopPracticeQuestionsListener();
   showPage('login');
   toast('Logged out.','info');
 }
