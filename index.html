@@ -6215,6 +6215,15 @@ function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 /* ═══════════════════════════════════════════════════════════════
    RUN CODE
    ═══════════════════════════════════════════════════════════════ */
+// Execution fencing for the main editor's ▶ Run button: every click gets
+// a unique token. pistonExecute() (Pyodide for Python, Judge0 for
+// everything else) is async, and a slow response from an earlier click
+// can otherwise resolve *after* a newer click has already started —
+// writing that stale click's output into the console on top of (or
+// instead of) the current one. Only the click matching the current
+// token is allowed to write to the console or touch the Run button.
+let _runCodeToken = 0;
+
 async function runCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
@@ -6224,11 +6233,19 @@ async function runCode() {
     return;
   }
 
+  const currentToken = ++_runCodeToken;
+
   const btn = document.getElementById('btn-run');
   btn.disabled=true; btn.textContent='⏳';
 
   // Switch to output tab
   conTab('out', document.querySelector('.con-tab'));
+
+  // A previous overlapping click may have left its own running-indicator
+  // / Judge0 polling interval behind — clear it before this click adds
+  // its own, so we never end up with two indicators or two intervals
+  // both writing to the console at once.
+  removeRunning();
 
   const customActive  = document.getElementById('custom-in').classList.contains('show');
   const customTyped   = document.getElementById('stdin-ta').value.trim();
@@ -6298,6 +6315,9 @@ async function runCode() {
     let dots = 0;
     const msgs = ['Submitting to Judge0 sandbox…','In queue…','Compiling…','Running…','Waiting for result…'];
     window._j0Interval = setInterval(() => {
+      // Stale-token guard: if a newer click has since started, this
+      // interval belongs to an abandoned run — stop touching the DOM.
+      if (currentToken !== _runCodeToken) { clearInterval(window._j0Interval); return; }
       const el = document.getElementById('j0-status-txt');
       if (el) el.textContent = msgs[Math.min(dots, msgs.length-1)];
       dots++;
@@ -6306,6 +6326,15 @@ async function runCode() {
 
   try {
     const result = await pistonExecute(code, currentLang, rawStdin);
+
+    // Stale-token guard: a newer click already started (and owns the
+    // console/button) while this one was awaiting pistonExecute — drop
+    // this result entirely instead of writing it out of order.
+    if (currentToken !== _runCodeToken) {
+      console.warn('Discarded stale runCode() result: token ' + currentToken);
+      return;
+    }
+
     removeRunning();
 
     const run      = result.run || {};
@@ -6350,6 +6379,7 @@ async function runCode() {
     if (stderr) { outLine('info', '── Errors / Stderr ────────────────'); stderr.split('\n').forEach(l => outLine('err', l)); }
     if (ce && !stderr) { ce.split('\n').forEach(l => outLine('err', '[CE] ' + l)); }
   } catch(e) {
+    if (currentToken !== _runCodeToken) return; // superseded by a newer click — stay quiet
     removeRunning();
     outLine('err', '⛔ ' + e.message);
     if (currentLang === 'python') {
@@ -6359,7 +6389,12 @@ async function runCode() {
     }
   }
 
-  btn.disabled=false; btn.textContent='▶ Run';
+  // Only this click's own button state is ours to restore — if a newer
+  // click has since taken over, its own runCode() invocation owns the
+  // button now and will reset it when it finishes.
+  if (currentToken === _runCodeToken) {
+    btn.disabled=false; btn.textContent='▶ Run';
+  }
 }
 
 async function submitCode() {
