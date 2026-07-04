@@ -3042,12 +3042,11 @@ service cloud.firestore {
     }
 
     // ── practice_questions/ ────────────────────────────────────────
-    // Untimed self-practice bank. Anyone signed in can read (students
-    // need this to browse/solve practice problems); testcases include
-    // `expected` output here since grading happens client-side, not
-    // via a secure Cloud Function like exam questions. Only profs write.
+    // Untimed self-practice bank. Public read so shared practice-question
+    // links (#/exam/pq-XXXXX) work for visitors without an account — same
+    // pattern as the public `courses` collection above. Only profs write.
     match /practice_questions/{pqId} {
-      allow read:  if isSignedIn();
+      allow read:  if true;
       allow write: if isProf();
     }
 
@@ -4418,6 +4417,34 @@ async function handleDeepLink() {
   // Nudge logged-out visitors to sign in for progress tracking
   if (!currentUser) {
     setTimeout(() => toast('💡 Log in to track your progress and earn a certificate!', 'info', 6000), 1200);
+  }
+  return true;
+}
+
+// Shared practice-question links (#/exam/pq-XXXXX) should open the problem
+// directly without requiring login — practice questions are untimed,
+// unmonitored, and safe to try publicly (unlike real timed exams, whose IDs
+// don't carry the 'pq-' prefix and stay login-gated below).
+async function handlePracticeDeepLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#/exam/pq-')) return false;
+  const qId = hash.replace('#/exam/', '').split('/')[0];
+  if (!qId) return false;
+
+  // Same reasoning as handleDeepLink(): flag this as public content so the
+  // auth-state listener doesn't redirect a logged-out visitor to /login.
+  _publicDeepLinkActive = true;
+
+  // Practice questions are readable without login (Firestore rule allows
+  // public read on practice_questions), so fetch them directly.
+  if (!practiceQuestions.length) await loadPracticeQuestionsFromFirestore();
+  const q = practiceQuestions.find(p => p.id === qId);
+  if (!q) { toast('Practice question not found', 'err'); return true; }
+
+  startPractice(qId);
+
+  if (!currentUser) {
+    setTimeout(() => toast('💡 Log in to save your submissions and track progress!', 'info', 6000), 1200);
   }
   return true;
 }
@@ -7172,18 +7199,23 @@ function exportResults() {
 document.addEventListener('DOMContentLoaded', async ()=>{
   initResize();
   // Flag this immediately (before initApp()'s async auth check can fire) so
-  // a logged-out visitor opening a shared course/lesson link never gets
-  // bounced to the login page — free content stays viewable without login.
-  if (location.hash.startsWith('#/course/')) _publicDeepLinkActive = true;
+  // a logged-out visitor opening a shared course/lesson or practice-question
+  // link never gets bounced to the login page — free content stays viewable
+  // without login.
+  if (location.hash.startsWith('#/course/') || location.hash.startsWith('#/exam/pq-')) _publicDeepLinkActive = true;
   await initApp();
   // After app boots, check for a deep link in the URL hash
   if (location.hash.startsWith('#/course/')) {
     const handled = await handleDeepLink();
     if (!handled) initApp(); // fallback
+  } else if (location.hash.startsWith('#/exam/pq-')) {
+    const handled = await handlePracticeDeepLink();
+    if (!handled) initApp(); // fallback
   }
 });
 window.addEventListener('hashchange', () => {
   if (location.hash.startsWith('#/course/')) handleDeepLink();
+  else if (location.hash.startsWith('#/exam/pq-')) handlePracticeDeepLink();
 });
 
 
@@ -10500,18 +10532,25 @@ const _origOnAuthSuccess = window.onAuthSuccess;
 window.onAuthSuccess = async function() {
   const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
 
-  // A pending course/lesson deep link ALWAYS takes priority over role-based
-  // routing below. Without this early return, a professor account (or even
-  // a student account during the brief window before loadUserRole() has
-  // resolved and currentRole still holds its 'prof' default) would get
-  // bounced to the dashboard/catalog the instant auth finishes — silently
-  // overwriting the lesson page that had already loaded from the URL hash.
-  // This is what caused refreshing on a #/course/.../lessonN link to land
-  // on the catalog instead of staying on the lesson.
+  // A pending course/lesson OR practice-question deep link ALWAYS takes
+  // priority over role-based routing below. Without this early return, a
+  // professor account (or even a student account during the brief window
+  // before loadUserRole() has resolved and currentRole still holds its
+  // 'prof' default) would get bounced to the dashboard/catalog the instant
+  // auth finishes — silently overwriting the page that had already loaded
+  // from the URL hash. This is what caused refreshing on a
+  // #/course/.../lessonN or #/exam/pq-... link to land on the catalog
+  // instead of staying on the shared content.
   if (location.hash.startsWith('#/course/')) {
     await loadCourses();
     await loadMyEnrollments();
     await handleDeepLink();
+    toast('Welcome back, '+name+'! 🎓','ok');
+    checkVerifyParam();
+    return;
+  }
+  if (location.hash.startsWith('#/exam/pq-')) {
+    await handlePracticeDeepLink();
     toast('Welcome back, '+name+'! 🎓','ok');
     checkVerifyParam();
     return;
