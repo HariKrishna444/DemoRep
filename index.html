@@ -3426,7 +3426,7 @@ upgrade-insecure-requests;</pre>
 <!-- ADD PRACTICE QUESTION MODAL -->
 <div class="modal-bg" id="add-pq-modal">
   <div class="modal">
-    <h3>Add Practice Question</h3>
+    <h3 id="pq-modal-title">Add Practice Question</h3>
     <p class="sub">Untimed, always-available practice problem. Test cases are judged client-side in the browser — don't include hidden/graded exam content here.</p>
     <div class="modal-fields">
       <div class="modal-row">
@@ -3457,7 +3457,7 @@ upgrade-insecure-requests;</pre>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeAddPQ()">Cancel</button>
-      <button class="btn btn-a" onclick="savePracticeQuestion()">Save Practice Question</button>
+      <button class="btn btn-a" id="pq-save-btn" onclick="savePracticeQuestion()">Save Practice Question</button>
     </div>
   </div>
 </div>
@@ -5483,14 +5483,91 @@ function renderPQList() {
       </div>
       <span class="diff ${q.diff}">${q.diff}</span>
       <div class="q-row-actions">
-        <button class="btn btn-ghost btn-sm" onclick="deletePracticeQuestion('${q.id}')">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="sharePracticeQuestion('${q.id}')" title="Copy share link">🔗</button>
+        <button class="btn btn-ghost btn-sm" onclick="editPracticeQuestion('${q.id}')" title="Edit">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="deletePracticeQuestion('${q.id}')" title="Delete">🗑</button>
       </div>
     </div>
   `).join('');
 }
 
-function openAddPQ()  { document.getElementById('add-pq-modal').classList.add('open'); }
-function closeAddPQ() { document.getElementById('add-pq-modal').classList.remove('open'); }
+// Copies a direct link to this practice question (#/exam/pq-XXXXX — same
+// scheme handlePracticeDeepLink() already understands). Works for logged-out
+// visitors too since practice_questions has public read access.
+function sharePracticeQuestion(id) {
+  const base = location.href.split('#')[0];
+  const url = base + '#/exam/' + id;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('🔗 Practice link copied!', 'ok')).catch(() => prompt('Copy this link:', url));
+  } else {
+    prompt('Copy this link:', url);
+  }
+}
+
+// null while adding a new question; set to the question's id while editing
+// an existing one so savePracticeQuestion() knows to update instead of push.
+let editingPQId = null;
+
+function openAddPQ() {
+  editingPQId = null;
+  document.getElementById('pq-modal-title').textContent = 'Add Practice Question';
+  document.getElementById('pq-save-btn').textContent = 'Save Practice Question';
+  clearPQForm();
+  document.getElementById('add-pq-modal').classList.add('open');
+}
+
+function closeAddPQ() {
+  editingPQId = null;
+  document.getElementById('add-pq-modal').classList.remove('open');
+}
+
+// Resets every field in the Add/Edit Practice Question modal, including
+// collapsing any extra test-case rows back down to just TC1.
+function clearPQForm() {
+  ['pq-title','pq-tags','pq-desc','pq-ex','pq-ex-out','pq-con'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('pq-diff').value = 'easy';
+  document.getElementById('pq-pts').value = 100;
+  const wrap = document.getElementById('pq-tc-inputs');
+  wrap.innerHTML = `
+    <div class="modal-row" style="margin-bottom:8px">
+      <div class="field"><label>TC1 Input</label><textarea class="inp pq-tc-in" rows="2" placeholder="2 7 11 15&#10;9"></textarea></div>
+      <div class="field"><label>TC1 Expected Output</label><textarea class="inp pq-tc-exp" rows="2" placeholder="0 1"></textarea></div>
+    </div>`;
+  pqTcRowCount = 1;
+}
+
+// Pre-fills the Add/Edit modal with an existing practice question's data and
+// flips it into "edit" mode via editingPQId.
+function editPracticeQuestion(id) {
+  const q = practiceQuestions.find(p => p.id === id);
+  if (!q) { toast('Practice question not found', 'err'); return; }
+
+  editingPQId = id;
+  document.getElementById('pq-modal-title').textContent = 'Edit Practice Question';
+  document.getElementById('pq-save-btn').textContent = 'Update Practice Question';
+
+  document.getElementById('pq-title').value   = q.title || '';
+  document.getElementById('pq-diff').value    = q.diff || 'easy';
+  document.getElementById('pq-pts').value     = q.points || 100;
+  document.getElementById('pq-tags').value    = (q.tags || []).join(', ');
+  document.getElementById('pq-desc').value    = q.desc || '';
+  document.getElementById('pq-ex').value      = q.example || '';
+  document.getElementById('pq-ex-out').value  = q.exampleOutput || '';
+  document.getElementById('pq-con').value     = (q.constraints || []).join('\n');
+
+  const wrap = document.getElementById('pq-tc-inputs');
+  const tcs = (q.testcases && q.testcases.length) ? q.testcases : [{input:'',expected:''}];
+  wrap.innerHTML = tcs.map((tc, i) => `
+    <div class="modal-row" style="margin-bottom:8px">
+      <div class="field"><label>TC${i+1} Input</label><textarea class="inp pq-tc-in" rows="2">${sanitize(tc.input||'')}</textarea></div>
+      <div class="field"><label>TC${i+1} Expected Output</label><textarea class="inp pq-tc-exp" rows="2">${sanitize(tc.expected||'')}</textarea></div>
+    </div>`).join('');
+  pqTcRowCount = tcs.length;
+
+  document.getElementById('add-pq-modal').classList.add('open');
+}
 
 let pqTcRowCount = 1;
 function addPQTCRow() {
@@ -5522,13 +5599,18 @@ async function savePracticeQuestion() {
   const expected = [...document.querySelectorAll('.pq-tc-exp')].map(i=>i.value.trim()).filter(Boolean);
   const tcs = inputs.map((inp,i)=>({input:inp, expected:expected[i]||''})).filter(t=>t.input && t.expected);
 
+  const isEdit = !!editingPQId;
+  const existing = isEdit ? practiceQuestions.find(p => p.id === editingPQId) : null;
+
   const q = {
-    id: 'pq-'+Date.now(),
+    id: isEdit ? editingPQId : 'pq-'+Date.now(),
     title, diff, points:pts, tags: tags.length?tags:['Algorithm'],
     desc, example:ex, exampleOutput:exOut,
     constraints: con ? con.split('\n').map(c=>c.trim()).filter(Boolean) : ['1 ≤ n ≤ 10⁵'],
     testcases: tcs.length ? tcs : [{input:'1',expected:'1'}],
-    templates: {
+    // Keep the original per-language starter templates on edit rather than
+    // regenerating them, since a professor may have hand-tweaked one.
+    templates: (existing && existing.templates) || {
       python: `# ${title}\n# Write your solution here\n\n`,
       javascript: `// ${title}\n// Write your solution here\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin });\nconst lines = [];\nrl.on('line', l => lines.push(l.trim()));\nrl.on('close', () => {\n  // lines[0] = first input line\n  console.log('Hello');\n});\n`,
       cpp: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  ios_base::sync_with_stdio(false);\n  cin.tie(NULL);\n  // Write your solution\n  return 0;\n}`,
@@ -5537,10 +5619,15 @@ async function savePracticeQuestion() {
     }
   };
 
-  practiceQuestions.push(q);
+  if (isEdit) {
+    const idx = practiceQuestions.findIndex(p => p.id === editingPQId);
+    if (idx !== -1) practiceQuestions[idx] = q; else practiceQuestions.push(q);
+  } else {
+    practiceQuestions.push(q);
+  }
   closeAddPQ();
   renderPQList();
-  toast(`Practice question "${title}" added!`,'ok');
+  toast(isEdit ? `Practice question "${title}" updated!` : `Practice question "${title}" added!`,'ok');
 
   // Persist to Firestore — single public doc (input + expected together,
   // since grading is done in the browser, not via a secure Cloud Function).
@@ -5557,12 +5644,19 @@ async function savePracticeQuestion() {
       templates:     q.templates,
       testcases:     q.testcases, // includes `expected` — practice only, no proctoring to protect
       createdBy:     currentUser?.uid || 'unknown',
-      createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
     };
-    db.collection('practice_questions').doc(q.id).set(publicData)
-      .catch(e => console.warn('savePracticeQuestion Firestore error:', e));
+    if (isEdit) {
+      publicData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      db.collection('practice_questions').doc(q.id).set(publicData, { merge: true })
+        .catch(e => console.warn('savePracticeQuestion (edit) Firestore error:', e));
+    } else {
+      publicData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      db.collection('practice_questions').doc(q.id).set(publicData)
+        .catch(e => console.warn('savePracticeQuestion Firestore error:', e));
+    }
   }
 }
+
 
 async function deletePracticeQuestion(id) {
   if (!confirm('Delete this practice question?')) return;
