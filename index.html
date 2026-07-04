@@ -7001,6 +7001,19 @@ function elapsed() {
    whose expected values never reach the browser). No snapshots,
    no violation tracking, no leaderboard writes to Firestore.
    ═══════════════════════════════════════════════════════════════ */
+// Normalizes stdout/expected before comparison so correct solutions aren't
+// marked wrong for cosmetic differences: CRLF vs LF, trailing spaces on a
+// line, and trailing blank lines at the end of the output.
+function normalizeForCompare(s) {
+  return (s || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => line.replace(/[ \t]+$/g, ''))
+    .join('\n')
+    .replace(/\n+$/g, '')
+    .trim();
+}
+
 async function submitPracticeCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
@@ -7032,8 +7045,8 @@ async function submitPracticeCode() {
     const tc = tcs[i];
     try {
       const r = await pistonExecute(code, currentLang, tc.input || '');
-      const stdout   = ((r.run||{}).stdout || '').trim();
-      const expected = (tc.expected || '').trim();
+      const stdout   = normalizeForCompare((r.run||{}).stdout || '');
+      const expected = normalizeForCompare(tc.expected || '');
       const ok = stdout === expected;
       results.push({ n: i+1, ok, hidden: false, status: ok?'Accepted':'Wrong Answer', time: '0' });
       setTCStatus(i, ok?'✓ Pass':'✗ Fail', ok?'pass':'fail');
@@ -12666,15 +12679,16 @@ async function chronoRunCode() {
 
     const result = await pistonExecute(code, ch.language, testInput);
     const r = result.run || {};
-    const stdout = (r.stdout || '').trim();
+    const stdoutRaw = (r.stdout || '').trim();
     const stderr = (r.stderr || '').trim();
-    const expected = expectedRaw.trim();
+    const stdout = normalizeForCompare(stdoutRaw);
+    const expected = normalizeForCompare(expectedRaw);
 
     // Show stderr
     if (stderr) { chronoOutLine('err', '⚠ ' + stderr); }
     // Show stdout
-    if (stdout) {
-      stdout.split('\n').forEach(line => chronoOutLine('ok', line));
+    if (stdoutRaw) {
+      stdoutRaw.split('\n').forEach(line => chronoOutLine('ok', line));
     } else if (!stderr) {
       chronoOutLine('warn', '(no output)');
     }
