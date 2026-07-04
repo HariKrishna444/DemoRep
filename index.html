@@ -2400,6 +2400,7 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 
       <div class="sbar-section">Exam Management</div>
       <div class="sbar-item" id="sb-questions"  onclick="profNav('questions')"><span class="sbar-icon">📝</span>Questions</div>
+      <div class="sbar-item" id="sb-practicequestions" onclick="profNav('practicequestions')"><span class="sbar-icon">🧩</span>Practice Questions</div>
       <div class="sbar-item" id="sb-createexam" onclick="profNav('createexam')"><span class="sbar-icon">🗂️</span>Create Exam</div>
       <div class="sbar-item" id="sb-violations" onclick="profNav('violations')"><span class="sbar-icon">🚨</span>Violations<span class="sbar-badge" id="vio-count-badge">0</span></div>
       <div class="sbar-item" id="sb-results"    onclick="profNav('presults')"><span class="sbar-icon">📈</span>Results</div>
@@ -2473,6 +2474,15 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
           <button class="btn btn-a" onclick="openAddQ()">+ Add Question</button>
         </div>
         <div class="q-manager-grid" id="q-list">Loading...</div>
+      </div>
+
+      <!-- Practice Questions panel -->
+      <div class="prof-panel" id="pp-practicequestions">
+        <div class="sec-hd">
+          <div><h2>Practice Question Bank</h2><p>Untimed self-practice problems, always visible to students — no anti-cheat monitoring</p></div>
+          <button class="btn btn-a" onclick="openAddPQ()">+ Add Practice Question</button>
+        </div>
+        <div class="q-manager-grid" id="pq-list">Loading...</div>
       </div>
 
       <!-- Violations panel -->
@@ -3203,6 +3213,37 @@ upgrade-insecure-requests;</pre>
 </div>
 
 <!-- ══════════════════════════════════════════════════
+     PAGE: PRACTICE PROBLEMS
+     ══════════════════════════════════════════════════ -->
+<div id="page-practice" class="page">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn btn-ghost btn-sm" onclick="showStuSection('catalog')" style="padding:5px 12px;font-size:.78rem">← Courses</button>
+      <div class="tb-brand">Coding<em>Hub</em></div>
+    </div>
+    <div class="tb-right">
+      <div class="user-chip"><div class="avatar" id="stu-av-pr">S</div><span id="stu-name-pr">Student</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="stu-main">
+    <div class="stu-hero">
+      <div class="hero-icon">🧩</div>
+      <div class="hero-text">
+        <h2>Practice Problems</h2>
+        <p>Untimed self-practice · No monitoring, no anti-cheat · Solve at your own pace</p>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hv" id="hpr-q">0</div><div class="hl">Problems</div></div>
+        <div class="hero-stat"><div class="hv" id="hpr-sol">0</div><div class="hl">Solved</div></div>
+      </div>
+    </div>
+    <div class="exam-grid" id="practice-grid">Loading practice problems...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
      PAGE: EDITOR
      ══════════════════════════════════════════════════ -->
 <div id="page-editor" class="page">
@@ -3321,8 +3362,8 @@ upgrade-insecure-requests;</pre>
       </div>
       <div class="tc-res-list" id="tc-res-list"></div>
       <div class="res-acts">
-        <button class="btn btn-ghost" onclick="showPage('stu');renderStuPage()">← All Problems</button>
-        <button class="btn btn-g" onclick="showPage('stu');renderStuPage()">Next Problem</button>
+        <button class="btn btn-ghost" onclick="backToProblems()">← All Problems</button>
+        <button class="btn btn-g" onclick="backToProblems()">Next Problem</button>
       </div>
     </div>
     <div class="lb-card">
@@ -3369,6 +3410,45 @@ upgrade-insecure-requests;</pre>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeAddQ()">Cancel</button>
       <button class="btn btn-a" onclick="saveQuestion()">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PRACTICE QUESTION MODAL -->
+<div class="modal-bg" id="add-pq-modal">
+  <div class="modal">
+    <h3>Add Practice Question</h3>
+    <p class="sub">Untimed, always-available practice problem. Test cases are judged client-side in the browser — don't include hidden/graded exam content here.</p>
+    <div class="modal-fields">
+      <div class="modal-row">
+        <div class="field"><label>Title</label><input class="inp" id="pq-title" placeholder="Two Sum"></div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select class="inp" id="pq-diff"><option value="easy">Easy</option><option value="med">Medium</option><option value="hard">Hard</option></select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="field"><label>Points</label><input class="inp" id="pq-pts" type="number" value="100"></div>
+        <div class="field"><label>Tags (comma separated)</label><input class="inp" id="pq-tags" placeholder="Array, Hash Map"></div>
+      </div>
+      <div class="field"><label>Problem Description</label><textarea class="inp" id="pq-desc" rows="5" placeholder="Describe the problem clearly..."></textarea></div>
+      <div class="modal-row">
+        <div class="field"><label>Example Input</label><textarea class="inp" id="pq-ex" rows="3" placeholder="Raw stdin value, e.g.&#10;hello"></textarea></div>
+        <div class="field"><label>Example Output</label><textarea class="inp" id="pq-ex-out" rows="3" placeholder="Expected stdout, e.g.&#10;olleh"></textarea></div>
+      </div>
+      <div class="field"><label>Constraints</label><textarea class="inp" id="pq-con" rows="2" placeholder="2 ≤ nums.length ≤ 10⁴"></textarea></div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:var(--ff-mono)">Test Cases (input + expected output, judged in-browser)</div>
+      <div id="pq-tc-inputs">
+        <div class="modal-row" style="margin-bottom:8px">
+          <div class="field"><label>TC1 Input</label><input class="inp pq-tc-in" placeholder="2 7 11 15&#10;9"></div>
+          <div class="field"><label>TC1 Expected Output</label><input class="inp pq-tc-exp" placeholder="0 1"></div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="addPQTCRow()" style="align-self:flex-start">+ Add Test Case</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddPQ()">Cancel</button>
+      <button class="btn btn-a" onclick="savePracticeQuestion()">Save Practice Question</button>
     </div>
   </div>
 </div>
@@ -3476,6 +3556,7 @@ upgrade-insecure-requests;</pre>
     <div class="stu-nav-tab active" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
     <div class="stu-nav-tab" onclick="showStuSection('my-learning')">📖 My Learning</div>
     <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+    <div class="stu-nav-tab" onclick="showPage('practice');renderPracticeList()">🧩 Practice</div>
     <div class="stu-nav-tab" onclick="openChronoStudent()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
@@ -3658,6 +3739,7 @@ upgrade-insecure-requests;</pre>
     <div class="stu-nav-tab" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
     <div class="stu-nav-tab active" onclick="showStuSection('my-learning')">📖 My Learning</div>
     <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+    <div class="stu-nav-tab" onclick="showPage('practice');renderPracticeList()">🧩 Practice</div>
     <div class="stu-nav-tab" onclick="openChronoStudent()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
@@ -4095,6 +4177,10 @@ let violations  = [];            // all violations across all students
 let submissions = [];            // all student submissions
 let solvedIds   = new Set();
 
+let practiceQuestions = [];       // untimed self-practice problem bank (separate from exam questions)
+let practiceSolvedIds = new Set();
+let practiceMode      = false;    // true while student is solving a practice problem — disables timer/anti-cheat
+
 // Exam session (student)
 let examActive     = false;
 let currentQ       = null;
@@ -4390,6 +4476,7 @@ async function initApp() {
           currentUser = u;
           try { await loadUserRole(u.uid); }              catch(e) { console.warn('loadUserRole:', e); }
           try { await loadQuestionsFromFirestore(); }     catch(e) { console.warn('loadQuestions:', e); }
+          try { await loadPracticeQuestionsFromFirestore(); } catch(e) { console.warn('loadPracticeQuestions:', e); }
           onAuthSuccess();
         } else {
           _authHandled = false;
@@ -4530,6 +4617,39 @@ async function loadQuestionsFromFirestore() {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   PRACTICE QUESTIONS
+   Separate, untimed problem bank — always visible to every
+   student (no exam window, no assignment list). Test cases are
+   stored with their expected output in the same public doc and
+   judged client-side in the browser, since there's no proctoring
+   or grading integrity to protect here.
+   ───────────────────────────────────────────────────────────── */
+async function loadPracticeQuestionsFromFirestore() {
+  if (!firebaseReady || !db) return;
+  try {
+    const snap = await db.collection('practice_questions').orderBy('createdAt', 'asc').get();
+    practiceQuestions = snap.docs.map(doc => {
+      const d = doc.data();
+      return {
+        id:            doc.id,
+        title:         d.title        || '',
+        desc:          d.description  || d.desc    || '',
+        example:       d.exampleInput || d.example || '',
+        exampleOutput: d.exampleOutput || '',
+        constraints:   Array.isArray(d.constraints) ? d.constraints : [],
+        points:        d.marks        ?? d.points  ?? 0,
+        diff:          d.difficulty   || d.diff    || 'easy',
+        tags:          Array.isArray(d.tags)      ? d.tags      : [],
+        testcases:     Array.isArray(d.testcases) ? d.testcases : [],
+        templates:     d.templates    || {},
+      };
+    });
+  } catch(e) {
+    console.warn('loadPracticeQuestionsFromFirestore failed (using demo data):', e);
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    ROUTING
    ═══════════════════════════════════════════════════════════════ */
@@ -4633,6 +4753,7 @@ async function handleLogin() {
     // Load role and questions — never block dashboard if these fail
     try { await loadUserRole(currentUser.uid); } catch(e) { console.warn('loadUserRole failed:', e); }
     try { await loadQuestionsFromFirestore(); }  catch(e) { console.warn('loadQuestions failed:', e); }
+    try { await loadPracticeQuestionsFromFirestore(); } catch(e) { console.warn('loadPracticeQuestions failed:', e); }
 
     document.getElementById('btn-login-txt').textContent = 'Sign In';
     btn.disabled = false;
@@ -4680,6 +4801,7 @@ async function handleRegister() {
     currentUser = c.user;
     try { await loadUserRole(currentUser.uid); } catch(e) { console.warn('loadUserRole failed:', e); }
     try { await loadQuestionsFromFirestore(); }  catch(e) { console.warn('loadQuestions failed:', e); }
+    try { await loadPracticeQuestionsFromFirestore(); } catch(e) { console.warn('loadPracticeQuestions failed:', e); }
     document.getElementById('btn-reg-txt').textContent = 'Create Account';
     btn.disabled = false;
     window._loginInProgress = false;
@@ -4772,6 +4894,7 @@ function renderProfPanel(panel) {
   if (panel==='dashboard')  { renderProfDashboard(); }
   if (panel==='monitor')    { startMonitorListener(); } // Priority 2: attach real-time Firestore listener
   if (panel==='questions')  { renderQList(); stopMonitorListener(); } // stop listener when not viewing monitor
+  if (panel==='practicequestions') { renderPQList(); stopMonitorListener(); }
   if (panel==='violations') { renderVioList(); stopMonitorListener(); }
   if (panel==='presults')   { renderPResults(); stopMonitorListener(); }
   if (panel==='createexam') { renderCreateExamPanel(); stopMonitorListener(); }
@@ -5248,6 +5371,118 @@ async function deleteQuestion(id) {
   toast('Question deleted','warn');
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   PRACTICE QUESTION CRUD
+   Same shape as exam questions, but stored in a single public
+   collection (practice_questions) — testcases include expected
+   output since grading happens client-side, not via a secure
+   Cloud Function. No anti-cheat / hidden test cases here.
+   ═══════════════════════════════════════════════════════════════ */
+function renderPQList() {
+  const el = document.getElementById('pq-list');
+  if (!el) return;
+  if (!practiceQuestions.length) { el.innerHTML='<p style="color:#6b7280">No practice questions yet. Add your first one!</p>'; return; }
+  el.innerHTML = practiceQuestions.map((q,i) => `
+    <div class="q-row">
+      <div style="font-family:var(--ff-mono);font-size:.72rem;color:var(--muted);width:28px">${i+1}</div>
+      <div class="q-row-info">
+        <div class="q-row-title">${q.title}</div>
+        <div class="q-row-meta">${(q.tags||[]).join(' · ')} · ${q.points} pts · ${(q.testcases||[]).length} test cases</div>
+      </div>
+      <span class="diff ${q.diff}">${q.diff}</span>
+      <div class="q-row-actions">
+        <button class="btn btn-ghost btn-sm" onclick="deletePracticeQuestion('${q.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAddPQ()  { document.getElementById('add-pq-modal').classList.add('open'); }
+function closeAddPQ() { document.getElementById('add-pq-modal').classList.remove('open'); }
+
+let pqTcRowCount = 1;
+function addPQTCRow() {
+  pqTcRowCount++;
+  const wrap = document.getElementById('pq-tc-inputs');
+  const row = document.createElement('div');
+  row.className = 'modal-row';
+  row.style.marginBottom = '8px';
+  row.innerHTML = `
+    <div class="field"><label>TC${pqTcRowCount} Input</label><input class="inp pq-tc-in" placeholder="..."></div>
+    <div class="field"><label>TC${pqTcRowCount} Expected Output</label><input class="inp pq-tc-exp" placeholder="..."></div>
+  `;
+  wrap.appendChild(row);
+}
+
+async function savePracticeQuestion() {
+  const title = document.getElementById('pq-title').value.trim();
+  const diff  = document.getElementById('pq-diff').value;
+  const pts   = parseInt(document.getElementById('pq-pts').value) || 100;
+  const tags  = document.getElementById('pq-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const desc  = document.getElementById('pq-desc').value.trim();
+  const ex     = document.getElementById('pq-ex').value.trim();
+  const exOut  = document.getElementById('pq-ex-out').value.trim();
+  const con   = document.getElementById('pq-con').value.trim();
+
+  if (!title || !desc) { toast('Title and description are required','warn'); return; }
+
+  const inputs   = [...document.querySelectorAll('.pq-tc-in')].map(i=>i.value.trim()).filter(Boolean);
+  const expected = [...document.querySelectorAll('.pq-tc-exp')].map(i=>i.value.trim()).filter(Boolean);
+  const tcs = inputs.map((inp,i)=>({input:inp, expected:expected[i]||''})).filter(t=>t.input && t.expected);
+
+  const q = {
+    id: 'pq-'+Date.now(),
+    title, diff, points:pts, tags: tags.length?tags:['Algorithm'],
+    desc, example:ex, exampleOutput:exOut,
+    constraints: con ? con.split('\n').map(c=>c.trim()).filter(Boolean) : ['1 ≤ n ≤ 10⁵'],
+    testcases: tcs.length ? tcs : [{input:'1',expected:'1'}],
+    templates: {
+      python: `# ${title}\n# Write your solution here\n\n`,
+      javascript: `// ${title}\n// Write your solution here\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin });\nconst lines = [];\nrl.on('line', l => lines.push(l.trim()));\nrl.on('close', () => {\n  // lines[0] = first input line\n  console.log('Hello');\n});\n`,
+      cpp: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  ios_base::sync_with_stdio(false);\n  cin.tie(NULL);\n  // Write your solution\n  return 0;\n}`,
+      java: `import java.util.*;\nimport java.io.*;\npublic class Main{\n  public static void main(String[] args) throws Exception {\n    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n    // Write your solution\n  }\n}`,
+      c: `#include<stdio.h>\n#include<stdlib.h>\nint main(){\n  // Write your solution\n  return 0;\n}`,
+    }
+  };
+
+  practiceQuestions.push(q);
+  closeAddPQ();
+  renderPQList();
+  toast(`Practice question "${title}" added!`,'ok');
+
+  // Persist to Firestore — single public doc (input + expected together,
+  // since grading is done in the browser, not via a secure Cloud Function).
+  if (firebaseReady && db) {
+    const publicData = {
+      title:         q.title,
+      description:   q.desc,
+      exampleInput:  q.example,
+      exampleOutput: q.exampleOutput || '',
+      constraints:   q.constraints,
+      marks:         q.points,
+      difficulty:    q.diff,
+      tags:          q.tags,
+      templates:     q.templates,
+      testcases:     q.testcases, // includes `expected` — practice only, no proctoring to protect
+      createdBy:     currentUser?.uid || 'unknown',
+      createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    db.collection('practice_questions').doc(q.id).set(publicData)
+      .catch(e => console.warn('savePracticeQuestion Firestore error:', e));
+  }
+}
+
+async function deletePracticeQuestion(id) {
+  if (!confirm('Delete this practice question?')) return;
+  practiceQuestions = practiceQuestions.filter(q=>q.id!==id);
+  renderPQList();
+  toast('Practice question deleted','warn');
+  if (firebaseReady && db) {
+    db.collection('practice_questions').doc(id).delete()
+      .catch(e => console.warn('deletePracticeQuestion Firestore error:', e));
+  }
+}
+
 function exportViolations() {
   if (!violations.length) { toast('No violations to export','warn'); return; }
   const rows = [['Student','Type','Detail','Time'],...violations.map(v=>[v.student,v.type,v.detail||'',v.time])];
@@ -5338,11 +5573,79 @@ function renderStuPage() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PRACTICE PROBLEMS (student) — untimed, no anti-cheat
+   ═══════════════════════════════════════════════════════════════ */
+function renderPracticeList() {
+  const av = document.getElementById('stu-av-pr'), nm = document.getElementById('stu-name-pr');
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+  if (av) av.textContent = name[0].toUpperCase();
+  if (nm) nm.textContent = name;
+
+  document.getElementById('hpr-q').textContent   = practiceQuestions.length;
+  document.getElementById('hpr-sol').textContent = practiceSolvedIds.size;
+
+  const grid = document.getElementById('practice-grid');
+  if (!practiceQuestions.length) {
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px">
+        <div style="font-size:3rem;margin-bottom:16px">🧩</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--head);margin-bottom:8px">No Practice Problems Yet</div>
+        <div style="color:#6b7280;font-size:.88rem">Your professor hasn't added any practice problems yet.</div>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = practiceQuestions.map((q,i)=>`
+    <div class="exam-card ${practiceSolvedIds.has(q.id)?'solved':''}" onclick="startPractice('${q.id}')">
+      <div class="ec-num">PRACTICE ${i+1}</div>
+      <div class="ec-title">${q.title}</div>
+      <div class="ec-desc">${(q.desc||'').replace(/<[^>]+>/g,'').substring(0,100)}...</div>
+      <div class="ec-footer">
+        <span class="diff ${q.diff}">${q.diff}</span>
+        <div class="chip-row">${(q.tags||[]).slice(0,2).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        ${practiceSolvedIds.has(q.id)?'<span class="solved-tag">✓ Solved</span>':''}
+        <span class="ec-points">${q.points} pts</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function startPractice(qId) {
+  currentQ     = practiceQuestions.find(q=>q.id===qId);
+  if (!currentQ) return;
+  practiceMode = true;
+
+  showPage('editor');
+  loadMonaco();
+  renderProbStmt();
+  renderTC();
+
+  document.getElementById('ed-prob-name').textContent = currentQ.title;
+  const diff = currentQ.diff;
+  const de = document.getElementById('ed-diff');
+  de.textContent = diff; de.className = `diff ${diff}`;
+  document.getElementById('lang-sel').value = currentLang;
+
+  // No timer, no monitoring, no fullscreen gate in practice mode
+  document.getElementById('timer-wrap').classList.add('hidden');
+  document.getElementById('integrity-bar').classList.add('hidden');
+  document.getElementById('guard-pill').classList.remove('vis');
+  document.getElementById('guard-pill').classList.add('hidden');
+
+  clearConsole();
+  outLine('info','CodingHub execution environment ready.');
+  outLine('info','🧩 Practice mode — untimed, unmonitored. Solve at your own pace.');
+}
+
+/* ═══════════════════════════════════════════════════════════════
    START EXAM (student)
    ═══════════════════════════════════════════════════════════════ */
 async function startExam(qId) {
   currentQ    = questions.find(q=>q.id===qId);
   if (!currentQ) return;
+  practiceMode = false;
+  document.getElementById('timer-wrap').classList.remove('hidden');
+  document.getElementById('integrity-bar').classList.remove('hidden');
 
   // Reset session state for this exam attempt
   tabVioCount     = 0;
@@ -6399,6 +6702,7 @@ async function runCode() {
 }
 
 async function submitCode() {
+  if (practiceMode) { return submitPracticeCode(); }
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
   const template = (getTemplate()||'').trim();
@@ -6599,6 +6903,80 @@ function elapsed() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PRACTICE MODE SUBMISSION
+   Judged entirely client-side against the question's testcases
+   (input + expected output stored together, unlike exam questions
+   whose expected values never reach the browser). No snapshots,
+   no violation tracking, no leaderboard writes to Firestore.
+   ═══════════════════════════════════════════════════════════════ */
+async function submitPracticeCode() {
+  if (!monacoReady) { toast('Editor loading...','warn'); return; }
+  const code = monaco_editor.getValue().trim();
+  const template = (getTemplate()||'').trim();
+  if (!code || code === template) {
+    toast('Write your solution before submitting!','warn');
+    return;
+  }
+
+  const btn = document.getElementById('btn-sub');
+  btn.disabled = true; btn.textContent = '⏳ Judging...';
+  conTab('out', document.querySelector('.con-tab'));
+  removeRunning();
+
+  const tcs = currentQ.testcases || [];
+  if (!tcs.length) {
+    outLine('warn', '⚠ No test cases found for this practice question.');
+    toast('No test cases — cannot grade', 'warn', 6000);
+    btn.disabled = false; btn.textContent = '✓ Submit';
+    return;
+  }
+
+  for (let i = 0; i < tcs.length; i++) setTCStatus(i, 'Running…', 'pending');
+  outLine('info', `▶ Running ${tcs.length} test case(s) for "${currentQ.title}"…`);
+  outRunning();
+
+  const results = [];
+  for (let i = 0; i < tcs.length; i++) {
+    const tc = tcs[i];
+    try {
+      const r = await pistonExecute(code, currentLang, tc.input || '');
+      const stdout   = ((r.run||{}).stdout || '').trim();
+      const expected = (tc.expected || '').trim();
+      const ok = stdout === expected;
+      results.push({ n: i+1, ok, hidden: false, status: ok?'Accepted':'Wrong Answer', time: '0' });
+      setTCStatus(i, ok?'✓ Pass':'✗ Fail', ok?'pass':'fail');
+    } catch (e) {
+      results.push({ n: i+1, ok: false, hidden: false, status: 'Error', time: '0' });
+      setTCStatus(i, '⚠ Error', 'fail');
+    }
+  }
+  removeRunning();
+
+  const passed = results.filter(r=>r.ok).length;
+  const total  = results.length;
+  const score  = total ? Math.round((passed/total)*100) : 0;
+  const allOk  = passed === total;
+
+  outLine(allOk?'ok':'warn', `── ${passed}/${total} test cases passed ──`);
+  if (allOk) practiceSolvedIds.add(currentQ.id);
+
+  showResults(results, passed, total, 0, score, allOk);
+  btn.disabled = false; btn.textContent = '✓ Submit';
+}
+
+/* Routes the "back to problems" / "next problem" buttons on the result
+   page to the right list depending on whether this was a practice
+   session or a real exam attempt. */
+function backToProblems() {
+  if (practiceMode) {
+    practiceMode = false;
+    showPage('practice'); renderPracticeList();
+  } else {
+    showPage('stu'); renderStuPage();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    EDITOR BACK BUTTON
    ═══════════════════════════════════════════════════════════════ */
 function leaveEditor() {
@@ -6607,10 +6985,18 @@ function leaveEditor() {
   disableAntiCheat(); disableDOMGuard();
   if(document.exitFullscreen) document.exitFullscreen().catch(()=>{});
   document.getElementById('guard-pill').classList.remove('vis');
+  document.getElementById('guard-pill').classList.remove('hidden');
+  document.getElementById('timer-wrap').classList.remove('hidden');
+  document.getElementById('integrity-bar').classList.remove('hidden');
   // Reset integrity for the next attempt
   integrityScore = 100; totalVioCount = 0; tabVioCount = 0;
   updateIntegrity(0);
-  showPage('stu'); renderStuPage();
+  if (practiceMode) {
+    practiceMode = false;
+    showPage('practice'); renderPracticeList();
+  } else {
+    showPage('stu'); renderStuPage();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
