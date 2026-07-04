@@ -3410,8 +3410,8 @@ upgrade-insecure-requests;</pre>
       <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:var(--ff-mono)">Test Cases</div>
       <div id="tc-inputs">
         <div class="modal-row" style="margin-bottom:8px">
-          <div class="field"><label>TC1 Input</label><input class="inp tc-in" placeholder="2 7 11 15&#10;9"></div>
-          <div class="field"><label>TC1 Expected Output</label><input class="inp tc-exp" placeholder="0 1"></div>
+          <div class="field"><label>TC1 Input</label><textarea class="inp tc-in" rows="2" placeholder="2 7 11 15&#10;9"></textarea></div>
+          <div class="field"><label>TC1 Expected Output</label><textarea class="inp tc-exp" rows="2" placeholder="0 1"></textarea></div>
         </div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="addTCRow()" style="align-self:flex-start">+ Add Test Case</button>
@@ -3449,8 +3449,8 @@ upgrade-insecure-requests;</pre>
       <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:var(--ff-mono)">Test Cases (input + expected output, judged in-browser)</div>
       <div id="pq-tc-inputs">
         <div class="modal-row" style="margin-bottom:8px">
-          <div class="field"><label>TC1 Input</label><input class="inp pq-tc-in" placeholder="2 7 11 15&#10;9"></div>
-          <div class="field"><label>TC1 Expected Output</label><input class="inp pq-tc-exp" placeholder="0 1"></div>
+          <div class="field"><label>TC1 Input</label><textarea class="inp pq-tc-in" rows="2" placeholder="2 7 11 15&#10;9"></textarea></div>
+          <div class="field"><label>TC1 Expected Output</label><textarea class="inp pq-tc-exp" rows="2" placeholder="0 1"></textarea></div>
         </div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="addPQTCRow()" style="align-self:flex-start">+ Add Test Case</button>
@@ -5356,8 +5356,8 @@ function addTCRow() {
   row.className = 'modal-row';
   row.style.marginBottom = '8px';
   row.innerHTML = `
-    <div class="field"><label>TC${tcRowCount} Input</label><input class="inp tc-in" placeholder="..."></div>
-    <div class="field"><label>TC${tcRowCount} Expected Output</label><input class="inp tc-exp" placeholder="..."></div>
+    <div class="field"><label>TC${tcRowCount} Input</label><textarea class="inp tc-in" rows="2" placeholder="..."></textarea></div>
+    <div class="field"><label>TC${tcRowCount} Expected Output</label><textarea class="inp tc-exp" rows="2" placeholder="..."></textarea></div>
   `;
   wrap.appendChild(row);
 }
@@ -5500,8 +5500,8 @@ function addPQTCRow() {
   row.className = 'modal-row';
   row.style.marginBottom = '8px';
   row.innerHTML = `
-    <div class="field"><label>TC${pqTcRowCount} Input</label><input class="inp pq-tc-in" placeholder="..."></div>
-    <div class="field"><label>TC${pqTcRowCount} Expected Output</label><input class="inp pq-tc-exp" placeholder="..."></div>
+    <div class="field"><label>TC${pqTcRowCount} Input</label><textarea class="inp pq-tc-in" rows="2" placeholder="..."></textarea></div>
+    <div class="field"><label>TC${pqTcRowCount} Expected Output</label><textarea class="inp pq-tc-exp" rows="2" placeholder="..."></textarea></div>
   `;
   wrap.appendChild(row);
 }
