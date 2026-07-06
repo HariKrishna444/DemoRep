@@ -10349,8 +10349,8 @@ function renderCBBlocks(modIdx, lessonIdx) {
     }
     return `<div class="cb-block cb-block-text">
       <span class="cb-block-tag" title="Drag to reorder">⠿<br>¶</span>
-      <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
-        oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
+      <textarea class="inp" placeholder="Paragraph text — select text & press Ctrl+K to add a link" style="min-height:56px" title="Select text and press Ctrl+K to turn it into a link"
+        oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)" onkeydown="handleParaKeydown(event)">${sanitize(sec.text)}</textarea>
       <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
@@ -11228,8 +11228,8 @@ function renderAmmBlocks(lessonIdx) {
     }
     return `<div class="cb-block cb-block-text">
       <span class="cb-block-tag" title="Drag to reorder">⠿<br>¶</span>
-      <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
-        oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
+      <textarea class="inp" placeholder="Paragraph text — select text & press Ctrl+K to add a link" style="min-height:56px" title="Select text and press Ctrl+K to turn it into a link"
+        oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)" onkeydown="handleParaKeydown(event)">${sanitize(sec.text)}</textarea>
       <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
@@ -11492,9 +11492,25 @@ function formatLessonContent(raw) {
 // only ever matching escaped, safe text — never raw user input — and the
 // href itself is re-escaped before being placed into the attribute.
 function linkifyText(safeHtml) {
+  const placeholders = [];
+
+  // Step 1: markdown-style [label](url) links — this is what the Ctrl+K
+  // shortcut in the paragraph editor inserts. These get a bold, highlighted
+  // style so they stand out from plain auto-linked URLs (step 2 below).
+  // Matches get swapped for null-byte placeholders first so step 2's bare-URL
+  // scan can't re-match the URL sitting inside the href we just built.
+  let text = safeHtml.replace(/\[([^\[\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, (match, label, url) => {
+    const href = url.startsWith('www.') ? 'https://' + url : url;
+    const hrefAttr = href.replace(/"/g, '&quot;');
+    const html = `<a href="${hrefAttr}" target="_blank" rel="noopener noreferrer" style="font-weight:700;color:var(--stu);background:rgba(0,229,160,.14);padding:1px 5px;border-radius:5px;text-decoration:underline">${label}</a>`;
+    placeholders.push(html);
+    return `\u0000LINK${placeholders.length - 1}\u0000`;
+  });
+
+  // Step 2: bare URLs typed without the [label](url) syntax still auto-link,
+  // in plain (non-bold, non-highlighted) style, as a fallback.
   const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
-  return safeHtml.replace(urlPattern, (match) => {
-    let trailing = '';
+  text = text.replace(urlPattern, (match) => {
     // Don't swallow trailing punctuation like a period or closing paren
     // into the link itself.
     const m = match.match(/^(.*?)([.,;:!?)\]]*)$/);
@@ -11504,6 +11520,33 @@ function linkifyText(safeHtml) {
     const hrefAttr = href.replace(/"/g, '&quot;');
     return `<a href="${hrefAttr}" target="_blank" rel="noopener noreferrer" style="color:var(--stu);text-decoration:underline">${core}</a>${punct}`;
   });
+
+  // Step 3: swap the markdown-link placeholders back in.
+  text = text.replace(/\u0000LINK(\d+)\u0000/g, (m, i) => placeholders[Number(i)]);
+  return text;
+}
+
+// Ctrl+K in a paragraph textarea: wraps the current selection (or prompts
+// for label text if nothing is selected) into [label](url) markdown-link
+// syntax, matching the familiar Word/Notion/Slack shortcut.
+function insertMdLink(el) {
+  const start = el.selectionStart, end = el.selectionEnd;
+  const selected = el.value.substring(start, end);
+  const url = prompt(selected ? `Link URL for "${selected}":` : 'Link URL:', 'https://');
+  if (!url) return;
+  const label = selected || prompt('Link text to display:', url) || url;
+  const md = `[${label}](${url})`;
+  el.value = el.value.substring(0, start) + md + el.value.substring(end);
+  const newPos = start + md.length;
+  el.setSelectionRange(newPos, newPos);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.focus();
+}
+function handleParaKeydown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    insertMdLink(e.target);
+  }
 }
 
 function w3RenderSections(sections) {
