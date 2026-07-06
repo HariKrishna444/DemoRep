@@ -1139,7 +1139,7 @@ select.inp option{background:#eef1f4}
 .sb-mod-label{
   display:flex;align-items:center;gap:8px;
   padding:9px 10px;border-radius:8px;cursor:pointer;
-  font-size:.72rem;font-weight:700;color:var(--amber);
+  font-size:.97rem;font-weight:700;color:var(--amber);
   text-transform:uppercase;letter-spacing:.6px;font-family:var(--ff-mono);
   transition:background .15s;user-select:none;
 }
@@ -1155,7 +1155,7 @@ select.inp option{background:#eef1f4}
 /* Lesson row in sidebar */
 .lesson-row{
   display:flex;align-items:center;gap:9px;
-  padding:8px 10px;border-radius:8px;font-size:.78rem;
+  padding:8px 10px;border-radius:8px;font-size:1.03rem;
   cursor:pointer;transition:background .15s;border:1px solid transparent;
   margin-bottom:2px;
 }
@@ -1206,18 +1206,18 @@ select.inp option{background:#eef1f4}
 .video-wrap iframe{width:100%;height:100%;border:none}
 
 /* ── Article content typography ── */
-.article-content{font-size:.95rem;line-height:1.9;color:#b0bec5}
+.article-content{font-size:1.2rem;line-height:1.9;color:#b0bec5}
 .article-content p{margin:0 0 16px;color:#b0bec5}
 .article-content .ac-spacer{height:12px}
 
 /* Headings */
-.article-content h1{font-size:1.5rem;font-weight:900;color:#0f172a;margin:28px 0 14px;font-family:var(--ff-head)}
+.article-content h1{font-size:1.75rem;font-weight:900;color:#0f172a;margin:28px 0 14px;font-family:var(--ff-head)}
 .article-content h2{
-  font-size:1.1rem;font-weight:800;color:#0f172a;
+  font-size:1.35rem;font-weight:800;color:#0f172a;
   margin:28px 0 12px;padding-bottom:10px;
   border-bottom:1px solid #e2e5ea;font-family:var(--ff-head);
 }
-.article-content h3{font-size:.98rem;font-weight:700;color:#0f172a;margin:20px 0 8px}
+.article-content h3{font-size:1.23rem;font-weight:700;color:#0f172a;margin:20px 0 8px}
 
 /* Emoji section header */
 .article-content .ac-emoji-head{
@@ -1226,14 +1226,14 @@ select.inp option{background:#eef1f4}
   border-left:3px solid var(--amber);
   border-radius:10px;padding:13px 18px;
   margin:22px 0 12px;
-  font-size:.98rem;font-weight:800;color:#0f172a;font-family:var(--ff-head);
+  font-size:1.23rem;font-weight:800;color:#0f172a;font-family:var(--ff-head);
 }
 .article-content .ac-emoji{font-size:1.3rem;flex-shrink:0;line-height:1.4}
 
 /* Numbered section */
 .article-content .ac-num-section{
   display:flex;align-items:center;gap:10px;
-  margin:20px 0 10px;font-size:.92rem;font-weight:700;color:#0f172a;
+  margin:20px 0 10px;font-size:1.17rem;font-weight:700;color:#0f172a;
 }
 .article-content .ac-num-badge{
   width:26px;height:26px;border-radius:50%;flex-shrink:0;
@@ -1250,7 +1250,7 @@ select.inp option{background:#eef1f4}
   background:rgba(0,0,0,.02);
   border:1px solid rgba(255,255,255,.07);
   border-left:3px solid rgba(0,229,160,.35);
-  border-radius:8px;font-size:.88rem;color:#b0bec5;line-height:1.55;
+  border-radius:8px;font-size:1.13rem;color:#b0bec5;line-height:1.55;
 }
 .article-content .ac-list li::before{content:'›';color:var(--stu);font-weight:700;flex-shrink:0;margin-top:1px}
 .article-content .ac-sub-list{margin-left:20px}
@@ -1261,7 +1261,7 @@ select.inp option{background:#eef1f4}
 
 /* Inline code */
 .article-content code{
-  font-family:var(--ff-mono);font-size:.82rem;
+  font-family:var(--ff-mono);font-size:1.07rem;
   background:rgba(30,163,74,.07);border:1px solid rgba(255,255,255,.1);
   border-radius:4px;padding:2px 7px;color:#a5f3c0;
 }
@@ -1271,7 +1271,7 @@ select.inp option{background:#eef1f4}
   border:1px solid rgba(255,255,255,.08);
   border-left:3px solid rgba(0,229,160,.4);
   border-radius:var(--r-sm);padding:18px 20px;margin:18px 0;
-  overflow-x:auto;font-family:var(--ff-mono);font-size:.8rem;
+  overflow-x:auto;font-family:var(--ff-mono);font-size:1.05rem;
   color:#a5f3c0;line-height:1.75;
 }
 /* Blockquote */
@@ -1282,6 +1282,46 @@ select.inp option{background:#eef1f4}
   font-style:italic;color:#374151;
 }
 .article-content strong{color:#0f172a;font-weight:700}
+/* Command block (shell/CLI instructions — copy & run locally, not inline) */
+.md-cmd-block{
+  margin:18px 0;border-radius:var(--r-sm);overflow:hidden;
+  border:1px solid rgba(255,255,255,.08);border-left:3px solid var(--amber);
+  background:rgba(0,0,0,.02);
+}
+.md-cmd-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;background:rgba(245,166,35,.07);
+  font-size:.7rem;color:var(--amber);font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);
+}
+.md-cmd-body{padding:12px 16px;font-family:var(--ff-mono)}
+.md-cmd-line{
+  font-weight:700;font-size:.85rem;line-height:1.9;color:#a5f3c0;
+  white-space:pre-wrap;word-break:break-word;
+}
+.md-cmd-line::before{content:'$ ';color:var(--amber);font-weight:700}
+/* Static non-runnable language code block (Java/C/etc.) */
+.md-lang-block{
+  margin:18px 0;border-radius:var(--r-sm);overflow:hidden;
+  border:1px solid rgba(255,255,255,.08);border-left:3px solid rgba(99,102,241,.5);
+  background:rgba(0,0,0,.02);
+}
+.md-lang-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;background:rgba(99,102,241,.08);flex-wrap:wrap;gap:8px;
+}
+.md-lang-badge{
+  font-family:var(--ff-mono);font-size:.68rem;font-weight:700;
+  color:#a5b4fc;background:rgba(99,102,241,.15);
+  border:1px solid rgba(99,102,241,.3);border-radius:99px;padding:3px 11px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.md-lang-note{font-size:.66rem;color:#6b7280;font-family:var(--ff-mono);white-space:nowrap}
+.md-lang-pre{
+  margin:0;padding:16px 18px;overflow-x:auto;
+  font-family:var(--ff-mono);font-size:.8rem;line-height:1.75;
+  color:#a5f3c0;background:transparent;
+}
 /* Data table block (operator/meaning style, matches GFG-style reference tables) */
 .w3-data-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .w3-data-table th{
@@ -1931,9 +1971,12 @@ select.inp option{background:#eef1f4}
 .w3-run-btn:disabled{opacity:.45;cursor:not-allowed}
 .w3-run-btn.running{background:rgba(245,166,35,.2);color:var(--amber);cursor:wait}
 
-/* Code editor area */
+/* Code editor area — capped height so it doesn't stretch to fill the
+   entire right-hand panel on tall desktop viewports; the editor itself
+   scrolls internally for longer snippets instead of ballooning the box. */
 .w3-editor-wrap{
-  display:flex;flex:1;overflow:hidden;min-height:0;
+  display:flex;flex:1 1 auto;overflow:hidden;min-height:0;
+  max-height:360px;
   background:#ffffff;border-bottom:1px solid #e2e5ea;
   font-family:var(--ff-mono);
 }
@@ -2041,6 +2084,12 @@ select.inp option{background:#eef1f4}
 #page-learn .article-content blockquote{
   background:rgba(30,163,74,.05);color:#374151;
 }
+#page-learn .md-cmd-block{background:#f6f8fa;border-color:#e2e5ea}
+#page-learn .md-cmd-header{background:rgba(245,166,35,.1);border-bottom:1px solid #e2e5ea}
+#page-learn .md-cmd-line{color:#0e7d3a}
+#page-learn .md-lang-block{background:#f6f8fa;border-color:#e2e5ea}
+#page-learn .md-lang-header{background:rgba(99,102,241,.06);border-bottom:1px solid #e2e5ea}
+#page-learn .md-lang-pre{color:#1f2328}
 #page-learn .w3-example-code{
   background:#f6f8fa;color:#1f2328;
 }
@@ -2078,9 +2127,28 @@ select.inp option{background:#eef1f4}
   .w3-try-panel{display:none}
 }
 @media(max-width:640px){
-  .w3-body{grid-template-columns:1fr}
-  .w3-sidebar{display:none}
+  .w3-body{grid-template-columns:1fr;position:relative}
+  /* Off-canvas drawer instead of hiding the sidebar outright — students
+     can still jump to any other lesson via the ☰ button in the top bar. */
+  .w3-sidebar{
+    position:fixed;top:0;left:0;bottom:0;z-index:450;
+    width:82%;max-width:300px;
+    transform:translateX(-100%);
+    transition:transform .28s ease;
+    box-shadow:2px 0 20px rgba(0,0,0,.2);
+  }
+  .w3-sidebar.w3-sidebar-open{transform:translateX(0)}
+  .w3-sidebar-backdrop{
+    display:none;position:fixed;inset:0;z-index:440;
+    background:rgba(0,0,0,.42);
+  }
+  .w3-sidebar-backdrop.w3-sidebar-open{display:block}
   .w3-lesson-wrap{padding:10px 18px 20px}
+}
+/* Hamburger toggle: only relevant once the sidebar becomes a drawer */
+.w3-mobile-menu-btn{display:none}
+@media(max-width:640px){
+  .w3-mobile-menu-btn{display:inline-flex!important}
 }
 
 /* ═══════════════════════════════════════════════════
@@ -3622,6 +3690,9 @@ upgrade-insecure-requests;</pre>
   <!-- Top bar -->
   <div class="w3-topbar">
     <div style="display:flex;align-items:center;gap:14px">
+      <button class="btn btn-ghost btn-sm w3-mobile-menu-btn" onclick="toggleLearnSidebar()" style="padding:5px 9px" aria-label="Toggle lesson list">
+        <span style="font-size:1rem">☰</span>
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()" style="padding:5px 10px">
         <span style="font-size:.9rem">←</span>
       </button>
@@ -3654,6 +3725,7 @@ upgrade-insecure-requests;</pre>
   <div class="w3-body">
 
     <!-- ─── LEFT: Topic Sidebar ─────────────────────────── -->
+    <div class="w3-sidebar-backdrop" id="w3-sidebar-backdrop" onclick="closeLearnSidebar()"></div>
     <div class="w3-sidebar" id="w3-sidebar">
       <div class="w3-sidebar-inner">
         <div class="w3-sidebar-title">
@@ -9063,7 +9135,20 @@ function toggleSbMod(modId) {
   if (el) el.classList.toggle('open');
 }
 
+/* Mobile lesson-list drawer (☰ button in the learn-page top bar) */
+function toggleLearnSidebar() {
+  document.getElementById('w3-sidebar')?.classList.toggle('w3-sidebar-open');
+  document.getElementById('w3-sidebar-backdrop')?.classList.toggle('w3-sidebar-open');
+}
+function closeLearnSidebar() {
+  document.getElementById('w3-sidebar')?.classList.remove('w3-sidebar-open');
+  document.getElementById('w3-sidebar-backdrop')?.classList.remove('w3-sidebar-open');
+}
+
 function openLesson(courseId, moduleId, lessonId) {
+  // On mobile, picking a lesson from the drawer should close it so the
+  // student immediately sees the lesson content underneath.
+  closeLearnSidebar();
   currentModuleId = moduleId;
   currentLessonId = lessonId;
   const course = coursesCatalog.find(c=>c.id===courseId);
@@ -9182,8 +9267,10 @@ function openLesson(courseId, moduleId, lessonId) {
       </button>
     </div>`;
 
-  // Scroll content to top
-  const lc = document.querySelector('.learn-content');
+  // Scroll content to top — the actual scrollable ancestor of the lesson
+  // content area is #w3-center-col (the ".learn-content" class isn't used
+  // anywhere in this layout, so this previously did nothing on click).
+  const lc = document.getElementById('w3-center-col');
   if (lc) lc.scrollTop = 0;
 }
 
@@ -9223,6 +9310,81 @@ function youtubeEmbed(url) {
 
 let _mdPlaygroundIdx = 0;
 
+// Language tags that map to the runnable Pyodide playground.
+const _PY_LANG_TAGS = new Set(['python','py','python3']);
+// Language tags that are inherently shell/CLI commands, not source code.
+const _CMD_LANG_TAGS = new Set(['bash','sh','shell','zsh','cmd','console','terminal','powershell','ps1','batch','bat']);
+// Common non-Python programming languages we can still syntax-highlight
+// statically, but can't execute inline (no Pyodide-equivalent engine here).
+const _LANG_LABELS = {
+  java:'Java', c:'C', cpp:'C++', 'c++':'C++', cs:'C#', csharp:'C#',
+  javascript:'JavaScript', js:'JavaScript', typescript:'TypeScript', ts:'TypeScript',
+  go:'Go', golang:'Go', ruby:'Ruby', rb:'Ruby', php:'PHP', kotlin:'Kotlin',
+  swift:'Swift', rust:'Rust', rs:'Rust', sql:'SQL', html:'HTML', css:'CSS',
+  r:'R', scala:'Scala', perl:'Perl', dart:'Dart'
+};
+// Heuristic: does an *untagged* code block look like a list of shell
+// commands rather than a Python snippet worth executing?
+function _looksLikeCommands(code) {
+  const lines = code.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+  if (!lines.length) return false;
+  const cmdStart = /^(\$\s|#\s|sudo\s|pip3?\s|npm\s|npx\s|yarn\s|git\s|cd\s|mkdir\s|rm\s|ls\s|cat\s|export\s|source\s|docker\s|kubectl\s|curl\s|wget\s|apt(-get)?\s|brew\s|choco\s|gcc\s|g\+\+\s|javac\s|java\s|node\s|python3?\s(?!.*[:=(])|virtualenv\s|venv\s|conda\s|chmod\s|chown\s)/i;
+  const matching = lines.filter(l => cmdStart.test(l)).length;
+  // Consider it a command block if the majority of non-blank lines match,
+  // and none of the lines contain telltale Python syntax like ":" endings
+  // or "=" assignments that would suggest real source code.
+  const looksLikeCode = lines.some(l => /:\s*$/.test(l) || /^\s*(def|class|import|from)\b/.test(l));
+  return !looksLikeCode && matching >= Math.ceil(lines.length * 0.6);
+}
+function _classifyFence(langTag, code) {
+  const tag = (langTag||'').trim().toLowerCase();
+  if (_PY_LANG_TAGS.has(tag)) return 'python';
+  if (_CMD_LANG_TAGS.has(tag)) return 'command';
+  if (!tag) return _looksLikeCommands(code) ? 'command' : 'python';
+  return 'lang'; // some other declared programming language
+}
+// Bolded, monospace command block — for shell/CLI instructions that
+// aren't meant to be executed inline (only copied and run locally).
+let _w3CmdBlockCounter = 0;
+function _makeCommandBlock(code) {
+  const cid = 'cmdblk-' + (++_w3CmdBlockCounter);
+  const lines = code.split('\n').filter(l => l.trim().length);
+  const linesHtml = lines.map(l => `<div class="md-cmd-line">${sanitize(l)}</div>`).join('');
+  return `<div class="md-cmd-block">
+    <div class="md-cmd-header">
+      <span><span style="font-size:.9rem">⌘</span> Command${lines.length>1?'s':''}</span>
+      <button class="btn btn-ghost btn-sm" onclick="(function(btn){
+        var t=document.getElementById('${cid}').innerText;
+        navigator.clipboard.writeText(t).then(()=>{var o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>btn.textContent=o,1200);});
+      })(this)">⧉ Copy</button>
+    </div>
+    <div class="md-cmd-body" id="${cid}">${linesHtml}</div>
+  </div>`;
+}
+// Static, syntax-highlighted (non-runnable) code block for languages
+// Pyodide can't execute — e.g. Java, C, C++. Shows a clear language
+// badge instead of a Run button so students aren't misled into thinking
+// it will execute inline.
+let _w3LangBlockCounter = 0;
+function _makeLangCodeBlock(langTag, code) {
+  const key = (langTag||'').toLowerCase();
+  const label = _LANG_LABELS[key] || (langTag ? langTag.charAt(0).toUpperCase()+langTag.slice(1) : 'Code');
+  const id = 'langblk-' + (++_w3LangBlockCounter);
+  const highlighted = w3Highlight(code);
+  return `<div class="md-lang-block">
+    <div class="md-lang-header">
+      <span class="md-lang-badge">${sanitize(label)}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="md-lang-note">Run locally — not executable inline</span>
+        <button class="btn btn-ghost btn-sm" onclick="(function(btn){
+          var t=document.getElementById('${id}').innerText;
+          navigator.clipboard.writeText(t).then(()=>{var o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>btn.textContent=o,1200);});
+        })(this)">⧉ Copy</button>
+      </div>
+    </div>
+    <pre class="md-lang-pre" id="${id}">${highlighted}</pre>
+  </div>`;
+}
 function _makePyPlayground(code) {
   const pid = 'mdpy-' + (++_mdPlaygroundIdx);
   const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -9349,9 +9511,22 @@ function renderMarkdown(raw) {
   raw = raw.replace(/'''PYTHON\s*([\s\S]*?)'''/gi, (_, code) => {
     blocks.push(_makePyPlayground(code.trim())); return PH+(blocks.length-1)+'\x00';
   });
-  // ```python / ``` ... ``` → runnable playground
-  raw = raw.replace(/```(?:python|py)?\s*([\s\S]*?)```/gi, (_, code) => {
-    blocks.push(_makePyPlayground(code.trim())); return PH+(blocks.length-1)+'\x00';
+  // ```lang ... ``` → route by declared/detected language.
+  // Only python (or an untagged block that doesn't look like shell
+  // commands) becomes a runnable Pyodide playground — Pyodide can't
+  // execute Java/C/etc. inline, so those get a static, labelled,
+  // syntax-highlighted block instead. Untagged blocks that *do* look
+  // like shell/CLI commands get rendered as a bolded command block.
+  raw = raw.replace(/```([a-zA-Z0-9+#.]*)[ \t]*\n?([\s\S]*?)```/g, (_, langTag, code) => {
+    const kind = _classifyFence(langTag, code);
+    if (kind === 'python') {
+      blocks.push(_makePyPlayground(code.trim()));
+    } else if (kind === 'command') {
+      blocks.push(_makeCommandBlock(code.trim()));
+    } else {
+      blocks.push(_makeLangCodeBlock(langTag.trim(), code.trim()));
+    }
+    return PH+(blocks.length-1)+'\x00';
   });
 
   /* ── 1. Normalise line endings, split into lines ── */
@@ -10349,8 +10524,8 @@ function renderCBBlocks(modIdx, lessonIdx) {
     }
     return `<div class="cb-block cb-block-text">
       <span class="cb-block-tag" title="Drag to reorder">⠿<br>¶</span>
-      <textarea class="inp" placeholder="Paragraph text — select text & press Ctrl+K to add a link" style="min-height:56px" title="Select text and press Ctrl+K to turn it into a link"
-        oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)" onkeydown="handleParaKeydown(event)">${sanitize(sec.text)}</textarea>
+      <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
+        oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
       <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
@@ -11228,8 +11403,8 @@ function renderAmmBlocks(lessonIdx) {
     }
     return `<div class="cb-block cb-block-text">
       <span class="cb-block-tag" title="Drag to reorder">⠿<br>¶</span>
-      <textarea class="inp" placeholder="Paragraph text — select text & press Ctrl+K to add a link" style="min-height:56px" title="Select text and press Ctrl+K to turn it into a link"
-        oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)" onkeydown="handleParaKeydown(event)">${sanitize(sec.text)}</textarea>
+      <textarea class="inp" placeholder="Paragraph text" style="min-height:56px"
+        oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)">${sanitize(sec.text)}</textarea>
       <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
     </div>`;
   }).join('');
@@ -11492,25 +11667,9 @@ function formatLessonContent(raw) {
 // only ever matching escaped, safe text — never raw user input — and the
 // href itself is re-escaped before being placed into the attribute.
 function linkifyText(safeHtml) {
-  const placeholders = [];
-
-  // Step 1: markdown-style [label](url) links — this is what the Ctrl+K
-  // shortcut in the paragraph editor inserts. These get a bold, highlighted
-  // style so they stand out from plain auto-linked URLs (step 2 below).
-  // Matches get swapped for null-byte placeholders first so step 2's bare-URL
-  // scan can't re-match the URL sitting inside the href we just built.
-  let text = safeHtml.replace(/\[([^\[\]]+)\]\((https?:\/\/[^\s)]+|www\.[^\s)]+)\)/gi, (match, label, url) => {
-    const href = url.startsWith('www.') ? 'https://' + url : url;
-    const hrefAttr = href.replace(/"/g, '&quot;');
-    const html = `<a href="${hrefAttr}" target="_blank" rel="noopener noreferrer" style="font-weight:700;color:var(--stu);background:rgba(0,229,160,.14);padding:1px 5px;border-radius:5px;text-decoration:underline">${label}</a>`;
-    placeholders.push(html);
-    return `\u0000LINK${placeholders.length - 1}\u0000`;
-  });
-
-  // Step 2: bare URLs typed without the [label](url) syntax still auto-link,
-  // in plain (non-bold, non-highlighted) style, as a fallback.
   const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
-  text = text.replace(urlPattern, (match) => {
+  return safeHtml.replace(urlPattern, (match) => {
+    let trailing = '';
     // Don't swallow trailing punctuation like a period or closing paren
     // into the link itself.
     const m = match.match(/^(.*?)([.,;:!?)\]]*)$/);
@@ -11520,33 +11679,6 @@ function linkifyText(safeHtml) {
     const hrefAttr = href.replace(/"/g, '&quot;');
     return `<a href="${hrefAttr}" target="_blank" rel="noopener noreferrer" style="color:var(--stu);text-decoration:underline">${core}</a>${punct}`;
   });
-
-  // Step 3: swap the markdown-link placeholders back in.
-  text = text.replace(/\u0000LINK(\d+)\u0000/g, (m, i) => placeholders[Number(i)]);
-  return text;
-}
-
-// Ctrl+K in a paragraph textarea: wraps the current selection (or prompts
-// for label text if nothing is selected) into [label](url) markdown-link
-// syntax, matching the familiar Word/Notion/Slack shortcut.
-function insertMdLink(el) {
-  const start = el.selectionStart, end = el.selectionEnd;
-  const selected = el.value.substring(start, end);
-  const url = prompt(selected ? `Link URL for "${selected}":` : 'Link URL:', 'https://');
-  if (!url) return;
-  const label = selected || prompt('Link text to display:', url) || url;
-  const md = `[${label}](${url})`;
-  el.value = el.value.substring(0, start) + md + el.value.substring(end);
-  const newPos = start + md.length;
-  el.setSelectionRange(newPos, newPos);
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  el.focus();
-}
-function handleParaKeydown(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault();
-    insertMdLink(e.target);
-  }
 }
 
 function w3RenderSections(sections) {
