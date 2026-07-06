@@ -991,7 +991,7 @@ select.inp option{background:#eef1f4}
 .course-card:hover{border-color:var(--stu);transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.25)}
 .course-card:hover .course-title{color:var(--stu)}
 .course-thumb{
-  width:100%;height:140px;object-fit:cover;
+  width:100%;height:140px;object-fit:cover;overflow:hidden;
   background:linear-gradient(135deg,var(--ink3),var(--ink4));
   display:flex;align-items:center;justify-content:center;
   font-size:3rem;
@@ -1475,6 +1475,7 @@ select.inp option{background:#eef1f4}
   transition:opacity .15s, border-color .15s, transform .12s;
 }
 .cb-block-h2{border-left:3px solid var(--amber)}
+.cb-block-h3{border-left:3px solid var(--cyan)}
 .cb-block-text{border-left:3px solid var(--cyan)}
 .cb-block-code{border-left:3px solid var(--stu)}
 .cb-block-note{border-left:3px solid #8b5cf6}
@@ -3323,9 +3324,11 @@ upgrade-insecure-requests;</pre>
           </select>
           <select class="sel" id="fs-sel" onchange="changeFS(this.value)">
             <option value="13">13px</option>
-            <option value="14" selected>14px</option>
+            <option value="14">14px</option>
             <option value="15">15px</option>
-            <option value="16">16px</option>
+            <option value="16" selected>16px</option>
+            <option value="17">17px</option>
+            <option value="18">18px</option>
           </select>
         </div>
         <div class="sr" style="gap:7px">
@@ -3494,8 +3497,17 @@ upgrade-insecure-requests;</pre>
           </select>
         </div>
       </div>
+      <div class="field">
+        <label>Thumbnail Image</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="cb-thumb-preview" style="width:52px;height:52px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2,#f6f8fa);display:flex;align-items:center;justify-content:center;font-size:1.4rem;overflow:hidden;flex-shrink:0">📚</div>
+          <input class="inp" id="cb-thumb" placeholder="Paste an image URL, or upload a file →"
+            oninput="cbUpdateThumbPreview()" style="flex:1">
+          <input type="file" id="cb-thumb-file" accept="image/*" style="display:none" onchange="cbHandleThumbUpload(this)">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('cb-thumb-file').click()">⬆ Upload</button>
+        </div>
+      </div>
       <div class="field"><label>Description</label><textarea class="inp" id="cb-desc" rows="2" placeholder="What will students learn?"></textarea></div>
-      <div class="field"><label>Thumbnail Emoji</label><input class="inp" id="cb-thumb" placeholder="🐍" style="font-size:1.4rem;text-align:center"></div>
 
       <!-- Web Import Section -->
       <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:var(--r);padding:16px;margin-top:4px">
@@ -4761,7 +4773,7 @@ const PAGE_HASH_MAP = {
   'chrono-result':  '#/chronocode/result',
 };
 
-function showPage(id) {
+function showPage(id, _fromHistory) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   window.scrollTo(0,0);
@@ -4773,15 +4785,60 @@ function showPage(id) {
   // was, so the URL could get "stuck" showing an old course/lesson link
   // even while you were looking at, say, the exam result page.
   try {
+    let hash = null;
     if (id === 'editor' && currentQ?.id) {
-      updateUrlHash('#/exam/' + currentQ.id);
+      hash = '#/exam/' + currentQ.id;
     } else if (id === 'result' && currentQ?.id) {
-      updateUrlHash('#/exam/' + currentQ.id + '/result');
+      hash = '#/exam/' + currentQ.id + '/result';
     } else if (PAGE_HASH_MAP[id]) {
-      updateUrlHash(PAGE_HASH_MAP[id]);
+      hash = PAGE_HASH_MAP[id];
+    }
+
+    // If this navigation came from the user pressing Back/Forward
+    // (popstate already moved us to this history entry), just sync the
+    // hash cosmetically — pushing a new entry here would break the
+    // back button again. Otherwise, push a real history entry so the
+    // browser Back button steps through in-app pages instead of
+    // leaving the site entirely.
+    if (_fromHistory) {
+      if (hash) updateUrlHash(hash);
+    } else {
+      pushAppHistory({ page: id }, hash);
     }
   } catch (e) { /* non-fatal — never block navigation over a URL cosmetic */ }
 }
+
+// Pushes a new browser-history entry for in-app navigation (so Back/Forward
+// move between app screens instead of exiting the site). Skips pushing a
+// duplicate entry if we're already "on" this same state (e.g. a page that
+// re-renders itself after a data refresh), which keeps the history stack
+// from ballooning with repeats of the same screen.
+function pushAppHistory(state, hash) {
+  try {
+    const cur = history.state;
+    const same = cur && JSON.stringify(cur) === JSON.stringify(state);
+    const url = hash ? (location.href.split('#')[0] + hash) : location.href;
+    if (same) history.replaceState(state, '', url);
+    else history.pushState(state, '', url);
+  } catch (e) { /* sandboxed iframe or unsupported browser — harmless no-op */ }
+}
+
+// Handles browser Back/Forward. We stored { page: id } (or { profPanel: id })
+// on each pushAppHistory call, so on popstate we just re-render whatever
+// screen that entry represents instead of doing nothing (which is what let
+// Back fall through to leaving the site entirely).
+window.addEventListener('popstate', (e) => {
+  const st = e.state;
+  if (st && st.page) {
+    showPage(st.page, true);
+  } else if (st && st.profPanel) {
+    profNav(st.profPanel, true);
+  } else if (location.hash.startsWith('#/course/')) {
+    handleDeepLink();
+  } else if (location.hash.startsWith('#/exam/pq-')) {
+    handlePracticeDeepLink();
+  }
+});
 
 /* ═══════════════════════════════════════════════════════════════
    TOAST
@@ -4950,12 +5007,17 @@ function logout() {
 /* ═══════════════════════════════════════════════════════════════
    PROFESSOR DASHBOARD
    ═══════════════════════════════════════════════════════════════ */
-function profNav(panel) {
+function profNav(panel, _fromHistory) {
   document.querySelectorAll('.sbar-item').forEach(i=>i.classList.remove('active'));
   document.querySelectorAll('.prof-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('sb-'+panel)?.classList.add('active');
   const pp = document.getElementById('pp-'+panel);
   if (pp) { pp.classList.add('active'); renderProfPanel(panel); }
+
+  // Same in-app history handling as showPage() — see pushAppHistory for why.
+  if (!_fromHistory) {
+    try { pushAppHistory({ profPanel: panel }, null); } catch (e) {}
+  }
 }
 
 function renderProfDashboard() {
@@ -6410,7 +6472,7 @@ function _monacoFallback() {
   if (!wrap) return;
   wrap.innerHTML = `<textarea id="monaco-fallback-ta"
     style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;
-           font-family:'DM Mono',monospace;font-size:14px;padding:16px;
+           font-family:'DM Mono',monospace;font-size:16px;padding:16px;
            border:none;outline:none;resize:none;box-sizing:border-box;line-height:1.6;tab-size:4"
     spellcheck="false" autocomplete="off" autocorrect="off"
     placeholder="// Type your code here..."
@@ -6446,7 +6508,7 @@ function _onMonacoReady(mono) {
       value: initialCode,
       language: LANG_MONACO[currentLang] || 'python',
       theme: 'vs-dark',
-      fontSize: 14,
+      fontSize: 16,
       fontFamily: "'DM Mono', monospace",
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
@@ -8541,6 +8603,15 @@ function fsReady() { return firebaseReady && !!db; }
 function fsDb()    { return db; }
 function genId()   { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 function sanitize(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Course thumbnails are either a pasted/uploaded image (URL or data-URL) or,
+// for courses created before image thumbnails existed, a plain emoji string.
+function courseThumbHtml(course) {
+  const t = course?.thumbnail || '📚';
+  if (/^(https?:\/\/|data:image\/)/i.test(t)) {
+    return `<img src="${sanitize(t)}" alt="${sanitize(course?.title||'Course')} thumbnail" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='📚'">`;
+  }
+  return sanitize(t);
+}
 
 /* ──────────────────────────────────────────────────────────────────
    ROUTING — updated to handle catalog/learn/quiz/cert
@@ -8748,7 +8819,7 @@ async function renderCatalog() {
     card.className = 'course-card';
     card.innerHTML = `
       ${enrolled ? '<div class="enrolled-tag">✓ Enrolled</div>' : ''}
-      <div class="course-thumb">${course.thumbnail || '📚'}</div>
+      <div class="course-thumb">${courseThumbHtml(course)}</div>
       <div class="course-body">
         <div class="course-lang-badge">📌 ${sanitize(course.language||'General')}</div>
         <div class="course-title">${sanitize(course.title)}</div>
@@ -9555,7 +9626,7 @@ async function renderMyLearning() {
     const card = document.createElement('div');
     card.className = 'my-course-card';
     card.innerHTML = `
-      <div style="font-size:2rem;margin-bottom:10px">${course.thumbnail||'📚'}</div>
+      <div style="width:2rem;height:2rem;border-radius:6px;overflow:hidden;font-size:2rem;margin-bottom:10px;display:flex;align-items:center;justify-content:center">${courseThumbHtml(course)}</div>
       <div class="my-course-title">${sanitize(course.title||courseId)}</div>
       <div class="my-course-meta">${course.language||''} · ${course.difficulty||'beginner'}</div>
       <div class="my-course-pct">${pct}% Complete</div>
@@ -9784,6 +9855,36 @@ function checkVerifyParam() {
    ────────────────────────────────────────────────────────────────── */
 let _editingCourseId = null; // null = creating a new course, set = editing an existing one
 
+// Thumbnail can be either a pasted image URL/data-URL (new courses) or a
+// legacy emoji string (older courses created before image thumbnails were
+// supported) — cbIsImageUrl() tells the two apart everywhere thumbnails
+// are read or rendered.
+function cbIsImageUrl(v) {
+  return /^(https?:\/\/|data:image\/)/i.test(v || '');
+}
+function cbUpdateThumbPreview() {
+  const val = document.getElementById('cb-thumb').value.trim();
+  const preview = document.getElementById('cb-thumb-preview');
+  if (!preview) return;
+  if (cbIsImageUrl(val)) {
+    preview.innerHTML = `<img src="${val.replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='📚'">`;
+  } else {
+    preview.textContent = preview.dataset.fallback || '📚';
+  }
+}
+function cbHandleThumbUpload(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Please choose an image file', 'warn'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('cb-thumb').value = reader.result;
+    cbUpdateThumbPreview();
+  };
+  reader.onerror = () => toast('Could not read that image file', 'err');
+  reader.readAsDataURL(file);
+}
+
 function openCourseBuilder() {
   _editingCourseId = null;
   courseBuilderModules = [];
@@ -9791,7 +9892,10 @@ function openCourseBuilder() {
   document.getElementById('cb-lang').value = '';
   document.getElementById('cb-desc').value = '';
   document.getElementById('cb-diff').value = 'beginner';
-  document.getElementById('cb-thumb').value = '📚';
+  document.getElementById('cb-thumb').value = '';
+  const _thumbPrev = document.getElementById('cb-thumb-preview');
+  if (_thumbPrev) _thumbPrev.dataset.fallback = '📚';
+  cbUpdateThumbPreview();
   document.getElementById('cb-wiki-topics').value = '';
   document.getElementById('cb-yt-ids').value = '';
   document.getElementById('cb-book-query').value = '';
@@ -9826,7 +9930,18 @@ async function openEditCourseModal(courseId) {
   document.getElementById('cb-lang').value = course.language || '';
   document.getElementById('cb-desc').value = course.description || '';
   document.getElementById('cb-diff').value = course.difficulty || 'beginner';
-  document.getElementById('cb-thumb').value = course.thumbnail || '📚';
+  {
+    const existingThumb = course.thumbnail || '';
+    const thumbPrev = document.getElementById('cb-thumb-preview');
+    if (cbIsImageUrl(existingThumb)) {
+      document.getElementById('cb-thumb').value = existingThumb;
+      if (thumbPrev) thumbPrev.dataset.fallback = '📚';
+    } else {
+      document.getElementById('cb-thumb').value = '';
+      if (thumbPrev) thumbPrev.dataset.fallback = existingThumb || '📚';
+    }
+    cbUpdateThumbPreview();
+  }
   document.getElementById('cb-wiki-topics').value = '';
   document.getElementById('cb-yt-ids').value = '';
   document.getElementById('cb-book-query').value = '';
@@ -9883,6 +9998,7 @@ async function openEditCourseModal(courseId) {
         <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
         <div class="cb-block-add-row">
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h3')">+ Sub-heading</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
@@ -10004,6 +10120,7 @@ function addCBLesson(modIdx) {
     <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
     <div class="cb-block-add-row">
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h3')">+ Sub-heading</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
@@ -10032,6 +10149,7 @@ function addCBBlock(modIdx, lessonIdx, type) {
   if (type === 'example') lesson.sections.push({ type:'example', label:'', code:'' });
   else if (type === 'note') lesson.sections.push({ type:'note', text:'' });
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
+  else if (type === 'h3') lesson.sections.push({ type:'h3', text:'' });
   else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[{c1:'',c2:''},{c1:'',c2:''}] });
   else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
   else if (type === 'vidblock') lesson.sections.push({ type:'vidblock', url:'', caption:'' });
@@ -10129,6 +10247,14 @@ function renderCBBlocks(modIdx, lessonIdx) {
       return `<div class="cb-block cb-block-h2">
         <span class="cb-block-tag" title="Drag to reorder">⠿<br>H</span>
         <input class="inp" placeholder="Heading text" value="${cbAttrEsc(sec.text)}"
+          oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">
+        <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'h3') {
+      return `<div class="cb-block cb-block-h3">
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>H2</span>
+        <input class="inp" placeholder="Sub-heading text" value="${cbAttrEsc(sec.text)}"
           oninput="updateCBBlock(${modIdx},${lessonIdx},${bi},'text',this.value)">
         <button type="button" class="cb-block-rm" onclick="removeCBBlock(${modIdx},${lessonIdx},${bi})">×</button>
       </div>`;
@@ -10260,7 +10386,7 @@ async function saveCourse() {
   const desc  = document.getElementById('cb-desc').value.trim();
   const diff  = document.getElementById('cb-diff').value;
   const price = document.getElementById('cb-price').value;
-  const thumb = document.getElementById('cb-thumb').value.trim() || '📚';
+  const thumb = document.getElementById('cb-thumb').value.trim() || document.getElementById('cb-thumb-preview')?.dataset.fallback || '📚';
   if (!title) { toast('Course title is required','warn'); return; }
 
   // Merge manually-entered modules + web-imported modules
@@ -10943,6 +11069,7 @@ function addAmmLesson() {
     <div class="cb-blocks-wrap" id="amm-blocks-${idx}"></div>
     <div class="cb-block-add-row">
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'h2')">+ Heading</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'h3')">+ Sub-heading</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'text')">+ Paragraph</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'example')">+ Code</button>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'table')">+ Table</button>
@@ -10970,6 +11097,7 @@ function addAmmBlock(lessonIdx, type) {
   if (type === 'example') lesson.sections.push({ type:'example', label:'', code:'' });
   else if (type === 'note') lesson.sections.push({ type:'note', text:'' });
   else if (type === 'h2') lesson.sections.push({ type:'h2', text:'' });
+  else if (type === 'h3') lesson.sections.push({ type:'h3', text:'' });
   else if (type === 'table') lesson.sections.push({ type:'table', title:'', col1:'Operator', col2:'Meaning', rows:[{c1:'',c2:''},{c1:'',c2:''}] });
   else if (type === 'list') lesson.sections.push({ type:'list', title:'', items:['',''] });
   else if (type === 'vidblock') lesson.sections.push({ type:'vidblock', url:'', caption:'' });
@@ -10998,6 +11126,14 @@ function renderAmmBlocks(lessonIdx) {
       return `<div class="cb-block cb-block-h2">
         <span class="cb-block-tag" title="Drag to reorder">⠿<br>H</span>
         <input class="inp" placeholder="Heading text" value="${cbAttrEsc(sec.text)}"
+          oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)">
+        <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
+      </div>`;
+    }
+    if (sec.type === 'h3') {
+      return `<div class="cb-block cb-block-h3">
+        <span class="cb-block-tag" title="Drag to reorder">⠿<br>H2</span>
+        <input class="inp" placeholder="Sub-heading text" value="${cbAttrEsc(sec.text)}"
           oninput="updateAmmBlock(${lessonIdx},${bi},'text',this.value)">
         <button type="button" class="cb-block-rm" onclick="removeAmmBlock(${lessonIdx},${bi})">×</button>
       </div>`;
@@ -11351,16 +11487,37 @@ function formatLessonContent(raw) {
   return html;
 }
 
+// Turns plain-text URLs (http/https or bare www.___) inside already-sanitized
+// text into clickable <a> links. Must be called AFTER sanitize() so we're
+// only ever matching escaped, safe text — never raw user input — and the
+// href itself is re-escaped before being placed into the attribute.
+function linkifyText(safeHtml) {
+  const urlPattern = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
+  return safeHtml.replace(urlPattern, (match) => {
+    let trailing = '';
+    // Don't swallow trailing punctuation like a period or closing paren
+    // into the link itself.
+    const m = match.match(/^(.*?)([.,;:!?)\]]*)$/);
+    let core = match, punct = '';
+    if (m) { core = m[1]; punct = m[2]; }
+    const href = core.startsWith('www.') ? 'https://' + core : core;
+    const hrefAttr = href.replace(/"/g, '&quot;');
+    return `<a href="${hrefAttr}" target="_blank" rel="noopener noreferrer" style="color:var(--stu);text-decoration:underline">${core}</a>${punct}`;
+  });
+}
+
 function w3RenderSections(sections) {
   let _exCounter = 0;
   return sections.map(sec => {
     switch(sec.type) {
       case 'intro':
-        return `<p style="font-size:1rem;color:var(--soft);line-height:1.85;margin-bottom:18px">${sanitize(sec.text)}</p>`;
+        return `<p style="font-size:1rem;color:var(--soft);line-height:1.85;margin-bottom:18px">${linkifyText(sanitize(sec.text))}</p>`;
       case 'text':
-        return `<p style="font-size:.92rem;color:var(--soft);line-height:1.85;margin-bottom:14px">${sanitize(sec.text)}</p>`;
+        return `<p style="font-size:.92rem;color:var(--soft);line-height:1.85;margin-bottom:14px">${linkifyText(sanitize(sec.text))}</p>`;
       case 'h2':
         return `<h2 style="font-size:1.1rem;font-weight:800;color:var(--head);margin:30px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)">${sanitize(sec.text)}</h2>`;
+      case 'h3':
+        return `<h3 style="font-size:1rem;font-weight:700;color:var(--head);margin:22px 0 10px">${sanitize(sec.text)}</h3>`;
       case 'example': {
         // Use an ID and read the code back from the rendered .w3-example-code
         // element's textContent at click-time (avoids escaping a code string
