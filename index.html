@@ -1777,6 +1777,13 @@ select.inp option{background:#eef1f4}
   height:calc(100vh - 68px);
 }
 
+/* Mobile off-canvas backdrop — must be hidden by default (not just inside
+   the mobile media query) because it is a direct child of the .w3-body
+   grid. Without this, on any viewport >=641px it renders as an invisible
+   block-level grid item, shifting the sidebar/center-col/try-panel each
+   into the next grid slot and wrapping the try-panel onto a second row. */
+.w3-sidebar-backdrop{display:none}
+
 /* ─── Left sidebar ─── */
 .w3-sidebar{
   background:#f6f8fa;border-right:1px solid #e2e5ea;
