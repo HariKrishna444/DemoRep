@@ -5230,7 +5230,9 @@ function renderProfPanel(panel) {
      update so the grid refreshes instantly — no polling needed.
    - Submissions are also listened to so the prof sees score updates
      as students submit.
-   - Cards are clickable: openStudentDetail() shows a sidebar with
+   - Cards are clickable: open
+
+StudentDetail() shows a sidebar with
      that student's full violation log and latest code snapshot.
 
    When in demo mode:
@@ -6217,8 +6219,11 @@ function resumeFullscreenAfterViolation() {
     document.removeEventListener('keydown', _onGateAnyInput, true);
     if (monaco_editor) monaco_editor.focus();
   }).catch(()=>{
-    // Browser blocked the re-request (e.g. no fresh user gesture yet) — keep
-    // the gate up so the very next click/keypress can try again immediately.
+    // Browser blocked the re-request (e.g. this click didn't count as a fresh
+    // gesture for some reason). Ensure a gate is visible either way so the
+    // student has something to click next — this path may be reached from
+    // dismissAC(), which never showed #fs-overlay in the first place.
+    showFullscreenGate('resume');
   });
 }
 
@@ -6229,14 +6234,28 @@ function onFSChange() {
     logViolation('fullscreen-exit','Fullscreen','Exited fullscreen mode');
     handleViolation('fullscreen');
     // handleViolation may have just terminated the exam (integrity hit 0),
-    // which already sets examActive=false — don't show the resume gate then.
+    // which already sets examActive=false — don't show any gate then.
     if (!examActive) return;
-    // Lock the student in: block the UI behind a gate until they click back
-    // into fullscreen. Only the in-editor "Exit" button (which sets
-    // examActive=false before calling exitFullscreen) bypasses this.
-    showFullscreenGate('resume');
+
+    // handleViolation() already shows #ac-overlay (the "Integrity Violation!"
+    // card) for the amber/critical tiers. #fs-overlay renders above it
+    // (z-index 5000 vs 4500), so stacking the resume gate on top would just
+    // hide that card behind it. Instead, let the card's own "Return to Exam"
+    // click double as the fullscreen-resume gesture — the student sees the
+    // penalty, and dismissing it is what puts them back in fullscreen.
+    if (document.getElementById('ac-overlay').classList.contains('show')) {
+      _fsResumePending = true;
+    } else {
+      // Mild tier only toasts (no overlay) — nothing to hook into, so show
+      // the dedicated resume gate directly.
+      showFullscreenGate('resume');
+    }
   }
 }
+
+// Set by onFSChange when the Integrity Violation overlay is already up;
+// tells dismissAC() to also resume fullscreen using that same click.
+let _fsResumePending = false;
 
 let acEnabled = false;
 let _lastBlurTime    = 0;
@@ -6547,6 +6566,11 @@ function handleViolation(type) {
 
 function dismissAC() {
   document.getElementById('ac-overlay').classList.remove('show');
+  if (_fsResumePending) {
+    _fsResumePending = false;
+    resumeFullscreenAfterViolation(); // this click is the required user gesture
+    return;
+  }
   if (monaco_editor) monaco_editor.focus();
 }
 
@@ -6554,6 +6578,7 @@ function terminateExam() {
   examActive = false;
   stopTimer(); stopSnapshots();
   disableAntiCheat(); disableDOMGuard();
+  _fsResumePending = false;
   document.removeEventListener('click', _onGateAnyInput, true);
   document.removeEventListener('keydown', _onGateAnyInput, true);
   document.getElementById('fs-overlay').classList.remove('show','fs-violation');
@@ -10666,7 +10691,9 @@ let _cbWebModules = [];
 
 async function fetchAndPreviewWebContent() {
   const btn     = document.getElementById('cb-fetch-btn');
-  const preview = document.getElementById('cb-fetch-preview');
+ 
+
+ const preview = document.getElementById('cb-fetch-preview');
   const wikiRaw = document.getElementById('cb-wiki-topics').value.trim();
   const ytRaw   = document.getElementById('cb-yt-ids').value.trim();
   const bookQ   = document.getElementById('cb-book-query').value.trim();
