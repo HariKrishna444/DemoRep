@@ -8,7 +8,7 @@
         "node_modules",
         ".git",
         "firebase-debug.log",
-        "firebase-debug.*.log",
+        "firebase-debug..log",
         ".local"
       ]
     }
@@ -17,9 +17,9 @@
     "public": ".",
     "ignore": [
       "firebase.json",
-      "**/.*",
-      "**/node_modules/**",
-      "functions/**"
+      "**/.",
+      "/node_modules/",
+      "functions/"
     ],
     "headers": [
       {
@@ -27,7 +27,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; frame-src 'self' blob: https://www.youtube.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app https://firebasestorage.googleapis.com https://*.cloudfunctions.net https://noembed.com https://openlibrary.org https://covers.openlibrary.org https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; frame-src 'self' blob: https://www.youtube.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app https://firebasestorage.googleapis.com https://*.cloudfunctions.net https://noembed.com https://openlibrary.org https://covers.openlibrary.org https://cdn.jsdelivr.net https://www.gstatic.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
           },
           {
             "key": "X-Frame-Options",
@@ -51,7 +51,7 @@
       }
     ]
   }
-} 
+}
 
 
 # ChronoCode → integrated into CodingHub
