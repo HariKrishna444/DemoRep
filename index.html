@@ -6243,11 +6243,44 @@ let _lastBlurTime    = 0;
 let _lastHiddenTime  = 0;
 let _hiddenNoBlurCnt = 0;
 let _focusPollTimer  = null;
+let _tamperFlagged   = false;
+
+// ── Visibility-API tamper detection ─────────────────────────────
+// Extensions like "Always Active Window" / "Disable Page Visibility" work by
+// (a) redefining document.hidden / document.visibilityState with
+//     Object.defineProperty(document, ...) so they always report
+//     false/'visible', and (b) wrapping addEventListener to silently drop
+//     'visibilitychange'/'blur' listeners. Both leave detectable fingerprints:
+function _checkVisibilityTamper() {
+  if (!examActive || !acEnabled || _tamperFlagged) return;
+  const reasons = [];
+
+  // 1. hidden/visibilityState are natively getters on Document.prototype —
+  // never *own* properties of the document instance. defineProperty(document, ...)
+  // creates an own property that shadows the prototype getter.
+  if (Object.prototype.hasOwnProperty.call(document, 'hidden'))          reasons.push('own-prop:hidden');
+  if (Object.prototype.hasOwnProperty.call(document, 'visibilityState')) reasons.push('own-prop:visibilityState');
+
+  // 2. Native addEventListener stringifies to "[native code]". A wrapper that
+  // swallows visibilitychange/blur listeners won't.
+  try {
+    const nativeRe = /\{\s*\[native code\]\s*\}\s*$/;
+    if (!nativeRe.test(Function.prototype.toString.call(document.addEventListener))) reasons.push('wrapped:document.addEventListener');
+    if (!nativeRe.test(Function.prototype.toString.call(window.addEventListener)))    reasons.push('wrapped:window.addEventListener');
+  } catch(_) { /* toString itself blocked — also suspicious, but don't crash */ }
+
+  if (reasons.length) {
+    _tamperFlagged = true;
+    logViolation('visibility-tamper','FocusSpoof','Visibility API tampering detected: ' + reasons.join(', '));
+    handleViolation('tab-switch');
+  }
+}
 
 function _startFocusPoll() {
   _stopFocusPoll();
   _focusPollTimer = setInterval(() => {
     if (!examActive || !acEnabled) return;
+    _checkVisibilityTamper();
     // If page is visible but genuinely lacks focus for > 2 s, that's wrong
     if (document.visibilityState === 'visible' && !document.hasFocus()) {
       const gap = Date.now() - _lastBlurTime;
@@ -6414,12 +6447,14 @@ function setupAntiCheat() {
   acEnabled = true;
   _lastBlurTime = _lastHiddenTime = Date.now();
   _hiddenNoBlurCnt = 0;
+  _tamperFlagged = false;
   window.addEventListener('blur', onBlur);
   document.addEventListener('visibilitychange', onVis);
   document.addEventListener('paste', onPaste, true);
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('contextmenu', onContextMenu);
   _startFocusPoll();   // ← layer (a): poll for focus spoofing every 2.5 s
+  _checkVisibilityTamper(); // ← layer (b): check for tampered visibility API up front
 }
 
 function disableAntiCheat() {
