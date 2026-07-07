@@ -2448,6 +2448,9 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
         <button class="btn btn-ghost btn-lg" onclick="handleRegister()" id="btn-reg" style="width:100%;justify-content:center">
           <span id="btn-reg-txt">Create Account</span>
         </button>
+        <button class="btn btn-ghost btn-sm" onclick="browseCoursesAsGuest()" style="width:100%;justify-content:center;margin-top:10px;color:var(--muted)">
+          🏪 Browse courses without logging in
+        </button>
       </div>
 
     </div>
@@ -3573,6 +3576,17 @@ upgrade-insecure-requests;</pre>
         </div>
       </div>
       <div class="field">
+        <label>Coding Language (powers the inline compiler for this course)</label>
+        <select class="inp" id="cb-code-lang">
+          <option value="python">🐍 Python (runs in-browser via Pyodide)</option>
+          <option value="java">☕ Java (runs via cloud sandbox)</option>
+          <option value="c">🔧 C (runs via cloud sandbox)</option>
+          <option value="cpp">➕ C++ (runs via cloud sandbox)</option>
+          <option value="javascript">🟨 JavaScript (runs via cloud sandbox)</option>
+          <option value="none">— No inline compiler (reference/theory course)</option>
+        </select>
+      </div>
+      <div class="field">
         <label>Thumbnail Image</label>
         <div style="display:flex;align-items:center;gap:10px">
           <div id="cb-thumb-preview" style="width:52px;height:52px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2,#f6f8fa);display:flex;align-items:center;justify-content:center;font-size:1.4rem;overflow:hidden;flex-shrink:0">📚</div>
@@ -3645,7 +3659,7 @@ upgrade-insecure-requests;</pre>
     <div class="tb-brand">Coding<em>Hub</em> <span style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:var(--ff-mono)">Learning Platform</span></div>
     <div class="tb-right">
       <div class="user-chip"><div class="avatar" id="cat-av">S</div><span id="cat-name">Student</span></div>
-      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+      <button class="btn btn-ghost btn-sm auth-topbar-btn" onclick="logout()">Logout</button>
     </div>
   </div>
   <div class="stu-nav-tabs">
@@ -3681,7 +3695,7 @@ upgrade-insecure-requests;</pre>
     <div class="tb-brand">Coding<em>Hub</em></div>
     <div class="tb-right">
       <button class="btn btn-ghost btn-sm" onclick="showPage('catalog');renderCatalog()">← Back to Catalog</button>
-      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+      <button class="btn btn-ghost btn-sm auth-topbar-btn" onclick="logout()">Logout</button>
     </div>
   </div>
   <div style="overflow-y:auto;flex:1">
@@ -4343,7 +4357,11 @@ function flattenCourseLessons(course) {
 function updateUrlHash(hash) {
   try {
     const url = location.href.split('#')[0] + hash;
-    history.replaceState(null, '', url);
+    // Preserve whatever state (if any) is already associated with the
+    // current history entry — passing null here would wipe it, breaking
+    // Back/Forward the next time the user navigates through this same
+    // entry (see pushAppHistory / the popstate handler).
+    history.replaceState(history.state, '', url);
   } catch (e) { /* sandboxed iframe or unsupported browser — harmless no-op */ }
 }
 function shareLink(type, courseId, modId, lessonId) {
@@ -4908,7 +4926,9 @@ function pushAppHistory(state, hash) {
 // Back fall through to leaving the site entirely).
 window.addEventListener('popstate', (e) => {
   const st = e.state;
-  if (st && st.page) {
+  if (st && st.page === 'learn' && st.courseId && st.lessonId) {
+    restoreLearnHistoryState(st);
+  } else if (st && st.page) {
     showPage(st.page, true);
   } else if (st && st.profPanel) {
     profNav(st.profPanel, true);
@@ -4916,8 +4936,28 @@ window.addEventListener('popstate', (e) => {
     handleDeepLink();
   } else if (location.hash.startsWith('#/exam/pq-')) {
     handlePracticeDeepLink();
+  } else if (location.hash.startsWith('#/courses')) {
+    handleCatalogDeepLink();
   }
 });
+
+// Rebuilds the learn view for a specific course+lesson when the browser
+// Back/Forward button lands on a history entry pushed by openLesson(). A
+// plain showPage('learn', true) would only reveal the (empty) page shell —
+// this actually reloads the course/sidebar/lesson content into it, the same
+// way openLearnViewAtLesson() does for a fresh visit.
+async function restoreLearnHistoryState(st) {
+  currentCourseId = st.courseId;
+  showPage('learn', true);
+  await loadCourses();
+  await loadMyEnrollments();
+  const course = coursesCatalog.find(c => c.id === st.courseId);
+  if (!course) return;
+  if (typeof w3UpdateTopbar === 'function') w3UpdateTopbar(course);
+  updateLearnProgress(st.courseId);
+  renderLearnSidebar(course);
+  openLesson(st.courseId, st.moduleId, st.lessonId, 'history');
+}
 
 /* ═══════════════════════════════════════════════════════════════
    TOAST
@@ -7451,6 +7491,51 @@ function exportResults() {
   toast('Results exported as CSV ✅', 'ok');
 }
 
+// Toggles the shared "Logout" button on the catalog / course-detail topbars
+// into a "Log In" button when there's no signed-in user, so a guest
+// browsing the public catalog has an obvious way back to the login screen
+// instead of a Logout button that does nothing useful for them.
+function updateAuthTopbarButtons() {
+  document.querySelectorAll('.auth-topbar-btn').forEach(btn => {
+    if (currentUser) {
+      btn.textContent = 'Logout';
+      btn.onclick = () => logout();
+    } else {
+      btn.textContent = 'Log In';
+      btn.onclick = () => { _publicDeepLinkActive = false; showPage('login'); };
+    }
+  });
+}
+
+// Entry point for the "Browse courses without logging in" link on the
+// login screen.
+function browseCoursesAsGuest() {
+  pushAppHistory({ page: 'catalog' }, PAGE_HASH_MAP.catalog);
+  handleCatalogDeepLink();
+}
+
+// Lets a logged-out visitor land straight on the course catalog — either via
+// a shared https://.../#/courses link, or by clicking "Browse without
+// logging in" on the login screen. Mirrors handleDeepLink()'s reasoning:
+// courses are free to browse; only enrolling and progress-tracking require
+// login (gated separately, where enrollment/completion actually happen).
+async function handleCatalogDeepLink() {
+  _publicDeepLinkActive = true;
+  await loadCourses();
+  await loadMyEnrollments(); // no-op for guests — currentUser is null
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Guest';
+  const av = document.getElementById('cat-av'), nm = document.getElementById('cat-name');
+  if (av) av.textContent = name[0].toUpperCase();
+  if (nm) nm.textContent = name;
+  showPage('catalog', true);
+  renderCatalog();
+  updateAuthTopbarButtons();
+  if (!currentUser) {
+    setTimeout(() => toast('💡 Log in to enroll in courses and save your progress!', 'info', 6000), 1000);
+  }
+  return true;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    BOOT
    ═══════════════════════════════════════════════════════════════ */
@@ -7460,7 +7545,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // a logged-out visitor opening a shared course/lesson or practice-question
   // link never gets bounced to the login page — free content stays viewable
   // without login.
-  if (location.hash.startsWith('#/course/') || location.hash.startsWith('#/exam/pq-')) _publicDeepLinkActive = true;
+  if (location.hash.startsWith('#/course/') || location.hash.startsWith('#/exam/pq-') || location.hash.startsWith('#/courses')) _publicDeepLinkActive = true;
   await initApp();
   // After app boots, check for a deep link in the URL hash
   if (location.hash.startsWith('#/course/')) {
@@ -7469,11 +7554,14 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   } else if (location.hash.startsWith('#/exam/pq-')) {
     const handled = await handlePracticeDeepLink();
     if (!handled) initApp(); // fallback
+  } else if (location.hash.startsWith('#/courses')) {
+    await handleCatalogDeepLink();
   }
 });
 window.addEventListener('hashchange', () => {
   if (location.hash.startsWith('#/course/')) handleDeepLink();
   else if (location.hash.startsWith('#/exam/pq-')) handlePracticeDeepLink();
+  else if (location.hash.startsWith('#/courses')) handleCatalogDeepLink();
 });
 
 
@@ -8682,6 +8770,21 @@ function fsReady() { return firebaseReady && !!db; }
 function fsDb()    { return db; }
 function genId()   { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 function sanitize(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Which language powers this course's inline compiler (Pyodide for Python,
+// Judge0 cloud sandbox for everything else, or none for reference/theory
+// courses). Prefers the explicit dropdown value (course.codeLanguage);
+// falls back to guessing from the free-text "Language / Topic" field for
+// courses created before this dropdown existed.
+function inferCourseCodeLang(course) {
+  if (course?.codeLanguage) return course.codeLanguage;
+  const t = (course?.language || '').toLowerCase();
+  if (/c\+\+|cpp/.test(t)) return 'cpp';
+  if (/\bjava\b/.test(t)) return 'java';
+  if (/javascript|\bjs\b|node/.test(t)) return 'javascript';
+  if (/\bc\b/.test(t)) return 'c';
+  if (/python|\bpy\b/.test(t)) return 'python';
+  return 'python';
+}
 // Course thumbnails are either a pasted/uploaded image (URL or data-URL) or,
 // for courses created before image thumbnails existed, a plain emoji string.
 function courseThumbHtml(course) {
@@ -8697,7 +8800,7 @@ function courseThumbHtml(course) {
    ────────────────────────────────────────────────────────────────── */
 
 function showStuSection(section) {
-  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Student';
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || (currentUser ? 'Student' : 'Guest');
   if (section === 'catalog') {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('page-catalog').classList.add('active');
@@ -8705,7 +8808,9 @@ function showStuSection(section) {
     document.getElementById('cat-name').textContent = name;
     renderCatalog();
     updateUrlHash(PAGE_HASH_MAP.catalog);
+    updateAuthTopbarButtons();
   } else if (section === 'my-learning') {
+    if (!currentUser) { toast('Log in to see your enrolled courses and progress','warn'); return; }
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('page-my-learning').classList.add('active');
     document.getElementById('ml-av').textContent  = name[0].toUpperCase();
@@ -8933,6 +9038,7 @@ async function openCourseDetail(courseId) {
   content.innerHTML = '<div style="padding:40px;color:var(--muted)">Loading…</div>';
   await loadCourses();
   await loadMyEnrollments();
+  updateAuthTopbarButtons();
   const course = coursesCatalog.find(c=>c.id===courseId);
   if (!course) { content.innerHTML='<div style="padding:40px;color:var(--danger)">Course not found.</div>'; return; }
   updateUrlHash('#/course/' + courseId);
@@ -9072,15 +9178,16 @@ async function openLearnView(courseId) {
 // or not the visitor is logged in / enrolled (read-only preview either way).
 async function openLearnViewAtLesson(courseId, moduleId, lessonId) {
   currentCourseId = courseId;
-  showPage('learn');
+  showPage('learn', true);
   await loadCourses();
   await loadMyEnrollments();
   const course = coursesCatalog.find(c=>c.id===courseId);
   if (!course) { toast('Course not found','err'); return; }
   document.getElementById('learn-course-title').textContent = course.title||'';
+  if (typeof w3UpdateTopbar === 'function') w3UpdateTopbar(course);
   updateLearnProgress(courseId);
   renderLearnSidebar(course);
-  openLesson(courseId, moduleId, lessonId);
+  openLesson(courseId, moduleId, lessonId, 'replace');
 }
 
 function renderLearnSidebar(course) {
@@ -9321,8 +9428,16 @@ let _mdPlaygroundIdx = 0;
 const _PY_LANG_TAGS = new Set(['python','py','python3']);
 // Language tags that are inherently shell/CLI commands, not source code.
 const _CMD_LANG_TAGS = new Set(['bash','sh','shell','zsh','cmd','console','terminal','powershell','ps1','batch','bat']);
+// Language tags that map to the cloud Judge0 sandbox (via the same
+// runCodeSandbox Cloud Function the practice/exam editor uses) — these ARE
+// runnable inline, just not locally in the browser like Python/Pyodide.
+const _JUDGE0_LANG_TAGS = {
+  java:'java', c:'c', cpp:'cpp', 'c++':'cpp', cplusplus:'cpp',
+  javascript:'javascript', js:'javascript', node:'javascript', nodejs:'javascript',
+};
 // Common non-Python programming languages we can still syntax-highlight
-// statically, but can't execute inline (no Pyodide-equivalent engine here).
+// statically, but can't execute inline (no Pyodide/Judge0-equivalent engine
+// wired up for these here).
 const _LANG_LABELS = {
   java:'Java', c:'C', cpp:'C++', 'c++':'C++', cs:'C#', csharp:'C#',
   javascript:'JavaScript', js:'JavaScript', typescript:'TypeScript', ts:'TypeScript',
@@ -9347,6 +9462,7 @@ function _classifyFence(langTag, code) {
   const tag = (langTag||'').trim().toLowerCase();
   if (_PY_LANG_TAGS.has(tag)) return 'python';
   if (_CMD_LANG_TAGS.has(tag)) return 'command';
+  if (_JUDGE0_LANG_TAGS[tag]) return 'judge0';
   if (!tag) return _looksLikeCommands(code) ? 'command' : 'python';
   return 'lang'; // some other declared programming language
 }
@@ -9419,6 +9535,81 @@ function _makePyPlayground(code) {
              white-space:pre-wrap;color:#1ea34a;background:#f8fffe"
     >▶ Click Run to execute…</div>
   </div>`;
+}
+
+// Java/C/C++/JavaScript blocks — runnable via the same cloud Judge0 sandbox
+// (runCodeSandbox Cloud Function) the practice/exam editor uses, rather than
+// Pyodide (which is Python-only and runs locally in the browser).
+const _RUNNABLE_LANG_META = {
+  java:       { label:'Java',       icon:'☕' },
+  c:          { label:'C',          icon:'🔧' },
+  cpp:        { label:'C++',        icon:'➕' },
+  javascript: { label:'JavaScript', icon:'🟨' },
+};
+let _mdLangPlaygroundIdx = 0;
+function _makeRunnableLangBlock(lang, code) {
+  const pid  = 'mdlang-' + (++_mdLangPlaygroundIdx);
+  const meta = _RUNNABLE_LANG_META[lang] || { label: lang, icon:'💻' };
+  const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return `<div class="md-py-block" data-lang="${lang}" style="margin:20px 0;background:#f6f8fa;border:1px solid rgba(59,130,246,.25);border-radius:12px;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(59,130,246,.06);border-bottom:1px solid rgba(59,130,246,.12)">
+      <span style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:.95rem">${meta.icon}</span>
+        <span style="font-size:.74rem;font-weight:700;color:var(--blue);font-family:var(--ff-mono)">${sanitize(meta.label)} · Runnable (cloud sandbox)</span>
+      </span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="(function(id){
+          document.getElementById(id+'-code').value=document.getElementById(id+'-code').dataset.orig;
+          var o=document.getElementById(id+'-out');o.style.color='var(--soft)';o.textContent='▶ Click Run to execute…';
+        })('${pid}')">↺ Reset</button>
+        <button class="btn btn-g btn-sm" onclick="runMdPlaygroundLang('${pid}',this,'${lang}')">▶ Run</button>
+      </div>
+    </div>
+    <textarea id="${pid}-code" data-orig="${escaped}" spellcheck="false"
+      style="width:100%;min-height:110px;resize:vertical;background:#ffffff;color:#0f172a;
+             font-family:var(--ff-mono);font-size:.8rem;line-height:1.65;
+             padding:14px 16px;border:none;outline:none;border-bottom:1px solid var(--line);tab-size:4"
+    >${escaped}</textarea>
+    <div id="${pid}-out"
+      style="padding:11px 16px;font-family:var(--ff-mono);font-size:.78rem;min-height:44px;
+             white-space:pre-wrap;color:var(--soft);background:#f8fafc"
+    >▶ Click Run to execute… (compiled on a cloud sandbox — first run may take a few seconds)</div>
+  </div>`;
+}
+
+// Runs a Java/C/C++/JavaScript lesson playground block through the same
+// pistonExecute() → Judge0 cloud sandbox path the main practice/exam editor
+// uses. Shares the _pyExecutionToken fencing counter with runMdPlayground()
+// — that's fine, since only one Run click across either kind of widget is
+// ever "current" at a time, which is exactly the guarantee we need.
+async function runMdPlaygroundLang(pid, btn, lang) {
+  const codeEl = document.getElementById(pid + '-code');
+  const outEl  = document.getElementById(pid + '-out');
+  const code   = codeEl?.value || '';
+  if (!code.trim()) return;
+
+  const currentToken = ++_pyExecutionToken;
+  btn.disabled = true; btn.textContent = '⏳ Running…';
+  outEl.style.color = 'var(--soft)'; outEl.textContent = '☁ Compiling & running on cloud sandbox…';
+  try {
+    const result = await pistonExecute(code, lang, '');
+    if (currentToken !== _pyExecutionToken) return; // a newer click superseded this one
+    const run = result?.run || {};
+    if (run.code !== 0 || run.stderr) {
+      outEl.style.color = '#f87171';
+      outEl.textContent = (run.stderr || 'Error').trim();
+    } else {
+      outEl.style.color = 'var(--blue)';
+      outEl.textContent = run.stdout || '(no output)';
+    }
+  } catch(e) {
+    if (currentToken !== _pyExecutionToken) return;
+    outEl.style.color = '#f87171';
+    outEl.textContent = '⚠ ' + e.message;
+  }
+  if (currentToken === _pyExecutionToken) {
+    btn.disabled = false; btn.textContent = '▶ Run';
+  }
 }
 
 // Execution fencing for the markdown playground: every click gets a
@@ -9519,15 +9710,18 @@ function renderMarkdown(raw) {
     blocks.push(_makePyPlayground(code.trim())); return PH+(blocks.length-1)+'\x00';
   });
   // ```lang ... ``` → route by declared/detected language.
-  // Only python (or an untagged block that doesn't look like shell
-  // commands) becomes a runnable Pyodide playground — Pyodide can't
-  // execute Java/C/etc. inline, so those get a static, labelled,
-  // syntax-highlighted block instead. Untagged blocks that *do* look
-  // like shell/CLI commands get rendered as a bolded command block.
+  // python (or an untagged block that doesn't look like shell commands)
+  // becomes a runnable Pyodide playground; java/c/cpp/javascript become a
+  // runnable cloud-sandbox (Judge0) playground; anything else we can't
+  // execute gets a static, labelled, syntax-highlighted block instead.
+  // Untagged blocks that *do* look like shell/CLI commands get rendered as
+  // a bolded command block.
   raw = raw.replace(/```([a-zA-Z0-9+#.]*)[ \t]*\n?([\s\S]*?)```/g, (_, langTag, code) => {
     const kind = _classifyFence(langTag, code);
     if (kind === 'python') {
       blocks.push(_makePyPlayground(code.trim()));
+    } else if (kind === 'judge0') {
+      blocks.push(_makeRunnableLangBlock(_JUDGE0_LANG_TAGS[langTag.trim().toLowerCase()], code.trim()));
     } else if (kind === 'command') {
       blocks.push(_makeCommandBlock(code.trim()));
     } else {
@@ -10074,6 +10268,7 @@ function openCourseBuilder() {
   document.getElementById('cb-lang').value = '';
   document.getElementById('cb-desc').value = '';
   document.getElementById('cb-diff').value = 'beginner';
+  document.getElementById('cb-code-lang').value = 'python';
   document.getElementById('cb-thumb').value = '';
   const _thumbPrev = document.getElementById('cb-thumb-preview');
   if (_thumbPrev) _thumbPrev.dataset.fallback = '📚';
@@ -10112,6 +10307,7 @@ async function openEditCourseModal(courseId) {
   document.getElementById('cb-lang').value = course.language || '';
   document.getElementById('cb-desc').value = course.description || '';
   document.getElementById('cb-diff').value = course.difficulty || 'beginner';
+  document.getElementById('cb-code-lang').value = inferCourseCodeLang(course);
   {
     const existingThumb = course.thumbnail || '';
     const thumbPrev = document.getElementById('cb-thumb-preview');
@@ -10565,6 +10761,7 @@ function updateCBListItem(modIdx, lessonIdx, bi, ii, value) {
 async function saveCourse() {
   const title = document.getElementById('cb-title').value.trim();
   const lang  = document.getElementById('cb-lang').value.trim();
+  const codeLanguage = document.getElementById('cb-code-lang').value;
   const desc  = document.getElementById('cb-desc').value.trim();
   const diff  = document.getElementById('cb-diff').value;
   const price = document.getElementById('cb-price').value;
@@ -10577,7 +10774,7 @@ async function saveCourse() {
 
   // ── EDIT MODE: update the existing course's lessons/modules in place ──
   if (_editingCourseId) {
-    const updatePayload = { title, language:lang, description:desc, difficulty:diff, thumbnail:thumb, modules:normalizeModulesForFirestore(allModules), totalLessons };
+    const updatePayload = { title, language:lang, codeLanguage, description:desc, difficulty:diff, thumbnail:thumb, modules:normalizeModulesForFirestore(allModules), totalLessons };
     if (fsReady()) {
       try {
         await db.collection('courses').doc(_editingCourseId).update(updatePayload);
@@ -10598,7 +10795,7 @@ async function saveCourse() {
   const creatorName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'professor';
 
   const course = {
-    title, language:lang, description:desc, difficulty:diff,
+    title, language:lang, codeLanguage, description:desc, difficulty:diff,
     price: 'free', // All courses are free
     thumbnail:thumb, totalLessons,
     modules: normalizeModulesForFirestore(allModules),
@@ -11785,11 +11982,20 @@ function w3RenderSections(sections) {
 }
 
 /* ── Update sidebar labels & course title ── */
+// Which language the currently-open course's inline compiler (the "Try it
+// Yourself" panel + structured Example blocks) should execute with — set
+// whenever a course is opened in the learn view. Free-markdown fenced code
+// blocks (```java, ```python, etc.) ignore this and use their own declared
+// tag instead (see _classifyFence) since a single lesson can mix languages.
+let currentLessonCodeLang = 'python';
+
 function w3UpdateTopbar(course) {
   const el = document.getElementById('learn-course-title');
   if (el) el.textContent = course?.title || '';
   const label = document.getElementById('w3-sidebar-course-label');
   if (label) label.textContent = course?.title || 'Course Topics';
+  currentLessonCodeLang = inferCourseCodeLang(course);
+  w3SetEngineBadge(currentLessonCodeLang);
 }
 
 /* ── Progress ring ── */
@@ -11818,7 +12024,7 @@ window.updateLearnProgress = function(courseId) {
 const _w3OrigOpenLearnView = window.openLearnView;
 window.openLearnView = async function(courseId) {
   currentCourseId = courseId;
-  showPage('learn');
+  showPage('learn', true);
   await loadCourses();
   await loadMyEnrollments();
   const course = coursesCatalog.find(c=>c.id===courseId);
@@ -11826,14 +12032,18 @@ window.openLearnView = async function(courseId) {
   w3UpdateTopbar(course);
   updateLearnProgress(courseId);
   renderLearnSidebar(course);
-  // Start Python engine lazily
-  if (!_pyFrame) {
-    startPyodide();
-    waitPyReady(90000)
-      .then(() => w3SetPyReady(true))
-      .catch(() => w3SetPyReady(false, 'Load failed'));
-  } else if (_pyReady) {
-    w3SetPyReady(true);
+  // Start the Python engine lazily — only if this course actually needs it.
+  // Java/C/C++/JavaScript courses run through the cloud Judge0 sandbox
+  // instead (see pistonExecute), so there's no local engine to preload.
+  if (currentLessonCodeLang === 'python') {
+    if (!_pyFrame) {
+      startPyodide();
+      waitPyReady(90000)
+        .then(() => w3SetPyReady(true))
+        .catch(() => w3SetPyReady(false, 'Load failed'));
+    } else if (_pyReady) {
+      w3SetPyReady(true);
+    }
   }
   // Auto-open first incomplete lesson
   const enrollment = myEnrollments[courseId];
@@ -11842,14 +12052,14 @@ window.openLearnView = async function(courseId) {
   for (const mod of (course.modules||[])) {
     for (const lesson of (mod.lessons||[])) {
       if (!completed.includes(lesson.id)) {
-        openLesson(courseId, mod.id, lesson.id);
+        openLesson(courseId, mod.id, lesson.id, 'replace');
         opened = true; break;
       }
     }
     if (opened) break;
   }
   if (!opened && course.modules?.[0]?.lessons?.[0]) {
-    openLesson(courseId, course.modules[0].id, course.modules[0].lessons[0].id);
+    openLesson(courseId, course.modules[0].id, course.modules[0].lessons[0].id, 'replace');
   }
 };
 
@@ -11909,7 +12119,7 @@ window.renderLearnSidebar = function(course) {
 
 /* ── Override openLesson to render into center col ── */
 const _w3OrigOpenLesson = window.openLesson;
-window.openLesson = function(courseId, moduleId, lessonId) {
+window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
   currentModuleId = moduleId;
   currentLessonId = lessonId;
   const course = coursesCatalog.find(c=>c.id===courseId);
@@ -11921,7 +12131,21 @@ window.openLesson = function(courseId, moduleId, lessonId) {
   }
   if (!lesson) return;
   const flatIdx = flattenCourseLessons(course).findIndex(x => x.lesson.id === lessonId);
-  updateUrlHash('#/course/' + courseId + (flatIdx !== -1 ? '/lesson' + (flatIdx + 1) : ''));
+  const _hash = '#/course/' + courseId + (flatIdx !== -1 ? '/lesson' + (flatIdx + 1) : '');
+  // Give each lesson its own history entry (rather than always replacing),
+  // so the browser Back button steps back through the lessons you actually
+  // viewed instead of jumping straight past all of them to the course-detail
+  // page. 'replace' is used for the very first lesson auto-opened when
+  // entering a course (merges into showPage('learn')'s entry instead of
+  // adding a redundant extra one); 'history' is used when popstate itself
+  // triggered this call (don't touch history at all — we're already there).
+  if (_navMode === 'history') {
+    updateUrlHash(_hash);
+  } else if (_navMode === 'replace') {
+    try { history.replaceState({ page:'learn', courseId, moduleId, lessonId }, '', location.href.split('#')[0] + _hash); } catch(e) {}
+  } else {
+    pushAppHistory({ page:'learn', courseId, moduleId, lessonId }, _hash);
+  }
   renderLearnSidebar(course);
   const area = document.getElementById('lesson-content-area');
   if (!area) return;
@@ -12343,6 +12567,34 @@ function w3SetPyReady(ok, errMsg) {
   }
 }
 
+// Updates the "Try it Yourself" panel's status badge + Run button + editor
+// placeholder for whichever language the current course actually uses.
+// Python still goes through the existing Pyodide-loading flow (badge starts
+// "Loading…" until w3SetPyReady(true) fires); Judge0 languages have nothing
+// to preload client-side, so their badge/Run button are ready instantly.
+function w3SetEngineBadge(lang) {
+  const badge = document.getElementById('w3-py-status');
+  const btn   = document.getElementById('w3-run-btn');
+  const ta    = document.getElementById('w3-code-editor');
+  if (!badge) return;
+  if (lang === 'python') {
+    badge.textContent = _pyReady ? '🐍 Python Ready' : '⏳ Loading Python…';
+    badge.className   = _pyReady ? 'w3-py-badge w3-py-badge-ready' : 'w3-py-badge w3-py-badge-loading';
+    if (btn) btn.disabled = !_pyReady;
+    if (ta)  ta.placeholder = '# Python code here…';
+  } else if (lang === 'none') {
+    badge.textContent = 'No inline compiler for this course';
+    badge.className   = 'w3-py-badge w3-py-badge-error';
+    if (btn) btn.disabled = true;
+  } else {
+    const meta = _RUNNABLE_LANG_META[lang] || { label: lang, icon:'💻' };
+    badge.textContent = meta.icon + ' ' + meta.label + ' (Cloud Sandbox)';
+    badge.className   = 'w3-py-badge w3-py-badge-ready';
+    if (btn) btn.disabled = false;
+    if (ta)  ta.placeholder = '// ' + meta.label + ' code here…';
+  }
+}
+
 /* ── Code editor helpers ── */
 function w3SetEditorCode(code) {
   const ta = document.getElementById('w3-code-editor');
@@ -12387,9 +12639,18 @@ async function w3RunInlineExample(exId) {
   const stdinEl   = document.getElementById('stdin-' + exId);
   if (!code || !outEl || !btn) return;
 
-  // First click on a program that needs input: reveal the stdin box (with a
-  // placeholder built from the input() prompt) instead of running blind.
-  if (stdinWrap && stdinWrap.style.display === 'none') {
+  const lang = currentLessonCodeLang || 'python';
+  if (lang === 'none') {
+    outEl.style.display = 'block';
+    outEl.innerHTML = '<div class="w3-out-line w3-out-hint">This course has no inline compiler configured — copy the code and run it in your own environment.</div>';
+    return;
+  }
+
+  // First click on a Python program that needs input: reveal the stdin box
+  // (with a placeholder built from the input() prompt) instead of running
+  // blind. Other languages' stdin patterns (Scanner, cin, readLine, etc.)
+  // aren't auto-detected the same way, so this stays Python-only.
+  if (lang === 'python' && stdinWrap && stdinWrap.style.display === 'none') {
     stdinWrap.style.display = 'flex';
     stdinEl?.focus();
     outEl.style.display = 'block';
@@ -12398,7 +12659,7 @@ async function w3RunInlineExample(exId) {
   }
 
   const stdinRaw = stdinEl ? stdinEl.value : '';
-  const inputCalls = (code.match(/\binput\s*\(/g) || []).length;
+  const inputCalls = lang === 'python' ? (code.match(/\binput\s*\(/g) || []).length : 0;
   // Multiple input() calls → each comma-separated value becomes its own line.
   // A single input() call → pass the text through untouched (it may itself
   // contain space-separated values for something like input().split()).
@@ -12407,25 +12668,26 @@ async function w3RunInlineExample(exId) {
     : stdinRaw;
 
   outEl.style.display = 'block';
-  outEl.innerHTML = '<span class="w3-out-running">⏳ Starting Python engine…</span>';
+  outEl.innerHTML = lang === 'python'
+    ? '<span class="w3-out-running">⏳ Starting Python engine…</span>'
+    : '<span class="w3-out-running">☁ Compiling & running on cloud sandbox…</span>';
   btn.disabled = true;
   const origLabel = btn.textContent;
   btn.textContent = '⏳ Running…';
 
   try {
-    if (!_pyFrame) startPyodide();
-    await waitPyReady(60000);
-    const result = await runPy(code, stdin);
+    const result = await pistonExecute(code, lang, stdin);
+    const run = result?.run || {};
     let html = '';
-    if (result.stdout) html += result.stdout.split('\n').map(l => `<div class="w3-out-line w3-out-ok">${sanitize(l)}</div>`).join('');
-    if (result.stderr) {
-      if (/EOFError/.test(result.stderr)) {
+    if (run.stdout) html += run.stdout.split('\n').map(l => `<div class="w3-out-line w3-out-ok">${sanitize(l)}</div>`).join('');
+    if (run.stderr) {
+      if (lang === 'python' && /EOFError/.test(run.stderr)) {
         html += `<div class="w3-out-line w3-out-hint">⚠ This code is waiting for input — type a value in the stdin box above, then run again.</div>`;
       } else {
-        html += result.stderr.split('\n').map(l => `<div class="w3-out-line w3-out-err">${sanitize(l)}</div>`).join('');
+        html += run.stderr.split('\n').map(l => `<div class="w3-out-line w3-out-err">${sanitize(l)}</div>`).join('');
       }
     }
-    if (!result.stdout && !result.stderr) html = '<div class="w3-out-line w3-out-info">✓ Ran successfully (no output)</div>';
+    if (!run.stdout && !run.stderr) html = '<div class="w3-out-line w3-out-info">✓ Ran successfully (no output)</div>';
     outEl.innerHTML = html;
   } catch(e) {
     outEl.innerHTML = `<span class="w3-out-err">Error: ${sanitize(e.message||String(e))}</span>`;
@@ -12436,13 +12698,18 @@ async function w3RunInlineExample(exId) {
 }
 
 async function w3RunCode() {
-  if (!_pyReady) {
+  const lang = currentLessonCodeLang || 'python';
+  if (lang === 'none') {
+    toast('This course has no inline compiler configured','warn');
+    return;
+  }
+  if (lang === 'python' && !_pyReady) {
     toast('Python engine still loading — please wait','warn');
     return;
   }
   const code      = document.getElementById('w3-code-editor')?.value || '';
   const stdinRaw  = document.getElementById('w3-stdin')?.value || '';
-  const inputCalls = (code.match(/\binput\s*\(/g) || []).length;
+  const inputCalls = lang === 'python' ? (code.match(/\binput\s*\(/g) || []).length : 0;
   // Multiple input() calls → each comma-separated value becomes its own line.
   // A single input() call → pass the text through untouched, so a pattern like
   // "a, b = map(int, input().split())" can still read space-separated values.
@@ -12453,30 +12720,33 @@ async function w3RunCode() {
   const btn   = document.getElementById('w3-run-btn');
   if (!out || !btn) return;
 
-  out.innerHTML = '<span class="w3-out-running">⏳ Running…</span>';
+  out.innerHTML = lang === 'python'
+    ? '<span class="w3-out-running">⏳ Running…</span>'
+    : '<span class="w3-out-running">☁ Compiling & running on cloud sandbox…</span>';
   btn.disabled = true;
   btn.className = 'w3-run-btn running';
   btn.textContent = '⏳ Running…';
 
   try {
-    const result = await runPy(code, stdin);
+    const result = await pistonExecute(code, lang, stdin);
+    const run = result?.run || {};
     let html = '';
-    if (result.stdout) {
+    if (run.stdout) {
       // Split on newlines so each print() call appears on its own line
-      html += result.stdout.split('\n').map(line =>
+      html += run.stdout.split('\n').map(line =>
         `<div class="w3-out-line w3-out-ok">${sanitize(line)}</div>`
       ).join('');
     }
-    if (result.stderr) {
-      if (/EOFError/.test(result.stderr)) {
+    if (run.stderr) {
+      if (lang === 'python' && /EOFError/.test(run.stderr)) {
         html += `<div class="w3-out-line w3-out-hint">⚠ This code is waiting for input — type value(s) in the stdin box above (one per input() call, separated by commas or new lines), then run again.</div>`;
       } else {
-        html += result.stderr.split('\n').map(line =>
+        html += run.stderr.split('\n').map(line =>
           `<div class="w3-out-line w3-out-err">${sanitize(line)}</div>`
         ).join('');
       }
     }
-    if (!result.stdout && !result.stderr) {
+    if (!run.stdout && !run.stderr) {
       html = `<div class="w3-out-line w3-out-info">✓ Ran successfully (no output)</div>`;
     }
     out.innerHTML = html;
