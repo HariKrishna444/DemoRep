@@ -6137,9 +6137,16 @@ function showFullscreenGate(mode) {
     icon.textContent  = '🔒';
     title.textContent = 'Fullscreen Exit Detected';
     text.innerHTML    = 'Leaving fullscreen during the exam is not allowed and has been logged as a violation. '
-                       + 'Click anywhere or press any key to return to fullscreen. To end the exam properly, use the <strong>Exit</strong> button inside the editor.';
+                       + 'Click anywhere (Escape won\'t work — browsers block it for this) to return to fullscreen. To end the exam properly, use the <strong>Exit</strong> button inside the editor.';
     btn.textContent   = 'Resume Fullscreen';
-    btn.onclick       = resumeFullscreenAfterViolation;
+    // Clear any handler left over from the initial 'start' gate (enterFullscreen)
+    // — resuming is handled entirely by the document-level listener below,
+    // which the button's own click bubbles up into.
+    btn.onclick       = null;
+    // No dedicated onclick here: clicks on the button bubble up to the
+    // document-level listener below, which handles resuming. Assigning a
+    // second handler here would double-invoke resumeFullscreenAfterViolation
+    // per click.
     // The browser requires a fresh user gesture to re-enter fullscreen, but it
     // doesn't have to be the button specifically — any click or keypress while
     // this gate is up counts, so bind the whole gate (not just the button) to
@@ -6158,7 +6165,11 @@ function showFullscreenGate(mode) {
 }
 
 function _onGateAnyInput(e) {
-  e.preventDefault();
+  // Browsers explicitly refuse to grant fullscreen from an Escape keypress
+  // (a deliberate anti-abuse rule, precisely to stop this kind of auto-
+  // re-entry pattern). Let Escape pass through untouched; only real clicks
+  // or non-Escape keys count as a valid gesture to resume fullscreen.
+  if (e.type === 'keydown' && (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27)) return;
   resumeFullscreenAfterViolation();
 }
 
