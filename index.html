@@ -3180,7 +3180,9 @@ service cloud.firestore {
             <pre style="font-family:var(--ff-mono);font-size:.68rem;color:var(--soft);white-space:pre-wrap;line-height:1.7">default-src 'self';
 script-src 'self'
   https://www.gstatic.com
-  https://cdnjs.cloudflare.com;
+  https://cdnjs.cloudflare.com
+  https://cdn.jsdelivr.net
+  'wasm-unsafe-eval';
 style-src 'self'
   https://fonts.googleapis.com
   'unsafe-inline';
@@ -3189,11 +3191,18 @@ font-src 'self'
 connect-src 'self'
   https://*.firebaseio.com
   https://*.googleapis.com
-  https://emkc.org;
-img-src 'self' data:;
-frame-src 'none';
+  https://emkc.org
+  https://cdn.jsdelivr.net;
+img-src 'self' data: https:;
+frame-src 'self' blob: https://www.youtube.com;
 object-src 'none';
 upgrade-insecure-requests;</pre>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:10px;line-height:1.6">
+              ⚠ This panel only <em>displays</em> the policy — it is enforced by an HTTP
+              response header set at the hosting layer (e.g. <code>firebase.json</code>),
+              not by this page. Editing this text has no effect until the same change is
+              deployed there.
+            </div>
           </div>
         </div>
       </div>
