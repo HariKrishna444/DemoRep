@@ -635,6 +635,11 @@ select.inp option{background:#eef1f4}
   border-radius:var(--r-xl);padding:48px 56px;text-align:center;max-width:480px;
   box-shadow:var(--sh),var(--glow-g);animation:fadeup .4s ease;
 }
+#fs-overlay.fs-violation .fs-card{
+  border-color:var(--danger);
+  box-shadow:var(--sh),0 0 0 4px rgba(220,38,38,.15);
+}
+#fs-overlay.fs-violation #fs-title{color:var(--danger)}
 .fs-card .fi{font-size:3.5rem;margin-bottom:16px}
 .fs-card h2{font-family:var(--ff-head);font-size:1.5rem;font-weight:800;color:#0f172a;margin-bottom:10px}
 .fs-card p{font-size:.82rem;color:#374151;line-height:1.7;margin-bottom:22px}
@@ -2259,6 +2264,7 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 .w3-cb-dark .w3-cb-line-code,
 .w3-cb-dark.w3-example-code-wrap{background:#1e1e1e;color:#d4d4d4}
 .w3-cb-dark .w3-cb-line-code{color:#d4d4d4}
+#page-learn .w3-cb-dark .w3-cb-line-code{color:#d4d4d4}
 .w3-cb-dark .w3-cb-line-num{color:#6b7280;border-color:#2d2d2d}
 
 /* Better example cards */
@@ -2402,11 +2408,11 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 
 <!-- ═══ ANTI-CHEAT: FULLSCREEN GATE ═══ -->
 <div id="fs-overlay">
-  <div class="fs-card">
-    <div class="fi">🖥️</div>
-    <h2>Fullscreen Required</h2>
-    <p>This exam must be taken in fullscreen mode. Exiting fullscreen will be logged as a violation. Click below to enter fullscreen and begin.</p>
-    <button class="btn btn-g btn-lg" onclick="enterFullscreen()">Enter Fullscreen &amp; Start Exam</button>
+  <div class="fs-card" id="fs-card">
+    <div class="fi" id="fs-icon">🖥️</div>
+    <h2 id="fs-title">Fullscreen Required</h2>
+    <p id="fs-text">This exam must be taken in fullscreen mode. Exiting fullscreen will be logged as a violation. Click below to enter fullscreen and begin.</p>
+    <button class="btn btn-g btn-lg" id="fs-btn" onclick="enterFullscreen()">Enter Fullscreen &amp; Start Exam</button>
   </div>
 </div>
 
@@ -6118,8 +6124,31 @@ async function startExam(qId) {
 /* ═══════════════════════════════════════════════════════════════
    FULLSCREEN GATE
    ═══════════════════════════════════════════════════════════════ */
-function showFullscreenGate() {
-  document.getElementById('fs-overlay').classList.add('show');
+function showFullscreenGate(mode) {
+  const overlay = document.getElementById('fs-overlay');
+  const icon  = document.getElementById('fs-icon');
+  const title = document.getElementById('fs-title');
+  const text  = document.getElementById('fs-text');
+  const btn   = document.getElementById('fs-btn');
+
+  if (mode === 'resume') {
+    // Forced re-entry after an unauthorized exit mid-exam
+    overlay.classList.add('fs-violation');
+    icon.textContent  = '🔒';
+    title.textContent = 'Fullscreen Exit Detected';
+    text.innerHTML    = 'Leaving fullscreen during the exam is not allowed and has been logged as a violation. '
+                       + 'You must return to fullscreen to continue. To end the exam properly, use the <strong>Exit</strong> button inside the editor.';
+    btn.textContent   = 'Resume Fullscreen';
+    btn.onclick       = resumeFullscreenAfterViolation;
+  } else {
+    overlay.classList.remove('fs-violation');
+    icon.textContent  = '🖥️';
+    title.textContent = 'Fullscreen Required';
+    text.textContent  = 'This exam must be taken in fullscreen mode. You will not be able to exit fullscreen until you click the Exit button in the editor. Click below to enter fullscreen and begin.';
+    btn.textContent   = 'Enter Fullscreen & Start Exam';
+    btn.onclick       = enterFullscreen;
+  }
+  overlay.classList.add('show');
 }
 
 function enterFullscreen() {
@@ -6152,12 +6181,33 @@ function enterFullscreen() {
   document.addEventListener('webkitfullscreenchange', onFSChange);
 }
 
+// Lighter re-entry path used after a mid-exam violation: just re-requests
+// fullscreen and hides the gate, without re-running exam-start setup
+// (setupAntiCheat/setupDOMGuard already ran once and shouldn't be duplicated).
+function resumeFullscreenAfterViolation() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  if (!req) { document.getElementById('fs-overlay').classList.remove('show'); return; }
+  req.call(el).then(()=>{
+    document.getElementById('fs-overlay').classList.remove('show');
+    document.getElementById('fs-overlay').classList.remove('fs-violation');
+    if (monaco_editor) monaco_editor.focus();
+  }).catch(()=>{
+    // Browser blocked the re-request (e.g. no fresh user gesture) — keep the
+    // gate up so the student can click again; this is expected right after Esc.
+  });
+}
+
 function onFSChange() {
   if (!examActive) return;
   const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
   if (!isFS) {
     logViolation('fullscreen-exit','Fullscreen','Exited fullscreen mode');
     handleViolation('fullscreen');
+    // Lock the student in: block the UI behind a gate until they click back
+    // into fullscreen. Only the in-editor "Exit" button (which sets
+    // examActive=false before calling exitFullscreen) bypasses this.
+    showFullscreenGate('resume');
   }
 }
 
