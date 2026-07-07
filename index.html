@@ -1851,7 +1851,7 @@ select.inp option{background:#eef1f4}
 }
 .w3-center-col::-webkit-scrollbar{width:5px}
 .w3-center-col::-webkit-scrollbar-thumb{background:rgba(30,163,74,.09);border-radius:99px}
-.w3-lesson-wrap{padding:16px 44px 36px;max-width:860px;width:100%}
+.w3-lesson-wrap{padding:16px 40px 36px;max-width:1080px;width:100%}
 
 /* Lesson header */
 .w3-lesson-type-badge{
@@ -1994,9 +1994,20 @@ select.inp option{background:#eef1f4}
   border-right:1px solid #e2e5ea;white-space:pre;
   overflow:hidden;flex-shrink:0;
 }
+/* Syntax-highlighted layer sitting behind the (text-transparent) textarea —
+   gives the playground the same colorful look as the practice-problem
+   compiler instead of a flat single-color block of text. */
+.w3-code-stack{position:relative;flex:1;min-width:0;background:#ffffff;}
+.w3-code-highlight{
+  position:absolute;inset:0;margin:0;z-index:0;pointer-events:none;
+  padding:12px 14px;font-family:var(--ff-mono);font-size:.78rem;line-height:1.75;
+  white-space:pre;overflow:hidden;color:#1f2328;
+}
+.w3-code-highlight code{white-space:pre;font-family:inherit}
 .w3-code-editor{
-  flex:1;padding:12px 14px;resize:none;border:none;outline:none;
-  background:#ffffff;color:#a5f3c0;
+  position:absolute;inset:0;z-index:1;
+  padding:12px 14px;resize:none;border:none;outline:none;
+  background:transparent;color:transparent;
   font-family:var(--ff-mono);font-size:.78rem;line-height:1.75;
   overflow-y:auto;white-space:pre;word-wrap:normal;overflow-x:auto;
   caret-color:var(--stu);
@@ -2108,7 +2119,18 @@ select.inp option{background:#eef1f4}
 #page-learn .w3-try-header{background:#f6f8fa}
 #page-learn .w3-editor-wrap{background:#1e1e1e;border-bottom:1px solid #e2e5ea}
 #page-learn .w3-line-nums{background:#1e1e1e;color:#6b7280;border-right:1px solid #2d2d2d}
-#page-learn .w3-code-editor{background:#1e1e1e;color:#d4d4d4;caret-color:#1ea34a}
+#page-learn .w3-code-stack{background:#1e1e1e}
+#page-learn .w3-code-highlight{color:#d4d4d4}
+#page-learn .w3-code-editor{background:transparent;color:transparent;caret-color:#1ea34a}
+/* Colorful token palette for the live playground — matches a VS Code dark
+   theme so the "Try it Yourself" editor looks as lively as the practice
+   compiler instead of one flat color. */
+#page-learn .w3-code-highlight .tok-kw{color:#c586c0;font-weight:600}
+#page-learn .w3-code-highlight .tok-str{color:#ce9178}
+#page-learn .w3-code-highlight .tok-com{color:#6a9955;font-style:italic}
+#page-learn .w3-code-highlight .tok-num{color:#b5cea8}
+#page-learn .w3-code-highlight .tok-builtin{color:#4ec9b0}
+#page-learn .w3-code-highlight .tok-fn{color:#569cd6}
 #page-learn .w3-stdin-row{background:#f6f8fa}
 #page-learn .w3-output-header{background:#f6f8fa}
 #page-learn .w3-output{background:#fbfbfc;color:#1f2328}
@@ -3464,6 +3486,22 @@ upgrade-insecure-requests;</pre>
 </div>
 
 <!-- ══════════════════════════════════════════════════
+     PAYWALL MODAL (mock payment for paid courses)
+     ══════════════════════════════════════════════════ -->
+<div class="modal-bg" id="paywall-modal">
+  <div class="modal" style="max-width:420px;text-align:center">
+    <div style="font-size:2.2rem;margin-bottom:8px">💳</div>
+    <h3>Unlock This Course</h3>
+    <p class="sub" style="margin-bottom:4px"><strong id="paywall-course-title">This course</strong> is a paid course.</p>
+    <p class="sub">This is a demo checkout — no real payment is taken. Confirming will unlock full access immediately.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+      <button class="btn btn-a btn-lg" style="width:100%;justify-content:center" onclick="confirmPaidEnrollment()">✅ Pay &amp; Enroll</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closePaywall()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
      ADD QUESTION MODAL
      ══════════════════════════════════════════════════ -->
 <div class="modal-bg" id="add-q-modal">
@@ -3665,9 +3703,9 @@ upgrade-insecure-requests;</pre>
   <div class="stu-nav-tabs">
     <div class="stu-nav-tab active" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
     <div class="stu-nav-tab" onclick="showStuSection('my-learning')">📖 My Learning</div>
-    <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+    <div class="stu-nav-tab" onclick="goToExamsTab()">📝 Exams</div>
     <div class="stu-nav-tab" onclick="showPage('practice');renderPracticeList()">🧩 Practice</div>
-    <div class="stu-nav-tab" onclick="openChronoStudent()">⏱️ ChronoCode</div>
+    <div class="stu-nav-tab" onclick="goToChronoCodeTab()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
     <div class="sec-hd">
@@ -3793,11 +3831,15 @@ upgrade-insecure-requests;</pre>
       <!-- Code editor textarea -->
       <div class="w3-editor-wrap" id="w3-editor-wrap">
         <div class="w3-line-nums" id="w3-line-nums">1</div>
-        <textarea class="w3-code-editor" id="w3-code-editor"
-          spellcheck="false" autocorrect="off" autocapitalize="off"
-          oninput="w3SyncLineNums()"
-          onkeydown="w3HandleTab(event)"
-          placeholder="# Python code here…"></textarea>
+        <div class="w3-code-stack">
+          <pre class="w3-code-highlight" id="w3-code-highlight" aria-hidden="true"><code></code></pre>
+          <textarea class="w3-code-editor" id="w3-code-editor"
+            spellcheck="false" autocorrect="off" autocapitalize="off"
+            oninput="w3SyncLineNums()"
+            onkeydown="w3HandleTab(event)"
+            onscroll="w3SyncEditorScroll()"
+            placeholder="# Python code here…"></textarea>
+        </div>
       </div>
 
       <!-- stdin input -->
@@ -3852,9 +3894,9 @@ upgrade-insecure-requests;</pre>
   <div class="stu-nav-tabs">
     <div class="stu-nav-tab" onclick="showStuSection('catalog')">🏪 Course Catalog</div>
     <div class="stu-nav-tab active" onclick="showStuSection('my-learning')">📖 My Learning</div>
-    <div class="stu-nav-tab" onclick="showPage('stu');renderStuPage()">📝 Exams</div>
+    <div class="stu-nav-tab" onclick="goToExamsTab()">📝 Exams</div>
     <div class="stu-nav-tab" onclick="showPage('practice');renderPracticeList()">🧩 Practice</div>
-    <div class="stu-nav-tab" onclick="openChronoStudent()">⏱️ ChronoCode</div>
+    <div class="stu-nav-tab" onclick="goToChronoCodeTab()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
     <div class="sec-hd">
@@ -5862,6 +5904,19 @@ function exportViolations() {
 /* ═══════════════════════════════════════════════════════════════
    STUDENT EXAM PAGE
    ═══════════════════════════════════════════════════════════════ */
+
+// Exams and ChronoCode both require an account (unlike free-course browsing,
+// which is intentionally open to guests) — gate their nav-tab entry points
+// here rather than scattering the currentUser check across each page.
+function goToExamsTab() {
+  if (!currentUser) { toast('Please log in to access Exams','warn'); showPage('login'); return; }
+  showPage('stu'); renderStuPage();
+}
+function goToChronoCodeTab() {
+  if (!currentUser) { toast('Please log in to access ChronoCode','warn'); showPage('login'); return; }
+  openChronoStudent();
+}
+
 function renderStuPage() {
   const exam = window._activeExam || null;
   const now  = new Date();
@@ -8869,13 +8924,36 @@ async function loadMyEnrollments() {
   }
 }
 
+// Shared "is this course locked?" check used everywhere a lesson/course
+// might be opened: free courses are open to anyone (including guests);
+// paid courses require both being logged in AND having completed the
+// (mock) payment/enrollment flow.
+function courseRequiresPaywall(course) {
+  return !!course && course.price === 'paid';
+}
+function courseAccessAllowed(course) {
+  if (!courseRequiresPaywall(course)) return true;
+  return !!(currentUser && myEnrollments[course.id]);
+}
+
 async function enrollInCourse(courseId) {
-  if (!currentUser) { toast('Please log in first','warn'); return; }
-  const docId = currentUser.uid + '_' + courseId;
+  if (!currentUser) { toast('Please log in first','warn'); showPage('login'); return; }
   if (myEnrollments[courseId]) {
     // Already enrolled → go to learn view
     openLearnView(courseId); return;
   }
+  const course = coursesCatalog.find(c => c.id === courseId);
+  if (courseRequiresPaywall(course)) {
+    openPaywall(courseId); // paid course → collect (mock) payment first
+    return;
+  }
+  await _finalizeEnrollment(courseId);
+  toast('Enrolled successfully! 🎉','ok');
+  openLearnView(courseId);
+}
+
+async function _finalizeEnrollment(courseId, paid=false) {
+  const docId = currentUser.uid + '_' + courseId;
   const enrollment = {
     userId:           currentUser.uid,
     courseId,
@@ -8883,6 +8961,7 @@ async function enrollInCourse(courseId) {
     completedLessons: [],
     quizScores:       {},
     progress:         0,
+    paid,
   };
   if (fsReady()) {
     try {
@@ -8890,7 +8969,30 @@ async function enrollInCourse(courseId) {
     } catch(e) { console.warn('enroll error:', e); }
   }
   myEnrollments[courseId] = { id: docId, ...enrollment };
-  toast('Enrolled successfully! 🎉','ok');
+}
+
+/* ── Paid-course paywall (mock payment — no real gateway is wired up;
+   this simply gates access behind an explicit "Pay & Enroll" confirmation
+   so the paid/free distinction is meaningful in the UI). ── */
+let _paywallCourseId = null;
+function openPaywall(courseId) {
+  if (!currentUser) { toast('Please log in first','warn'); showPage('login'); return; }
+  const course = coursesCatalog.find(c => c.id === courseId);
+  if (!course) return;
+  _paywallCourseId = courseId;
+  document.getElementById('paywall-course-title').textContent = course.title || 'This course';
+  document.getElementById('paywall-modal').classList.add('open');
+}
+function closePaywall() {
+  _paywallCourseId = null;
+  document.getElementById('paywall-modal').classList.remove('open');
+}
+async function confirmPaidEnrollment() {
+  const courseId = _paywallCourseId;
+  if (!courseId || !currentUser) return;
+  await _finalizeEnrollment(courseId, true);
+  closePaywall();
+  toast('Payment confirmed — enrolled! 🎉','ok');
   openLearnView(courseId);
 }
 
@@ -9109,19 +9211,26 @@ async function openCourseDetail(courseId) {
              </button>`
           : currentUser
             ? `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="enrollInCourse('${courseId}')">
-                 🎓 Enroll Now
+                 ${course.price==='free' ? '🎓 Enroll Now' : '💳 Enroll & Pay to Unlock'}
                </button>`
-            : firstLesson
-              ? `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center"
-                   onclick="openLearnViewAtLesson('${courseId}','${firstMod.id}','${firstLesson.id}')">
-                   ▶ Start Learning
+            : course.price === 'free'
+              ? (firstLesson
+                  ? `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center"
+                       onclick="openLearnViewAtLesson('${courseId}','${firstMod.id}','${firstLesson.id}')">
+                       ▶ Start Learning
+                     </button>
+                     <div style="margin-top:8px;font-size:.7rem;color:var(--muted);text-align:center">
+                       No login needed — this course is free. Log in to save progress &amp; earn a certificate
+                     </div>`
+                  : `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="enrollInCourse('${courseId}')">
+                       🎓 Enroll Now
+                     </button>`)
+              : `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="showPage('login')">
+                   🔒 Log In to Enroll &amp; Pay
                  </button>
                  <div style="margin-top:8px;font-size:.7rem;color:var(--muted);text-align:center">
-                   No login needed to preview — log in to save progress &amp; earn a certificate
+                   This is a paid course — log in and complete payment to unlock its lessons
                  </div>`
-              : `<button class="btn btn-g btn-lg" style="width:100%;justify-content:center" onclick="enrollInCourse('${courseId}')">
-                   🎓 Enroll Now
-                 </button>`
         }
         <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;justify-content:center;border:1px solid var(--line2);color:var(--soft)"
           onclick="shareLink('course','${courseId}')">🔗 Share Course</button>
@@ -9267,6 +9376,11 @@ function openLesson(courseId, moduleId, lessonId) {
   currentLessonId = lessonId;
   const course = coursesCatalog.find(c=>c.id===courseId);
   if (!course) return;
+  if (!courseAccessAllowed(course)) {
+    toast('🔒 This is a paid course — log in and enroll to unlock its lessons', 'warn');
+    openCourseDetail(courseId);
+    return;
+  }
   let lesson = null, mod = null;
   for (const m of (course.modules||[])) {
     const l = (m.lessons||[]).find(l=>l.id===lessonId);
@@ -10268,6 +10382,7 @@ function openCourseBuilder() {
   document.getElementById('cb-lang').value = '';
   document.getElementById('cb-desc').value = '';
   document.getElementById('cb-diff').value = 'beginner';
+  document.getElementById('cb-price').value = 'free';
   document.getElementById('cb-code-lang').value = 'python';
   document.getElementById('cb-thumb').value = '';
   const _thumbPrev = document.getElementById('cb-thumb-preview');
@@ -10307,6 +10422,7 @@ async function openEditCourseModal(courseId) {
   document.getElementById('cb-lang').value = course.language || '';
   document.getElementById('cb-desc').value = course.description || '';
   document.getElementById('cb-diff').value = course.difficulty || 'beginner';
+  document.getElementById('cb-price').value = course.price === 'paid' ? 'paid' : 'free';
   document.getElementById('cb-code-lang').value = inferCourseCodeLang(course);
   {
     const existingThumb = course.thumbnail || '';
@@ -10774,7 +10890,7 @@ async function saveCourse() {
 
   // ── EDIT MODE: update the existing course's lessons/modules in place ──
   if (_editingCourseId) {
-    const updatePayload = { title, language:lang, codeLanguage, description:desc, difficulty:diff, thumbnail:thumb, modules:normalizeModulesForFirestore(allModules), totalLessons };
+    const updatePayload = { title, language:lang, codeLanguage, description:desc, difficulty:diff, price, thumbnail:thumb, modules:normalizeModulesForFirestore(allModules), totalLessons };
     if (fsReady()) {
       try {
         await db.collection('courses').doc(_editingCourseId).update(updatePayload);
@@ -10796,7 +10912,7 @@ async function saveCourse() {
 
   const course = {
     title, language:lang, codeLanguage, description:desc, difficulty:diff,
-    price: 'free', // All courses are free
+    price, // 'free' or 'paid', as selected in the course builder
     thumbnail:thumb, totalLessons,
     modules: normalizeModulesForFirestore(allModules),
     createdBy: currentUser?.uid || 'unknown',
@@ -12614,6 +12730,31 @@ function w3SyncLineNums() {
   if (!ta || !ln) return;
   const lines = ta.value.split('\n').length;
   ln.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n');
+  w3UpdateHighlight(ta.value);
+}
+
+// Repaints the colorful syntax-highlight layer that sits behind the
+// (text-transparent) playground textarea. Reuses the same w3Highlight()
+// tokenizer already used for static "Code Example" blocks, so the live
+// editor matches the same colorful look as the practice-problem compiler
+// instead of being one flat color.
+function w3UpdateHighlight(code) {
+  const hl = document.querySelector('#w3-code-highlight code');
+  if (!hl) return;
+  // Trailing newline keeps the last (possibly empty) line's height in sync
+  // with the textarea so the caret never drifts from its highlighted line.
+  hl.innerHTML = w3Highlight(code || '') + '\n';
+}
+
+// Keeps the highlight layer scrolled to exactly the same position as the
+// textarea on top of it (they must stay pixel-aligned for the colors to
+// line up with what the user is actually typing).
+function w3SyncEditorScroll() {
+  const ta = document.getElementById('w3-code-editor');
+  const hl = document.getElementById('w3-code-highlight');
+  if (!ta || !hl) return;
+  hl.scrollTop  = ta.scrollTop;
+  hl.scrollLeft = ta.scrollLeft;
 }
 
 function w3HandleTab(e) {
