@@ -6137,9 +6137,15 @@ function showFullscreenGate(mode) {
     icon.textContent  = '🔒';
     title.textContent = 'Fullscreen Exit Detected';
     text.innerHTML    = 'Leaving fullscreen during the exam is not allowed and has been logged as a violation. '
-                       + 'You must return to fullscreen to continue. To end the exam properly, use the <strong>Exit</strong> button inside the editor.';
+                       + 'Click anywhere or press any key to return to fullscreen. To end the exam properly, use the <strong>Exit</strong> button inside the editor.';
     btn.textContent   = 'Resume Fullscreen';
     btn.onclick       = resumeFullscreenAfterViolation;
+    // The browser requires a fresh user gesture to re-enter fullscreen, but it
+    // doesn't have to be the button specifically — any click or keypress while
+    // this gate is up counts, so bind the whole gate (not just the button) to
+    // make re-entry as immediate as possible.
+    document.addEventListener('click', _onGateAnyInput, true);
+    document.addEventListener('keydown', _onGateAnyInput, true);
   } else {
     overlay.classList.remove('fs-violation');
     icon.textContent  = '🖥️';
@@ -6149,6 +6155,11 @@ function showFullscreenGate(mode) {
     btn.onclick       = enterFullscreen;
   }
   overlay.classList.add('show');
+}
+
+function _onGateAnyInput(e) {
+  e.preventDefault();
+  resumeFullscreenAfterViolation();
 }
 
 function enterFullscreen() {
@@ -6191,10 +6202,12 @@ function resumeFullscreenAfterViolation() {
   req.call(el).then(()=>{
     document.getElementById('fs-overlay').classList.remove('show');
     document.getElementById('fs-overlay').classList.remove('fs-violation');
+    document.removeEventListener('click', _onGateAnyInput, true);
+    document.removeEventListener('keydown', _onGateAnyInput, true);
     if (monaco_editor) monaco_editor.focus();
   }).catch(()=>{
-    // Browser blocked the re-request (e.g. no fresh user gesture) — keep the
-    // gate up so the student can click again; this is expected right after Esc.
+    // Browser blocked the re-request (e.g. no fresh user gesture yet) — keep
+    // the gate up so the very next click/keypress can try again immediately.
   });
 }
 
@@ -6204,6 +6217,9 @@ function onFSChange() {
   if (!isFS) {
     logViolation('fullscreen-exit','Fullscreen','Exited fullscreen mode');
     handleViolation('fullscreen');
+    // handleViolation may have just terminated the exam (integrity hit 0),
+    // which already sets examActive=false — don't show the resume gate then.
+    if (!examActive) return;
     // Lock the student in: block the UI behind a gate until they click back
     // into fullscreen. Only the in-editor "Exit" button (which sets
     // examActive=false before calling exitFullscreen) bypasses this.
@@ -6492,6 +6508,9 @@ function terminateExam() {
   examActive = false;
   stopTimer(); stopSnapshots();
   disableAntiCheat(); disableDOMGuard();
+  document.removeEventListener('click', _onGateAnyInput, true);
+  document.removeEventListener('keydown', _onGateAnyInput, true);
+  document.getElementById('fs-overlay').classList.remove('show','fs-violation');
 
   // Exit fullscreen
   if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
