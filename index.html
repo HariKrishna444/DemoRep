@@ -6235,8 +6235,16 @@ function onKeyDown(e) {
     e.preventDefault(); logViolation('devtools','DevTools','DevTools shortcut'); return;
   }
 
-  // Paste block (belt+suspenders)
-  if ((e.ctrlKey||e.metaKey)&&e.key==='v') {
+  // Paste block — covers every common paste shortcut, not just Ctrl/Cmd+V:
+  // Shift+Insert, Ctrl/Cmd+Shift+V, Ctrl/Cmd+Shift+Insert, Alt+Insert.
+  const key = (e.key || '').toLowerCase();
+  const isPasteShortcut =
+    ((e.ctrlKey||e.metaKey) && key==='v') ||
+    (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && key==='insert') ||
+    ((e.ctrlKey||e.metaKey) && e.shiftKey && key==='v') ||
+    ((e.ctrlKey||e.metaKey) && e.shiftKey && key==='insert') ||
+    (e.altKey && !e.ctrlKey && !e.metaKey && key==='insert');
+  if (isPasteShortcut) {
     e.preventDefault(); onPaste(e); return;
   }
 
@@ -6595,6 +6603,37 @@ function pad(n){ return String(n).padStart(2,'0'); }
 /* ═══════════════════════════════════════════════════════════════
    MONACO EDITOR
    ═══════════════════════════════════════════════════════════════ */
+
+/* ── Hard paste lock, shared by every Monaco instance (exam editor +
+   ChronoCode editor) ──────────────────────────────────────────────
+   The editor's own right-click menu offers a "Paste" action that reads
+   the clipboard directly via the async Clipboard API — it never fires a
+   native DOM "paste" event, so document-level paste listeners (and the
+   old onDidPaste size-threshold check) never saw it and it went through
+   silently. Fix: disable the context menu entirely (pass contextmenu:false
+   when creating the editor, so there's no menu to click "Paste" from),
+   override every paste keybinding — Ctrl/Cmd+V, Shift+Insert, Ctrl/Cmd+
+   Shift+V, Ctrl/Cmd+Shift+Insert, Alt+Insert — with a no-op command, and
+   as a last resort, undo *any* paste that still lands in the model via
+   onDidPaste, with no minimum-size exemption. ── */
+function lockEditorPaste(editor, mono, onBlocked) {
+  if (!editor || !mono) return;
+  const notify = typeof onBlocked === 'function' ? onBlocked : function(){};
+  const KM = mono.KeyMod, KC = mono.KeyCode;
+  const blockedKeybindings = [
+    KM.CtrlCmd | KC.KeyV,                 // Ctrl+V / Cmd+V
+    KM.Shift   | KC.Insert,                // Shift+Insert
+    KM.CtrlCmd | KM.Shift | KC.KeyV,       // Ctrl+Shift+V
+    KM.CtrlCmd | KM.Shift | KC.Insert,     // Ctrl+Shift+Insert
+    KM.Alt     | KC.Insert,                // Alt+Insert
+  ];
+  blockedKeybindings.forEach(kb => editor.addCommand(kb, notify));
+  // Belt-and-suspenders: revert any paste that still slips through
+  // (e.g. a future Monaco version, or a keybinding we didn't anticipate),
+  // regardless of how many characters it added.
+  editor.onDidPaste(() => { notify(); editor.trigger('keyboard', 'undo', null); });
+}
+
 /* ── Monaco loader helpers ─────────────────────────────────────────────────
    The AMD loader is fetched via JS and re-injected as a same-origin Blob URL.
    This is the only reliable way to silence Edge/Safari ITP "Tracking Prevention
@@ -6699,19 +6738,16 @@ function _onMonacoReady(mono) {
       detectIndentation: false,
       autoIndent: 'full',
       formatOnType: true,
+      contextmenu: false, // right-click menu offered its own "Paste" action
+                          // that bypassed the paste guard below entirely —
+                          // simplest fix is to not offer a context menu at all.
     });
 
-    monaco_editor.onDidPaste(() => {
+    lockEditorPaste(monaco_editor, mono, () => {
       if (!examActive || !acEnabled) return;
-      const lastLen = (window._lastCodeLen || 0);
-      const delta = monaco_editor.getValue().length - lastLen;
-      if (delta > 50) {
-        monaco_editor.trigger('keyboard', 'undo', null);
-        logViolation('monaco-paste', 'Paste', 'Monaco paste blocked (' + delta + ' chars)');
-        outLine('err', '⛔ Paste blocked inside editor! (' + delta + ' characters)');
-        toast('⛔ Paste blocked!', 'err', 4000);
-      }
-      window._lastCodeLen = monaco_editor.getValue().length;
+      logViolation('monaco-paste', 'Paste', 'Monaco paste blocked');
+      outLine('err', '⛔ Paste is disabled. Type your code manually.');
+      toast('⛔ Paste blocked!', 'err', 4000);
     });
 
     let autoSaveTimer = null;
@@ -13409,6 +13445,11 @@ function chronoLoadMonaco(initialCode, lang, onReady) {
       bracketPairColorization: { enabled: true },
       smoothScrolling: true,
       suggest: { showSnippets: true },
+      contextmenu: false,
+    });
+    lockEditorPaste(chronoEditor, window._mono, () => {
+      chronoOutLine('err', '⛔ Paste is disabled. Type your solution manually.');
+      toast('⛔ Paste blocked!', 'err', 4000);
     });
     if (onReady) setTimeout(onReady, 50);
   }
