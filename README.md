@@ -51,7 +51,7 @@
       }
     ]
   }
-}
+} 
 
 
 # ChronoCode → integrated into CodingHub
