@@ -5230,9 +5230,7 @@ function renderProfPanel(panel) {
      update so the grid refreshes instantly — no polling needed.
    - Submissions are also listened to so the prof sees score updates
      as students submit.
-   - Cards are clickable: open
-
-StudentDetail() shows a sidebar with
+   - Cards are clickable: openStudentDetail() shows a sidebar with
      that student's full violation log and latest code snapshot.
 
    When in demo mode:
@@ -6107,6 +6105,7 @@ async function startExam(qId) {
   renderTC();
   startTimer(EXAM_DURATION_MINS * 60);
   startSnapshots();
+  scanForKnownExtensions();
   showFullscreenGate();
 
   document.getElementById('ed-prob-name').textContent = currentQ.title;
@@ -6121,6 +6120,58 @@ async function startExam(qId) {
   clearConsole();
   outLine('info','CodingHub execution environment ready.');
   outLine('warn','⚠ This session is monitored. No paste, no tab switching, no AI tools.');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KNOWN-EXTENSION SCAN (web-accessible-resource probing)
+   ═══════════════════════════════════════════════════════════════
+   There is no API to enumerate installed extensions — this only works for
+   SPECIFIC, KNOWN extensions that expose a file via "web_accessible_resources"
+   in their manifest. A hit is high-confidence proof the extension IS
+   installed and enabled. A miss proves NOTHING (could be disabled, could be
+   Firefox — this technique doesn't work there at all since Firefox
+   randomizes the extension URL per install — could have use_dynamic_url
+   enabled, or just isn't in this list). Treat this as one extra signal, not
+   a complete scan.
+
+   To populate KNOWN_EXTENSION_PROBES: download the extension's .crx (e.g.
+   via the Chrome Extension Source Viewer), open manifest.json, find its
+   "web_accessible_resources" entry, and use one listed resource path. Do NOT
+   guess paths — a wrong path just produces a false "not detected".
+   Example (fill in with paths you've verified yourself):
+   { id: 'ehllkhjndgnlokhomdlhgbineffifcbj', path: 'REPLACE_WITH_REAL_PATH.js', name: 'Always Active Window' },
+   { id: 'cebifddlogbjhoibpjobhlamopmlpckl', path: 'REPLACE_WITH_REAL_PATH.js', name: 'Disable Page Visibility' },
+*/
+const KNOWN_EXTENSION_PROBES = [
+  // { id: '<32-char-extension-id>', path: '<web-accessible resource path>', name: '<label for the violation log>' },
+];
+
+function _probeExtension(probe, timeoutMs) {
+  return new Promise(resolve => {
+    const url = `chrome-extension://${probe.id}/${probe.path}`;
+    const img = new Image();
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    img.onload  = () => { clearTimeout(timer); resolve(true); };
+    img.onerror = () => { clearTimeout(timer); resolve(false); };
+    img.src = url;
+  });
+}
+
+async function scanForKnownExtensions() {
+  if (!KNOWN_EXTENSION_PROBES.length) return; // nothing configured yet
+  // Only meaningful on Chromium browsers with a fixed extension ID scheme.
+  if (!/Chrome|Chromium|Edg\//.test(navigator.userAgent)) return;
+
+  const hits = [];
+  await Promise.all(KNOWN_EXTENSION_PROBES.map(async probe => {
+    const found = await _probeExtension(probe, 1200);
+    if (found) hits.push(probe.name || probe.id);
+  }));
+
+  if (hits.length) {
+    logViolation('known-extension','Extension Scan','Detected: ' + hits.join(', '));
+    toast(`⚠ Detected extension(s) that must be disabled for this exam: ${hits.join(', ')}`, 'err', 8000);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -10691,9 +10742,7 @@ let _cbWebModules = [];
 
 async function fetchAndPreviewWebContent() {
   const btn     = document.getElementById('cb-fetch-btn');
- 
-
- const preview = document.getElementById('cb-fetch-preview');
+  const preview = document.getElementById('cb-fetch-preview');
   const wikiRaw = document.getElementById('cb-wiki-topics').value.trim();
   const ytRaw   = document.getElementById('cb-yt-ids').value.trim();
   const bookQ   = document.getElementById('cb-book-query').value.trim();
