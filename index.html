@@ -3035,11 +3035,67 @@ service cloud.firestore {
     }
 
     // ── submissions/ ─────────────────────────────────────────────
-    // Students create their own. Profs read all.
+    // Only the gradeSubmission Cloud Function writes here (Admin SDK,
+    // bypasses these rules entirely). Client-side create is intentionally
+    // disabled — a client write here was always meaningless (see submitCode()
+    // comment) so the rule now says exactly that instead of the misleading
+    // "students create their own" this block previously documented.
     match /submissions/{subId} {
       allow read:   if isProf();
-      allow create: if isSignedIn();
+      allow create: if false;
       allow update: if isProf();
+    }
+
+    // ── examAttempts/ ────────────────────────────────────────────
+    // SECURITY FIX (audit findings #1 and #2): one doc per {uid}_{questionId}
+    // governs whether a student may (re)enter an exam and anchors the timer
+    // to a server timestamp. Docs are intentionally NOT deletable by anyone
+    // but an admin/backend process — a student deleting their own doc would
+    // otherwise be indistinguishable from "never attempted" and grant a
+    // fresh attempt.
+    match /examAttempts/{attemptId} {
+      allow read: if isSignedIn() &&
+        (isProf() || attemptId.split('_')[0] == uid());
+
+      // Create: only the owning student, only as a fresh 'active' attempt,
+      // only with integrityScore=100/violationCount=0, and startedAt must be
+      // the server's own timestamp (not something the client can backdate).
+      allow create: if isSignedIn() &&
+        attemptId.split('_')[0] == uid() &&
+        request.resource.data.userId == uid() &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.integrityScore == 100 &&
+        request.resource.data.violationCount == 0 &&
+        request.resource.data.startedAt == request.time;
+
+      // Update: only the owning student while the attempt is still active,
+      // and only in the punishing direction — integrityScore can't go back
+      // up and violationCount can't go back down, so a client can't use
+      // this write path to erase its own penalties. status may only move
+      // active → (terminated | submitted), never back to active.
+      allow update: if isSignedIn() && (
+        isProf() ||
+        (
+          attemptId.split('_')[0] == uid() &&
+          resource.data.status == 'active' &&
+          request.resource.data.integrityScore <= resource.data.integrityScore &&
+          request.resource.data.violationCount >= resource.data.violationCount &&
+          request.resource.data.startedAt == resource.data.startedAt &&
+          (request.resource.data.status == 'active' ||
+           request.resource.data.status == 'terminated' ||
+           request.resource.data.status == 'submitted')
+        )
+      );
+      allow delete: if false;
+    }
+
+    // ── monitor/ (live student heartbeats) ───────────────────────
+    // SECURITY FIX (audit finding #5): now actually written to by
+    // startHeartbeat() every 15s during an active exam — previously this
+    // collection existed in the rules but nothing in the client used it.
+    match /monitor/{userId} {
+      allow read:   if isProf();
+      allow write:  if isSelf(userId);
     }
 
     // ── violations/ ──────────────────────────────────────────────
@@ -3095,11 +3151,7 @@ service cloud.firestore {
       allow write: if isProf();
     }
 
-    // ── monitor/ (live student heartbeats) ───────────────────────
-    match /monitor/{userId} {
-      allow read:   if isProf();
-      allow write:  if isSelf(userId);
-    }
+    // (monitor/ rules moved up next to examAttempts/ — see above)
 
     // ── courses/ — course catalog ─────────────────────────────────
     // Courses are public (catalog). Quizzes require sign-in to prevent
@@ -4408,6 +4460,7 @@ let practiceQuestionsUnsub = null; // Firestore onSnapshot unsubscribe handle �
 // Exam session (student)
 let examActive     = false;
 let currentQ       = null;
+let examAttemptId  = null;  // SECURITY FIX (#1/#2): Firestore doc id governing this attempt
 let currentLang    = 'python';
 let timerSecs      = EXAM_DURATION_MINS * 60;
 let timerInterval  = null;
@@ -4868,8 +4921,43 @@ async function loadQuestionsFromFirestore() {
     // Preserve professor's question order from the exam config
     questions.sort((a,b) => qIds.indexOf(a.id) - qIds.indexOf(b.id));
 
+    // SECURITY FIX (audit finding #1, part 2): solvedIds was previously
+    // populated ONLY from local submissions this session and never re-read
+    // from Firestore, so a refresh made every question look unsolved again
+    // (cosmetic, but also meant nothing blocked re-attempting a "solved"
+    // question). Rehydrate both solved and terminated/locked state from the
+    // authoritative examAttempts docs.
+    await loadExamAttemptStatuses(qIds);
+
   } catch(e) {
     console.warn('loadQuestionsFromFirestore failed (using demo data):', e);
+  }
+}
+
+// Populates solvedIds (status:'submitted') and terminatedIds
+// (status:'terminated') for the current student from examAttempts/,
+// so exam-card state and re-attempt blocking survive a page refresh.
+let terminatedIds = new Set();
+async function loadExamAttemptStatuses(qIds) {
+  if (!firebaseReady || !db || !currentUser || !qIds.length) return;
+  solvedIds = new Set();
+  terminatedIds = new Set();
+  const chunks = [];
+  for (let i = 0; i < qIds.length; i += 10) chunks.push(qIds.slice(i, i+10));
+  try {
+    for (const chunk of chunks) {
+      const attemptIds = chunk.map(qId => `${currentUser.uid}_${qId}`);
+      const snap = await db.collection('examAttempts')
+        .where(firebase.firestore.FieldPath.documentId(), 'in', attemptIds)
+        .get();
+      snap.docs.forEach(doc => {
+        const d = doc.data();
+        if (d.status === 'submitted')  solvedIds.add(d.questionId);
+        if (d.status === 'terminated') terminatedIds.add(d.questionId);
+      });
+    }
+  } catch(e) {
+    console.warn('loadExamAttemptStatuses failed:', e);
   }
 }
 
@@ -5318,6 +5406,8 @@ function renderProfPanel(panel) {
 // Live monitor state
 let monitorUnsubViolations  = null; // Firestore unsubscribe handle
 let monitorUnsubSubmissions = null;
+let monitorUnsubHeartbeats  = null; // SECURITY FIX (#5): heartbeat listener
+let monitorStalenessInterval = null;
 let liveStudentMap = {};  // uid → { name, vios:[], lastSeen, score, status }
 let selectedMonitorUid = null; // for detail panel
 
@@ -5386,11 +5476,40 @@ function startMonitorListener() {
       });
       renderMonitor();
     }, err => console.warn('Monitor submissions listener error:', err));
+
+  // SECURITY FIX (audit finding #5, partial mitigation): listen to the
+  // heartbeat docs students write every 15s while an exam is active (see
+  // startHeartbeat()). If a student's heartbeat goes stale while nothing
+  // marked them submitted/terminated, that's the server-visible signature
+  // of local anti-cheat having been disabled (e.g. via the console) —
+  // renderMonitor() below surfaces this as a "possible tampering" flag.
+  monitorUnsubHeartbeats = db.collection('monitor')
+    .onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        const uid = change.doc.id;
+        if (change.type === 'removed') {
+          if (liveStudentMap[uid]) delete liveStudentMap[uid].lastHeartbeat;
+          return;
+        }
+        const d = change.doc.data();
+        if (!liveStudentMap[uid]) {
+          liveStudentMap[uid] = { name: d.name || uid, uid, vios: [], score: null, status: 'online', lastSeen: Date.now() };
+        }
+        liveStudentMap[uid].lastHeartbeat = d.lastHeartbeat?.toMillis?.() ?? Date.now();
+      });
+      renderMonitor();
+    }, err => console.warn('Monitor heartbeat listener error:', err));
+
+  // Re-render periodically even with no new Firestore events, so a stale
+  // heartbeat crosses the staleness threshold and gets flagged in real time.
+  monitorStalenessInterval = setInterval(renderMonitor, 10000);
 }
 
 function stopMonitorListener() {
-  if (monitorUnsubViolations)  { monitorUnsubViolations();  monitorUnsubViolations  = null; }
-  if (monitorUnsubSubmissions) { monitorUnsubSubmissions(); monitorUnsubSubmissions = null; }
+  if (monitorUnsubViolations)   { monitorUnsubViolations();   monitorUnsubViolations  = null; }
+  if (monitorUnsubSubmissions)  { monitorUnsubSubmissions();  monitorUnsubSubmissions = null; }
+  if (monitorUnsubHeartbeats)   { monitorUnsubHeartbeats();   monitorUnsubHeartbeats  = null; }
+  if (monitorStalenessInterval) { clearInterval(monitorStalenessInterval); monitorStalenessInterval = null; }
 }
 
 /* ── renderMonitor ────────────────────────────────────────────
@@ -5486,12 +5605,22 @@ function updateLiveMonitorNode(container, uid, s) {
   }
 
   const vioCount = Array.isArray(s.vios) ? s.vios.length : (s.vios || 0);
-  const isFlagged = vioCount >= 2 || s.status === 'flagged';
-  const statusLabel = s.status === 'flagged'    ? '⚠ Flagged'
+  // SECURITY FIX (audit finding #5, partial mitigation): a student whose
+  // heartbeat has gone quiet for >40s (~3 missed 15s beats) while they're
+  // not already submitted/terminated is showing the server-visible
+  // signature of local anti-cheat having been disabled client-side.
+  const HEARTBEAT_STALE_MS = 40000;
+  const heartbeatStale = s.lastHeartbeat
+    && s.status !== 'submitted'
+    && (Date.now() - s.lastHeartbeat) > HEARTBEAT_STALE_MS;
+  const isFlagged = vioCount >= 2 || s.status === 'flagged' || heartbeatStale;
+  const statusLabel = heartbeatStale                ? '🛑 No Heartbeat'
+                    : s.status === 'flagged'    ? '⚠ Flagged'
                     : s.status === 'submitted'  ? '✓ Submitted'
                     : s.status === 'idle'        ? '◌ Idle'
                     : '● Active';
-  const statusClass = s.status === 'flagged'   ? 'flagged'
+  const statusClass = heartbeatStale           ? 'flagged'
+                    : s.status === 'flagged'   ? 'flagged'
                     : s.status === 'submitted' ? 'online'
                     : s.status === 'idle'      ? 'idle'
                     : 'online';
@@ -5520,8 +5649,12 @@ function updateLiveMonitorNode(container, uid, s) {
   if (card.scoreEl.textContent !== scoreText) card.scoreEl.textContent = scoreText;
   card.scoreEl.style.display = scoreText ? '' : 'none';
 
-  const lastVioText = (Array.isArray(s.vios) && s.vios.length)
-    ? `Last: ${s.vios[s.vios.length-1].type || 'violation'}` : '';
+  // SECURITY FIX (#5): surface the tampering signal ahead of the last
+  // violation line when it applies — this is the strongest signal on the
+  // card, since it means monitoring itself may have gone dark for this student.
+  const lastVioText = heartbeatStale
+    ? '🛑 Heartbeat stopped — anti-cheat may be disabled'
+    : (Array.isArray(s.vios) && s.vios.length) ? `Last: ${s.vios[s.vios.length-1].type || 'violation'}` : '';
   if (card.lastVioEl.textContent !== lastVioText) card.lastVioEl.textContent = lastVioText;
   card.lastVioEl.style.display = lastVioText ? '' : 'none';
 }
@@ -6067,19 +6200,28 @@ function renderStuPage() {
   }
 
   // ── Render question cards ──────────────────────────────────
-  grid.innerHTML = questions.map((q,i)=>`
-    <div class="exam-card ${solvedIds.has(q.id)?'solved':''}" onclick="startExam('${q.id}')">
+  // SECURITY FIX (#1): terminated attempts now show a locked state and
+  // don't call startExam() on click — startExam() would block them anyway
+  // via claimExamAttempt(), but surfacing it here avoids a confusing
+  // "click → immediate alert" UX for a state we already know about.
+  grid.innerHTML = questions.map((q,i)=>{
+    const solved     = solvedIds.has(q.id);
+    const terminated = terminatedIds.has(q.id);
+    const locked     = solved || terminated;
+    return `
+    <div class="exam-card ${solved?'solved':''} ${terminated?'terminated':''}" ${locked?'':`onclick="startExam('${q.id}')"`} style="${locked?'cursor:not-allowed;opacity:.7':''}">
       <div class="ec-num">PROBLEM ${i+1}</div>
-      <div class="ec-title">${q.title}</div>
-      <div class="ec-desc">${(q.desc||'').replace(/<[^>]+>/g,'').substring(0,100)}...</div>
+      <div class="ec-title">${escH(q.title)}</div>
+      <div class="ec-desc">${escH((q.desc||'').replace(/<[^>]+>/g,'').substring(0,100))}...</div>
       <div class="ec-footer">
-        <span class="diff ${q.diff}">${q.diff}</span>
-        <div class="chip-row">${(q.tags||[]).slice(0,2).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-        ${solvedIds.has(q.id)?'<span class="solved-tag">✓ Solved</span>':''}
+        <span class="diff ${escH(q.diff)}">${escH(q.diff)}</span>
+        <div class="chip-row">${(q.tags||[]).slice(0,2).map(t=>`<span class="tag">${escH(t)}</span>`).join('')}</div>
+        ${solved?'<span class="solved-tag">✓ Solved</span>':''}
+        ${terminated?'<span class="solved-tag" style="background:var(--danger,#d33)">🚫 Terminated</span>':''}
         <span class="ec-points">${q.points} pts</span>
       </div>
     </div>
-  `).join('');
+  `;}).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -6108,11 +6250,11 @@ function renderPracticeList() {
   grid.innerHTML = practiceQuestions.map((q,i)=>`
     <div class="exam-card ${practiceSolvedIds.has(q.id)?'solved':''}" onclick="startPractice('${q.id}')">
       <div class="ec-num">PRACTICE ${i+1}</div>
-      <div class="ec-title">${q.title}</div>
-      <div class="ec-desc">${(q.desc||'').replace(/<[^>]+>/g,'').substring(0,100)}...</div>
+      <div class="ec-title">${escH(q.title)}</div>
+      <div class="ec-desc">${escH((q.desc||'').replace(/<[^>]+>/g,'').substring(0,100))}...</div>
       <div class="ec-footer">
-        <span class="diff ${q.diff}">${q.diff}</span>
-        <div class="chip-row">${(q.tags||[]).slice(0,2).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        <span class="diff ${escH(q.diff)}">${escH(q.diff)}</span>
+        <div class="chip-row">${(q.tags||[]).slice(0,2).map(t=>`<span class="tag">${escH(t)}</span>`).join('')}</div>
         ${practiceSolvedIds.has(q.id)?'<span class="solved-tag">✓ Solved</span>':''}
         <span class="ec-points">${q.points} pts</span>
       </div>
@@ -6154,15 +6296,45 @@ async function startExam(qId) {
   currentQ    = questions.find(q=>q.id===qId);
   if (!currentQ) return;
   practiceMode = false;
+
+  // SECURITY FIX (audit findings #1 and #2): claim/resume the exam attempt
+  // server-side BEFORE anything else. Previously this function unconditionally
+  // reset integrityScore/violationCount to a clean slate and always started a
+  // fresh 90-minute timer, which meant a student facing termination for low
+  // integrity — or one who'd already submitted — could just refresh and click
+  // the exam card again for a completely clean attempt. Now:
+  //   - a 'terminated' or 'submitted' attempt blocks re-entry entirely
+  //   - a resumed 'active' attempt restores the real integrity/violation
+  //     state and the real remaining time, both from the server record
+  const claim = await claimExamAttempt(qId);
+  if (!claim.ok) {
+    const msgs = {
+      terminated: '🚫 This exam was already terminated for a proctoring violation. You cannot restart it. Contact your professor if you believe this is an error.',
+      submitted:  '✅ You have already submitted this exam. It cannot be reattempted.',
+      expired:    '⏰ Your exam time has already expired. The attempt has been closed. Contact your professor if you believe this is an error.',
+    };
+    alert(msgs[claim.reason] || 'This exam cannot be started.');
+    return;
+  }
+
   document.getElementById('timer-wrap').classList.remove('hidden');
   document.getElementById('integrity-bar').classList.remove('hidden');
 
-  // Reset session state for this exam attempt
-  tabVioCount     = 0;
-  totalVioCount   = 0;
-  integrityScore  = 100;
+  // Reset PER-SESSION (not per-attempt) state — safe to always clear, since
+  // these don't gate anti-cheat penalties or re-entry the way integrity/
+  // violation counts do. integrityScore/totalVioCount are set inside
+  // claimExamAttempt() above (either fresh at 100/0, or restored from the
+  // resumed attempt doc) and must NOT be reset here.
   codeSnapshots   = [];
   keystrokeBuffer = [];
+  updateIntegrity(0); // repaint the integrity bar with whatever claimExamAttempt set
+
+  if (claim.resumed) {
+    toast('📌 Resuming your in-progress exam attempt.', 'warn', 5000);
+  }
+  if (claim.unsynced) {
+    toast('⚠ Could not verify attempt status with the server — proceeding, but this session will not be resumable.', 'warn', 6000);
+  }
 
   // PHASE 2: Check Firestore for an existing draft before loading the editor.
   // This lets students resume where they left off if they refreshed the page.
@@ -6185,7 +6357,9 @@ async function startExam(qId) {
   loadMonaco();
   renderProbStmt();
   renderTC();
-  startTimer(EXAM_DURATION_MINS * 60);
+  // SECURITY FIX (#2): use the server-anchored remaining time from the
+  // claimed attempt, not a fresh EXAM_DURATION_MINS*60 every time.
+  startTimer(claim.remainingSecs);
   startSnapshots();
   scanForKnownExtensions();
   checkVisibilityIntegrity();
@@ -6635,6 +6809,84 @@ function onContextMenu(e) {
   toast('Right-click disabled during exam','warn');
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   DEVTOOLS OPEN DETECTION (audit finding #4)
+   ═══════════════════════════════════════════════════════════════
+   Previously "DevTools blocking" only intercepted the F12/Ctrl+Shift+I
+   keyboard shortcuts — opening DevTools via the browser's own menu (e.g.
+   Chrome ⋮ → More tools → Developer tools) was completely invisible to
+   the app. This adds an actual detection signal: a docked DevTools panel
+   shrinks the visible viewport relative to the outer browser window, so a
+   large, sustained gap between outerWidth/Height and innerWidth/Height is
+   a strong indicator DevTools (or a similarly-docked panel) is open.
+   LIMITATION (documented, not hidden): this only catches DOCKED devtools.
+   An UNDOCKED devtools window (separate OS window) won't move this ratio
+   and is fundamentally undetectable from page JS. This is a real gap that
+   only OS-level lockdown (the planned desktop app) can close — this check
+   raises the bar, it doesn't make the web version airtight.
+   ═══════════════════════════════════════════════════════════════ */
+let _devToolsPollInterval = null;
+let _devToolsFlagged = false;
+const DEVTOOLS_SIZE_THRESHOLD = 160; // px gap that indicates a docked panel
+
+function _checkDevToolsOpen() {
+  if (!examActive || !acEnabled) return;
+  const widthGap  = window.outerWidth  - window.innerWidth;
+  const heightGap = window.outerHeight - window.innerHeight;
+  const open = widthGap > DEVTOOLS_SIZE_THRESHOLD || heightGap > DEVTOOLS_SIZE_THRESHOLD;
+  if (open && !_devToolsFlagged) {
+    _devToolsFlagged = true;
+    logViolation('devtools-open', 'DevTools', `Docked DevTools panel detected (gap ${widthGap}x${heightGap}px)`);
+    handleViolation('devtools');
+  } else if (!open) {
+    _devToolsFlagged = false;
+  }
+}
+function _startDevToolsPoll() {
+  _stopDevToolsPoll();
+  _devToolsPollInterval = setInterval(_checkDevToolsOpen, 2000);
+}
+function _stopDevToolsPoll() {
+  if (_devToolsPollInterval) { clearInterval(_devToolsPollInterval); _devToolsPollInterval = null; }
+  _devToolsFlagged = false;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEARTBEAT (audit finding #5, partial mitigation)
+   ═══════════════════════════════════════════════════════════════
+   Client-side anti-cheat runs in the same JS context as the student's
+   code, so any of it (handleViolation, examActive, etc.) can in principle
+   be overridden from the console — that's an inherent limitation of a
+   browser-based approach, not something this patch pretends to solve.
+   What IS achievable: giving the professor a server-corroborated signal
+   when local monitoring goes quiet. This writes a heartbeat to the
+   `monitor/` collection (already provisioned in the Firestore rules but
+   previously never used) every 15s while an exam is active; the Live
+   Monitor now flags a student whose heartbeat has gone stale while their
+   attempt is still 'active' — which is exactly the signature of a student
+   having disabled the anti-cheat listeners locally.
+   ═══════════════════════════════════════════════════════════════ */
+let heartbeatInterval = null;
+function _writeHeartbeat() {
+  if (!firebaseReady || !db || !currentUser) return;
+  db.collection('monitor').doc(currentUser.uid).set({
+    name:           currentUser.displayName || currentUser.email?.split('@')[0] || 'Student',
+    questionId:     currentQ?.id || null,
+    examAttemptId:  examAttemptId,
+    integrityScore, violationCount: totalVioCount,
+    lastHeartbeat:  firebase.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true }).catch(e => console.warn('heartbeat write failed:', e));
+}
+function startHeartbeat() {
+  stopHeartbeat();
+  if (!firebaseReady || !db || !currentUser) return;
+  _writeHeartbeat();
+  heartbeatInterval = setInterval(_writeHeartbeat, 15000);
+}
+function stopHeartbeat() {
+  if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+}
+
 /* ── Setup / teardown ────────────────────────────────────────── */
 function setupAntiCheat() {
   acEnabled = true;
@@ -6648,11 +6900,15 @@ function setupAntiCheat() {
   document.addEventListener('contextmenu', onContextMenu);
   _startFocusPoll();   // ← layer (a): poll for focus spoofing every 2.5 s
   _checkVisibilityTamper(); // ← layer (b): check for tampered visibility API up front
+  _startDevToolsPoll(); // SECURITY FIX (#4): poll for a docked DevTools panel
+  startHeartbeat();      // SECURITY FIX (#5, partial): server-visible liveness signal
 }
 
 function disableAntiCheat() {
   acEnabled = false;
   _stopFocusPoll();
+  _stopDevToolsPoll();  // SECURITY FIX (#4)
+  stopHeartbeat();       // SECURITY FIX (#5)
   window.removeEventListener('blur', onBlur);
   document.removeEventListener('visibilitychange', onVis);
   document.removeEventListener('paste', onPaste, true);
@@ -6682,6 +6938,12 @@ function handleViolation(type) {
   // Deduct the right amount based on violation type
   const penalty = INTEGRITY_PENALTIES[type] || INTEGRITY_PENALTIES['default'];
   updateIntegrity(-penalty);
+
+  // SECURITY FIX (#1): mirror the live integrity/violation state to the
+  // server-side attempt doc as it happens, so a refresh restores this
+  // exact state instead of resetting to 100%/0. Firestore rules only
+  // allow this to move in the punishing direction (score down, count up).
+  syncExamAttempt({ integrityScore, violationCount: totalVioCount });
 
   // Update the dot meter in the warning overlay (visual feedback)
   const dots = [0, 1, 2];
@@ -6766,6 +7028,11 @@ function terminateExam() {
 
   logViolation('terminated','EXAM-TERMINATED','Exam auto-terminated after '+totalVioCount+' violations');
   toast('Exam terminated. Professor notified.','err',8000);
+
+  // SECURITY FIX (#1): permanently lock this attempt server-side so
+  // startExam() refuses to let the student begin a fresh attempt on refresh.
+  lockExamAttempt('terminated', 'integrity-zero');
+  examAttemptId = null;
 }
 
 /* ── Violation logger ────────────────────────────────────────── */
@@ -6842,6 +7109,108 @@ async function loadDraftFromFirestore(qId) {
     if (e.code !== 'permission-denied') console.warn('loadDraftFromFirestore failed:', e);
   }
   return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EXAM ATTEMPT SESSION LOCK  (audit findings #1 and #2)
+   ═══════════════════════════════════════════════════════════════
+   #1 — integrityScore/violationCount/status no longer live only in
+        browser memory. A refresh restores them from Firestore instead
+        of silently resetting to a clean 100%/0-violations slate, and a
+        terminated or already-submitted attempt can't be restarted.
+   #2 — the timer is anchored to a server timestamp (startedAt) recorded
+        when the attempt was first created, so remaining time survives a
+        refresh and isn't computed from a local clock the student
+        controls.
+   NOTE: this closes the client-side half of the gap. The other half —
+   gradeSubmission rejecting a submission that arrives after this same
+   server-recorded deadline — has to live in the Cloud Function itself,
+   since anything checked only in the browser can be skipped by calling
+   gradeSubmission directly. See the functions/index.js snippet shared
+   alongside this file.
+   ═══════════════════════════════════════════════════════════════ */
+
+function _attemptId(qId) { return `${currentUser.uid}_${qId}`; }
+
+// Returns:
+//   { ok:true,  resumed:false, remainingSecs }  — fresh attempt created
+//   { ok:true,  resumed:true,  remainingSecs }  — resumed an in-progress attempt
+//   { ok:false, reason:'terminated'|'submitted'|'expired' }
+async function claimExamAttempt(qId) {
+  if (!firebaseReady || !db || !currentUser) {
+    // Offline/demo mode — no persistence backend available. Fail open so
+    // the demo still works, rather than blocking every exam start.
+    return { ok:true, resumed:false, remainingSecs: EXAM_DURATION_MINS*60, unsynced:true };
+  }
+  const ref = db.collection('examAttempts').doc(_attemptId(qId));
+  try {
+    const snap = await ref.get();
+    if (snap.exists) {
+      const data = snap.data();
+      if (data.status === 'terminated') return { ok:false, reason:'terminated' };
+      if (data.status === 'submitted')  return { ok:false, reason:'submitted' };
+
+      // status === 'active' — resume, using the SERVER-recorded start time
+      // (not anything the client supplies) to compute remaining seconds.
+      const startedMs = data.startedAt?.toMillis?.() ?? Date.now();
+      const elapsed   = Math.floor((Date.now() - startedMs) / 1000);
+      const remaining = (EXAM_DURATION_MINS*60) - elapsed;
+      if (remaining <= 0) {
+        await ref.update({
+          status: 'terminated', endReason: 'time-expired-on-resume',
+          endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        }).catch(()=>{});
+        return { ok:false, reason:'expired' };
+      }
+      examAttemptId  = ref.id;
+      integrityScore = typeof data.integrityScore === 'number' ? data.integrityScore : 100;
+      totalVioCount  = typeof data.violationCount === 'number' ? data.violationCount : 0;
+      tabVioCount    = 0;
+      return { ok:true, resumed:true, remainingSecs: remaining };
+    }
+
+    // No attempt yet — create one inside a transaction so two concurrent
+    // tabs/devices for the same student can't both "win" a fresh start.
+    await db.runTransaction(async (tx) => {
+      const freshSnap = await tx.get(ref);
+      if (freshSnap.exists) { const err = new Error('already-exists'); err.code = 'already-exists'; throw err; }
+      tx.set(ref, {
+        userId: currentUser.uid, questionId: qId, status: 'active',
+        integrityScore: 100, violationCount: 0,
+        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+    examAttemptId  = ref.id;
+    integrityScore = 100; totalVioCount = 0; tabVioCount = 0;
+    return { ok:true, resumed:false, remainingSecs: EXAM_DURATION_MINS*60 };
+
+  } catch (e) {
+    if (e && e.code === 'already-exists') return claimExamAttempt(qId); // lost the race — retry as resume
+    console.warn('claimExamAttempt failed, proceeding unsynced:', e);
+    // Fail open rather than blocking exam start on a transient Firestore
+    // error — but flag it as unsynced so it's visible this attempt won't
+    // be resumable/lockable server-side.
+    return { ok:true, resumed:false, remainingSecs: EXAM_DURATION_MINS*60, unsynced:true };
+  }
+}
+
+// Fire-and-forget sync of live integrity/violation state. Firestore rules
+// (see updated rules) only allow integrityScore to move DOWN and
+// violationCount to move UP from a client write, so this path can't be used
+// to reset penalties even by a student calling it directly from console.
+function syncExamAttempt(patch) {
+  if (!firebaseReady || !db || !examAttemptId) return;
+  db.collection('examAttempts').doc(examAttemptId).update(patch)
+    .catch(e => console.warn('syncExamAttempt failed:', e));
+}
+
+function lockExamAttempt(status, endReason) {
+  if (!firebaseReady || !db || !examAttemptId) return;
+  db.collection('examAttempts').doc(examAttemptId).update({
+    status, endReason: endReason || status,
+    endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    integrityScore, violationCount: totalVioCount,
+  }).catch(e => console.warn('lockExamAttempt failed:', e));
 }
 
 function setSaveIndicator(state) {
@@ -7154,16 +7523,23 @@ function renderProbStmt() {
          ${exOut ? `<strong style="margin-top:8px;display:block">Output</strong><code style="color:var(--stu)">${escH(exOut)}</code>` : ''}
        </div>`
     : '';
+  // SECURITY FIX (audit finding #3): title/diff/tags/constraints go through
+  // escH(); desc goes through escDescPreserveCode() which escapes everything
+  // except the one intentional <code> tag pair. Previously these were
+  // interpolated raw, which was a stored-XSS hole exploitable by a
+  // compromised/malicious professor account (the only writer of
+  // questions_public per Firestore rules, but still untrusted input as far
+  // as the student's browser is concerned).
   document.getElementById('stmt-html').innerHTML = `
-    <h3>${q.title}</h3>
+    <h3>${escH(q.title)}</h3>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <span class="diff ${q.diff}">${q.diff}</span>
-      ${(q.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
+      <span class="diff ${escH(q.diff)}">${escH(q.diff)}</span>
+      ${(q.tags||[]).map(t=>`<span class="tag">${escH(t)}</span>`).join('')}
       <span style="margin-left:auto;color:var(--amber);font-family:var(--ff-mono);font-size:.75rem;font-weight:700">${q.points} pts</span>
     </div>
-    <p>${(q.desc||'').replace(/\n/g,'<br>').replace(/<code>/g,'<code style="color:#0e7d3a;background:#f0faf5;padding:1px 5px;border-radius:3px">').replace(/<\/code>/g,'</code>')}</p>
+    <p>${escDescPreserveCode(q.desc||'')}</p>
     ${exBlock}
-    ${q.constraints?.length?`<h4 style="margin-top:14px">Constraints</h4><ul class="con-list">${q.constraints.map(c=>`<li>${c}</li>`).join('')}</ul>`:''}
+    ${q.constraints?.length?`<h4 style="margin-top:14px">Constraints</h4><ul class="con-list">${q.constraints.map(c=>`<li>${escH(c)}</li>`).join('')}</ul>`:''}
   `;
 }
 
@@ -7220,7 +7596,23 @@ function setTCStatus(i, label, cls) {
   if (ref?.statusEl) { ref.statusEl.textContent = label; ref.statusEl.className = `tc-stat ${cls}`; }
 }
 
-function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escH(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// SECURITY FIX (audit finding #3 — stored XSS in renderProbStmt):
+// Escapes the whole string, then re-opens ONLY the exact <code>/</code>
+// tag pair so professors keep inline code styling in problem descriptions.
+// Anything else — <img onerror>, <svg onload>, event-handler attributes,
+// attribute-breakout via a crafted diff/tag value, etc. — stays inert text.
+function escDescPreserveCode(s) {
+  return escH(s)
+    .replace(/&lt;code&gt;/g, '<code style="color:#0e7d3a;background:#f0faf5;padding:1px 5px;border-radius:3px">')
+    .replace(/&lt;\/code&gt;/g, '</code>')
+    .replace(/\n/g, '<br>');
+}
 
 /* ═══════════════════════════════════════════════════════════════
    PANEL TABS
@@ -7618,7 +8010,20 @@ async function submitCode() {
   disableAntiCheat(); disableDOMGuard();
   document.getElementById('guard-pill').classList.remove('vis');
 
-  // Reset integrity state so a fresh exam attempt starts clean
+  // SECURITY FIX (#1): permanently lock this attempt server-side as
+  // 'submitted' so startExam() refuses a re-attempt on this question,
+  // even though gradeSubmission has already graded it. (Ultimately
+  // gradeSubmission itself should also enforce this — see the Cloud
+  // Function snippet — but locking here closes the client-visible gap
+  // where refreshing before this line executes could leave the attempt
+  // looking 'active' forever.)
+  lockExamAttempt('submitted');
+  examAttemptId = null;
+
+  // Reset integrity state so the NEXT exam attempt (a different question)
+  // starts clean in the UI — claimExamAttempt() re-derives the real value
+  // for that question the next time startExam() runs, this is just so the
+  // integrity bar doesn't show a stale number in the meantime.
   integrityScore = 100;
   totalVioCount  = 0;
   tabVioCount    = 0;
@@ -7786,6 +8191,11 @@ function backToProblems() {
 function leaveEditor() {
   if (examActive && !confirm('Leave exam? Your progress will be lost.')) return;
   if (examActive) logViolation('nav-escape', 'Exam Left Early', 'Exited exam via editor back button before submitting');
+  // NOTE: intentionally NOT locking examAttemptId here — the attempt stays
+  // 'active' server-side so the student can resume it later via startExam(),
+  // which will restore the correct integrity/violation state and compute
+  // remaining time from the original server-recorded start (i.e. leaving
+  // early does not grant a fresh clock).
   examActive=false; stopTimer(); stopSnapshots();
   disableAntiCheat(); disableDOMGuard();
   if(document.exitFullscreen) document.exitFullscreen().catch(()=>{});
