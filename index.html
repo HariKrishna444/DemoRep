@@ -7340,10 +7340,21 @@ async function runCode() {
   // Professors may have stored it as "Input: hello\nOutput: olleh" (old format)
   // or as a plain raw value "hello" (new format).
   // Strip any leading "Input:" / "Output:" labelled lines and extract only the input value.
+  //
+  // Defensive: the admin form's textarea shows "Raw stdin value, e.g.\nhello" as
+  // grey placeholder text — if a professor typed real data right after it
+  // instead of replacing it, that hint line ends up saved as literal stdin
+  // content and gets fed straight into the student's input() calls, e.g.
+  // int() blowing up on the word "Raw". Strip it if it's the leading line.
+  const HINT_LINE_RE = /^raw\s+stdin\s+value\s*,?\s*e\.?g\.?:?\s*$/i;
+  function stripLeadingHintLine(lines) {
+    while (lines.length && HINT_LINE_RE.test(lines[0].trim())) lines.shift();
+    return lines;
+  }
   function extractRawStdin(raw) {
     // Split into lines, drop any line that starts with "Output:" (case-insensitive)
     // and strip a leading "Input:" prefix from the first matching line.
-    const lines = raw.split('\n');
+    const lines = stripLeadingHintLine(raw.split('\n'));
     const inputLines = [];
     let inOutputSection = false;
     for (const line of lines) {
@@ -7362,8 +7373,12 @@ async function runCode() {
   }
 
   // Similarly extract raw expected output from exampleOutput field
+  // (same defensive strip as extractRawStdin, for the output field's own
+  // "Expected stdout, e.g.\nolleh" placeholder hint)
+  const OUTPUT_HINT_LINE_RE = /^expected\s+stdout\s*,?\s*e\.?g\.?:?\s*$/i;
   function extractRawOutput(raw) {
     const lines = raw.split('\n');
+    while (lines.length && OUTPUT_HINT_LINE_RE.test(lines[0].trim())) lines.shift();
     const outLines = [];
     for (const line of lines) {
       const trimmed = line.trim();
