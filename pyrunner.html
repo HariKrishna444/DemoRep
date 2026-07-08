@@ -1,16 +1,34 @@
 <!DOCTYPE html>
 <html>
 <body>
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pyodide/0.28.3/pyodide.js"></script>
 <script>
 var py = null;
 
-loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" }).then(function(p) {
+loadPyodide({ indexURL: "https://cdnjs.cloudflare.com/ajax/libs/pyodide/0.28.3/" }).then(function(p) {
   py = p;
   parent.postMessage({ type: "py_ready" }, "*");
+}).catch(function(e) {
+  parent.postMessage({ type: "py_ready", error: String(e) }, "*");
 });
 
-var STDIN_SETUP = "import builtins\n_sl=list(_sl)\n_si=[0]\ndef _inp(p=''):\n  i=_si[0];_si[0]+=1\n  return _sl[i] if i<len(_sl) else ''\nbuiltins.input=_inp";
+// Pyodide's "batched" callback fires once per completed line and strips the
+// trailing newline character, so we must add it back ourselves or every
+// separate print() call gets glued onto the same line.
+var STDIN_SETUP =
+  "import builtins, sys\n" +
+  "_sl = list(_stdin_lines)\n" +
+  "_si = [0]\n" +
+  "def _inp(p=''):\n" +
+  "    i = _si[0]\n" +
+  "    if i >= len(_sl):\n" +
+  "        sys.stdout.write(str(p))\n" +
+  "        raise EOFError('EOF when reading a line -- no input provided. Enter a value in the stdin box above and run again.')\n" +
+  "    val = _sl[i]\n" +
+  "    sys.stdout.write(str(p))\n" +
+  "    _si[0] += 1\n" +
+  "    return val\n" +
+  "builtins.input = _inp";
 
 window.addEventListener("message", async function(e) {
   if (!e.data || e.data.t !== "run") return;
@@ -19,11 +37,13 @@ window.addEventListener("message", async function(e) {
     return;
   }
   var o = "", er = "", ec = 0;
-  py.setStdout({ batched: function(s) { o += s; } });
-  py.setStderr({ batched: function(s) { er += s; } });
-  var lines = (e.data.stdin || "").split("\n");
-  py.globals.set("_sl", py.toPy(lines));
+  py.setStdout({ batched: function(s) { o += s + "\n"; } });
+  py.setStderr({ batched: function(s) { er += s + "\n"; } });
+
+  var lines = (e.data.stdin && e.data.stdin.length > 0) ? e.data.stdin.split("\n") : [];
+  py.globals.set("_stdin_lines", py.toPy(lines));
   try { await py.runPythonAsync(STDIN_SETUP); } catch(x) {}
+
   try { await py.runPythonAsync(e.data.code); }
   catch(x) { er += (x.message || String(x)); ec = 1; }
   parent.postMessage({ id: e.data.id, ok: true, stdout: o, stderr: er, ec: ec }, "*");
