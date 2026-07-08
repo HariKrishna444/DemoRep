@@ -4136,12 +4136,40 @@ var _pyFrame=null, _pyReady=false, _pyCbs={}, _pyId=0, _pyReadyQ=[];
 window.addEventListener('message', function(ev) {
   if (!ev.data) return;
   if (ev.data.type === 'py_ready') {
-    _pyReady = true;
-    _pyReadyQ.forEach(function(fn){ fn(); });
-    _pyReadyQ = [];
     var ol=document.getElementById('py-loader');
     var bar=document.getElementById('py-loader-bar');
     var txt=document.getElementById('py-loader-text');
+    // CHANGED: pyrunner.html's loadPyodide().catch() also sends type:'py_ready'
+    // (with an `error` field) so that a failed load doesn't hang forever. This
+    // previously fell through to the "success" branch below unconditionally,
+    // setting _pyReady = true and hiding the loader even though `py` was still
+    // null inside the iframe — so the UI claimed the engine was ready, and the
+    // very next Run click got back "Pyodide not ready" from the iframe with no
+    // indication of what actually went wrong. Now a real failure is surfaced
+    // instead of silently masked as success.
+    if (ev.data.error) {
+      console.error('Pyodide failed to load:', ev.data.error);
+      if (txt) txt.textContent = 'Python engine failed to load — click Run to retry';
+      if (bar) bar.style.background = 'var(--err, #e5484d)';
+      toast?.('Python engine failed to load: ' + ev.data.error, 'err', 8000);
+      // Leave _pyReady false and tear the wedged frame down (WITHOUT
+      // immediately calling startPyodide() again — if the underlying cause
+      // is persistent, e.g. a still-blocked CDN, auto-retrying here would
+      // silently loop forever, re-downloading and re-failing on every
+      // message). The next explicit Run click calls startPyodide() itself
+      // (see pistonExecute()'s `if (!_pyFrame) startPyodide()`), so a fresh
+      // attempt only happens when the user asks for one.
+      if (_pyFrame) { try { _pyFrame.remove(); } catch(e) {} }
+      _pyFrame = null;
+      Object.keys(_pyCbs).forEach(function(id) {
+        try { _pyCbs[id]({ ok:false, error: 'Python engine failed to load: ' + ev.data.error }); } catch(e) {}
+        delete _pyCbs[id];
+      });
+      return;
+    }
+    _pyReady = true;
+    _pyReadyQ.forEach(function(fn){ fn(); });
+    _pyReadyQ = [];
     if (bar) bar.style.width='100%';
     if (txt) txt.textContent='Python Engine Ready!';
     setTimeout(function(){ if(ol) ol.classList.add('hidden'); }, 700);
