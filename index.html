@@ -7582,18 +7582,14 @@ async function submitCode() {
   submissions.push(sub);
   if(allOk) solvedIds.add(currentQ.id);
 
-  // PHASE 2: Write submission to Firestore submissions/ collection.
-  // This lets the professor see all results in real-time on the dashboard.
-  if (firebaseReady && db && currentUser) {
-    db.collection('submissions').add({
-      ...sub,
-      userId:      currentUser.uid,
-      questionId:  currentQ?.id || 'unknown',
-      code,                                          // final submitted code
-      timestamp:   firebase.firestore.FieldValue.serverTimestamp(),
-      snapshots:   codeSnapshots,                   // all periodic snapshots
-    }).catch(e => console.warn('submitCode Firestore error:', e));
-  }
+  // NOTE: submitCode() no longer writes to db.collection('submissions')
+  // itself. The Firestore rules for /submissions now have
+  // `allow create: if false;` — gradeSubmission (the Cloud Function called
+  // above) is the only writer, using the Admin SDK, which bypasses these
+  // rules entirely and persists the submission doc (including code +
+  // snapshots) server-side. A client-side write here would always be
+  // rejected with "Missing or insufficient permissions" and accomplish
+  // nothing but console noise.
 
   examActive = false;
   stopTimer(); stopSnapshots();
