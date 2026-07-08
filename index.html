@@ -7053,17 +7053,24 @@ function _onMonacoReady(mono) {
       detectIndentation: false,
       autoIndent: 'full',
       formatOnType: true,
-      contextmenu: false, // right-click menu offered its own "Paste" action
-                          // that bypassed the paste guard below entirely —
-                          // simplest fix is to not offer a context menu at all.
+      contextmenu: !practiceMode, // right-click menu (incl. its own "Paste"
+                          // action that bypasses the paste guard below) is
+                          // only disabled during exams. Practice problems
+                          // are untimed/unmonitored, so copy-paste is fine
+                          // there — keep the normal context menu.
     });
 
-    lockEditorPaste(monaco_editor, mono, () => {
-      if (!examActive || !acEnabled) return;
-      logViolation('monaco-paste', 'Paste', 'Monaco paste blocked');
-      outLine('err', '⛔ Paste is disabled. Type your code manually.');
-      toast('⛔ Paste blocked!', 'err', 4000);
-    });
+    // Paste is only locked down during exams (anti-cheat). Practice mode
+    // is explicitly untimed/unmonitored (see startPractice()), so students
+    // should be able to copy/paste freely while practicing.
+    if (!practiceMode) {
+      lockEditorPaste(monaco_editor, mono, () => {
+        if (!examActive || !acEnabled) return;
+        logViolation('monaco-paste', 'Paste', 'Monaco paste blocked');
+        outLine('err', '⛔ Paste is disabled. Type your code manually.');
+        toast('⛔ Paste blocked!', 'err', 4000);
+      });
+    }
 
     let autoSaveTimer = null;
     monaco_editor.onDidChangeModelContent(() => {
