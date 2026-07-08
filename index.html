@@ -3181,7 +3181,7 @@ service cloud.firestore {
 script-src 'self'
   https://www.gstatic.com
   https://cdnjs.cloudflare.com
-  https://cdn.jsdelivr.net
+  https://unpkg.com
   'wasm-unsafe-eval';
 style-src 'self'
   https://fonts.googleapis.com
@@ -3192,7 +3192,7 @@ connect-src 'self'
   https://*.firebaseio.com
   https://*.googleapis.com
   https://emkc.org
-  https://cdn.jsdelivr.net;
+  https://unpkg.com;
 img-src 'self' data: https:;
 frame-src 'self' blob: https://www.youtube.com;
 object-src 'none';
@@ -4144,7 +4144,7 @@ function startPyodide() {
   // Using unpkg.com instead of jsdelivr avoids "Tracking Prevention blocked storage"
   // errors in Edge/Safari caused by jsdelivr's cross-origin IndexedDB writes.
   // Pyodide runner HTML base64-encoded to avoid multi-layer string escaping issues.
-  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsL3B5b2RpZGUuanMiPjwvc2NyaXB0Pgo8c2NyaXB0Pgp2YXIgcHkgPSBudWxsOwpsb2FkUHlvZGlkZSh7IGluZGV4VVJMOiAiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L3B5b2RpZGUvdjAuMjUuMS9mdWxsLyIgfSkudGhlbihmdW5jdGlvbihwKSB7CiAgcHkgPSBwOwogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIgfSwgIioiKTsKfSkuY2F0Y2goZnVuY3Rpb24oZSkgewogIHBhcmVudC5wb3N0TWVzc2FnZSh7IHR5cGU6ICJweV9yZWFkeSIsIGVycm9yOiBTdHJpbmcoZSkgfSwgIioiKTsKfSk7Cgp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsIGFzeW5jIGZ1bmN0aW9uKGV2KSB7CiAgaWYgKCFldi5kYXRhIHx8IGV2LmRhdGEudCAhPT0gInJ1biIpIHJldHVybjsKICBpZiAoIXB5KSB7CiAgICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IGZhbHNlLCBlcnJvcjogIlB5b2RpZGUgbm90IHJlYWR5IiB9LCAiKiIpOwogICAgcmV0dXJuOwogIH0KICB2YXIgbyA9ICIiLCBlciA9ICIiLCBlYyA9IDA7CiAgLy8gUHlvZGlkZSdzICJiYXRjaGVkIiBjYWxsYmFjayBmaXJlcyBvbmNlIHBlciBjb21wbGV0ZWQgbGluZSBhbmQgc3RyaXBzIHRoZQogIC8vIHRyYWlsaW5nIG5ld2xpbmUgY2hhcmFjdGVyLCBzbyB3ZSBtdXN0IGFkZCBpdCBiYWNrIG91cnNlbHZlcyBvciBldmVyeQogIC8vIHNlcGFyYXRlIHByaW50KCkgY2FsbCBnZXRzIGdsdWVkIG9udG8gdGhlIHNhbWUgbGluZS4KICBweS5zZXRTdGRvdXQoeyBiYXRjaGVkOiBmdW5jdGlvbihzKSB7IG8gKz0gcyArICJcbiI7IH0gfSk7CiAgcHkuc2V0U3RkZXJyKHsgYmF0Y2hlZDogZnVuY3Rpb24ocykgeyBlciArPSBzICsgIlxuIjsgfSB9KTsKCiAgdmFyIGxpbmVzID0gKGV2LmRhdGEuc3RkaW4gJiYgZXYuZGF0YS5zdGRpbi5sZW5ndGggPiAwKSA/IGV2LmRhdGEuc3RkaW4uc3BsaXQoIlxuIikgOiBbXTsKICBweS5nbG9iYWxzLnNldCgiX3N0ZGluX2xpbmVzIiwgcHkudG9QeShsaW5lcykpOwogIHRyeSB7CiAgICBhd2FpdCBweS5ydW5QeXRob25Bc3luYygKICAgICAgImltcG9ydCBidWlsdGlucywgc3lzXG4iICsKICAgICAgIl9zbCA9IGxpc3QoX3N0ZGluX2xpbmVzKVxuIiArCiAgICAgICJfc2kgPSBbMF1cbiIgKwogICAgICAiZGVmIF9pbnAocD0nJyk6XG4iICsKICAgICAgIiAgICBpID0gX3NpWzBdXG4iICsKICAgICAgIiAgICBpZiBpID49IGxlbihfc2wpOlxuIiArCiAgICAgICIgICAgICAgIHN5cy5zdGRvdXQud3JpdGUoc3RyKHApKVxuIiArCiAgICAgICIgICAgICAgIHJhaXNlIEVPRkVycm9yKCdFT0Ygd2hlbiByZWFkaW5nIGEgbGluZSAtLSBubyBpbnB1dCBwcm92aWRlZC4gRW50ZXIgYSB2YWx1ZSBpbiB0aGUgc3RkaW4gYm94IGFib3ZlIGFuZCBydW4gYWdhaW4uJylcbiIgKwogICAgICAiICAgIHZhbCA9IF9zbFtpXVxuIiArCiAgICAgICIgICAgc3lzLnN0ZG91dC53cml0ZShzdHIocCkpXG4iICsKICAgICAgIiAgICBfc2lbMF0gKz0gMVxuIiArCiAgICAgICIgICAgcmV0dXJuIHZhbFxuIiArCiAgICAgICJidWlsdGlucy5pbnB1dCA9IF9pbnAiCiAgICApOwogIH0gY2F0Y2goeCkge30KCiAgdHJ5IHsgYXdhaXQgcHkucnVuUHl0aG9uQXN5bmMoZXYuZGF0YS5jb2RlKTsgfQogIGNhdGNoKHgpIHsgZXIgKz0gKHgubWVzc2FnZSB8fCBTdHJpbmcoeCkpOyBlYyA9IDE7IH0KCiAgcGFyZW50LnBvc3RNZXNzYWdlKHsgaWQ6IGV2LmRhdGEuaWQsIG9rOiB0cnVlLCBzdGRvdXQ6IG8sIHN0ZGVycjogZXIsIGVjOiBlYyB9LCAiKiIpOwp9KTsKPC9zY3JpcHQ+CjwvYm9keT48L2h0bWw+Cg==";
+  var _pyB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sPjxib2R5Pgo8c2NyaXB0IHNyYz0iaHR0cHM6Ly91bnBrZy5jb20vcHlvZGlkZUAwLjI1LjEvZnVsbC9weW9kaWRlLmpzIj48L3NjcmlwdD4KPHNjcmlwdD4KdmFyIHB5ID0gbnVsbDsKbG9hZFB5b2RpZGUoeyBpbmRleFVSTDogImh0dHBzOi8vdW5wa2cuY29tL3B5b2RpZGVAMC4yNS4xL2Z1bGwvIiB9KS50aGVuKGZ1bmN0aW9uKHApIHsKICBweSA9IHA7CiAgcGFyZW50LnBvc3RNZXNzYWdlKHsgdHlwZTogInB5X3JlYWR5IiB9LCAiKiIpOwp9KS5jYXRjaChmdW5jdGlvbihlKSB7CiAgcGFyZW50LnBvc3RNZXNzYWdlKHsgdHlwZTogInB5X3JlYWR5IiwgZXJyb3I6IFN0cmluZyhlKSB9LCAiKiIpOwp9KTsKCndpbmRvdy5hZGRFdmVudExpc3RlbmVyKCJtZXNzYWdlIiwgYXN5bmMgZnVuY3Rpb24oZXYpIHsKICBpZiAoIWV2LmRhdGEgfHwgZXYuZGF0YS50ICE9PSAicnVuIikgcmV0dXJuOwogIGlmICghcHkpIHsKICAgIHBhcmVudC5wb3N0TWVzc2FnZSh7IGlkOiBldi5kYXRhLmlkLCBvazogZmFsc2UsIGVycm9yOiAiUHlvZGlkZSBub3QgcmVhZHkiIH0sICIqIik7CiAgICByZXR1cm47CiAgfQogIHZhciBvID0gIiIsIGVyID0gIiIsIGVjID0gMDsKICAvLyBQeW9kaWRlJ3MgImJhdGNoZWQiIGNhbGxiYWNrIGZpcmVzIG9uY2UgcGVyIGNvbXBsZXRlZCBsaW5lIGFuZCBzdHJpcHMgdGhlCiAgLy8gdHJhaWxpbmcgbmV3bGluZSBjaGFyYWN0ZXIsIHNvIHdlIG11c3QgYWRkIGl0IGJhY2sgb3Vyc2VsdmVzIG9yIGV2ZXJ5CiAgLy8gc2VwYXJhdGUgcHJpbnQoKSBjYWxsIGdldHMgZ2x1ZWQgb250byB0aGUgc2FtZSBsaW5lLgogIHB5LnNldFN0ZG91dCh7IGJhdGNoZWQ6IGZ1bmN0aW9uKHMpIHsgbyArPSBzICsgIlxuIjsgfSB9KTsKICBweS5zZXRTdGRlcnIoeyBiYXRjaGVkOiBmdW5jdGlvbihzKSB7IGVyICs9IHMgKyAiXG4iOyB9IH0pOwoKICB2YXIgbGluZXMgPSAoZXYuZGF0YS5zdGRpbiAmJiBldi5kYXRhLnN0ZGluLmxlbmd0aCA+IDApID8gZXYuZGF0YS5zdGRpbi5zcGxpdCgiXG4iKSA6IFtdOwogIHB5Lmdsb2JhbHMuc2V0KCJfc3RkaW5fbGluZXMiLCBweS50b1B5KGxpbmVzKSk7CiAgdHJ5IHsKICAgIGF3YWl0IHB5LnJ1blB5dGhvbkFzeW5jKAogICAgICAiaW1wb3J0IGJ1aWx0aW5zLCBzeXNcbiIgKwogICAgICAiX3NsID0gbGlzdChfc3RkaW5fbGluZXMpXG4iICsKICAgICAgIl9zaSA9IFswXVxuIiArCiAgICAgICJkZWYgX2lucChwPScnKTpcbiIgKwogICAgICAiICAgIGkgPSBfc2lbMF1cbiIgKwogICAgICAiICAgIGlmIGkgPj0gbGVuKF9zbCk6XG4iICsKICAgICAgIiAgICAgICAgc3lzLnN0ZG91dC53cml0ZShzdHIocCkpXG4iICsKICAgICAgIiAgICAgICAgcmFpc2UgRU9GRXJyb3IoJ0VPRiB3aGVuIHJlYWRpbmcgYSBsaW5lIC0tIG5vIGlucHV0IHByb3ZpZGVkLiBFbnRlciBhIHZhbHVlIGluIHRoZSBzdGRpbiBib3ggYWJvdmUgYW5kIHJ1biBhZ2Fpbi4nKVxuIiArCiAgICAgICIgICAgdmFsID0gX3NsW2ldXG4iICsKICAgICAgIiAgICBzeXMuc3Rkb3V0LndyaXRlKHN0cihwKSlcbiIgKwogICAgICAiICAgIF9zaVswXSArPSAxXG4iICsKICAgICAgIiAgICByZXR1cm4gdmFsXG4iICsKICAgICAgImJ1aWx0aW5zLmlucHV0ID0gX2lucCIKICAgICk7CiAgfSBjYXRjaCh4KSB7fQoKICB0cnkgeyBhd2FpdCBweS5ydW5QeXRob25Bc3luYyhldi5kYXRhLmNvZGUpOyB9CiAgY2F0Y2goeCkgeyBlciArPSAoeC5tZXNzYWdlIHx8IFN0cmluZyh4KSk7IGVjID0gMTsgfQoKICBwYXJlbnQucG9zdE1lc3NhZ2UoeyBpZDogZXYuZGF0YS5pZCwgb2s6IHRydWUsIHN0ZG91dDogbywgc3RkZXJyOiBlciwgZWM6IGVjIH0sICIqIik7Cn0pOwo8L3NjcmlwdD4KPC9ib2R5PjwvaHRtbD4K";
   var _pyBytes = atob(_pyB64);
   var _pyArr = new Uint8Array(_pyBytes.length);
   for (var i = 0; i < _pyBytes.length; i++) _pyArr[i] = _pyBytes.charCodeAt(i);
@@ -4983,6 +4983,23 @@ function pushAppHistory(state, hash) {
 // Back fall through to leaving the site entirely).
 window.addEventListener('popstate', (e) => {
   const st = e.state;
+
+  // Block escaping an active exam via the browser Back/Forward button.
+  // Without this, popstate bypassed leaveEditor()'s confirm+teardown
+  // entirely and dumped the student straight onto the exam grid with no
+  // warning, no violation logged, and the timer/fullscreen/anti-cheat
+  // state left dangling in memory — a silent escape hatch. Practice mode
+  // has no proctoring, so it's exempt.
+  if (examActive && !practiceMode && st && st.page !== 'editor' && st.page !== 'result') {
+    logViolation('nav-escape', 'Exam Navigation Blocked', 'Attempted to leave exam via browser Back/Forward');
+    toast('⚠ You must submit your solution before leaving the exam.', 'warn', 6000);
+    // Cancel the navigation by re-pushing the editor's own state on top,
+    // keeping the address bar and history stack consistent with what's
+    // actually still on screen.
+    pushAppHistory({ page: 'editor' }, currentQ?.id ? '#/exam/' + currentQ.id : null);
+    return;
+  }
+
   if (st && st.page === 'learn' && st.courseId && st.lessonId) {
     restoreLearnHistoryState(st);
   } else if (st && st.page) {
@@ -5925,6 +5942,10 @@ function exportViolations() {
 // here rather than scattering the currentUser check across each page.
 function goToExamsTab() {
   if (!currentUser) { toast('Please log in to access Exams','warn'); showPage('login'); return; }
+  if (examActive && !practiceMode) {
+    toast('⚠ Submit your current solution before returning to the exam list.', 'warn', 6000);
+    return;
+  }
   showPage('stu'); renderStuPage();
 }
 function goToChronoCodeTab() {
@@ -6115,6 +6136,7 @@ async function startExam(qId) {
   startTimer(EXAM_DURATION_MINS * 60);
   startSnapshots();
   scanForKnownExtensions();
+  checkVisibilityIntegrity();
   showFullscreenGate();
 
   document.getElementById('ed-prob-name').textContent = currentQ.title;
@@ -6180,6 +6202,46 @@ async function scanForKnownExtensions() {
   if (hits.length) {
     logViolation('known-extension','Extension Scan','Detected: ' + hits.join(', '));
     toast(`⚠ Detected extension(s) that must be disabled for this exam: ${hits.join(', ')}`, 'err', 8000);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VISIBILITY-API TAMPER DETECTION
+   ═══════════════════════════════════════════════════════════════
+   Extensions like "Always Active Window" spoof document.hidden /
+   visibilityState to defeat tab-switch detection. A legitimate page
+   inherits these as native getters from Document.prototype — if they've
+   been redefined as own properties, or the getter itself isn't native
+   code, something has tampered with the exact signal our tab-switch
+   monitor relies on.
+   ═══════════════════════════════════════════════════════════════ */
+function detectVisibilitySpoofing() {
+  const issues = [];
+
+  if (Object.prototype.hasOwnProperty.call(document, 'hidden')) {
+    issues.push('document.hidden has been redefined as an own property');
+  }
+  if (Object.prototype.hasOwnProperty.call(document, 'visibilityState')) {
+    issues.push('document.visibilityState has been redefined as an own property');
+  }
+
+  const hiddenDesc = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden');
+  const visDesc    = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState');
+  if (hiddenDesc?.get && !hiddenDesc.get.toString().includes('[native code]')) {
+    issues.push('document.hidden getter is not native code');
+  }
+  if (visDesc?.get && !visDesc.get.toString().includes('[native code]')) {
+    issues.push('document.visibilityState getter is not native code');
+  }
+
+  return issues;
+}
+
+function checkVisibilityIntegrity() {
+  const issues = detectVisibilitySpoofing();
+  if (issues.length) {
+    logViolation('visibility-tamper', 'Visibility API Tampered', issues.join('; '));
+    toast('⚠ Tab-visibility monitoring appears to have been tampered with.', 'err', 8000);
   }
 }
 
@@ -6693,6 +6755,7 @@ function startSnapshots() {
   snapshotInterval = setInterval(() => {
     saveSnapshot('periodic');
     saveDraftToFirestore(); // PHASE 2: auto-save draft to Firestore
+    checkVisibilityIntegrity();
   }, 2 * 60 * 1000);
 }
 
@@ -7652,6 +7715,7 @@ function backToProblems() {
    ═══════════════════════════════════════════════════════════════ */
 function leaveEditor() {
   if (examActive && !confirm('Leave exam? Your progress will be lost.')) return;
+  if (examActive) logViolation('nav-escape', 'Exam Left Early', 'Exited exam via editor back button before submitting');
   examActive=false; stopTimer(); stopSnapshots();
   disableAntiCheat(); disableDOMGuard();
   if(document.exitFullscreen) document.exitFullscreen().catch(()=>{});
