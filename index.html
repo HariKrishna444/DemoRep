@@ -1797,6 +1797,7 @@ select.inp option{background:#eef1f4}
 .w3-sidebar{
   background:#f6f8fa;border-right:1px solid #e2e5ea;
   overflow-y:auto;display:flex;flex-direction:column;
+  min-height:0;
 }
 .w3-sidebar::-webkit-scrollbar{width:4px}
 .w3-sidebar::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
@@ -1857,6 +1858,7 @@ select.inp option{background:#eef1f4}
 .w3-center-col{
   overflow-y:auto;background:#ffffff;
   display:flex;flex-direction:column;
+  min-height:0;
 }
 .w3-center-col::-webkit-scrollbar{width:5px}
 .w3-center-col::-webkit-scrollbar-thumb{background:rgba(30,163,74,.09);border-radius:99px}
@@ -13044,9 +13046,33 @@ window.renderLearnSidebar = function(course) {
   }).join('');
 };
 
+/* Scrolls every plausible "lesson reading" scroll container back to the
+   top. #w3-center-col is the intended scroll host, but depending on how a
+   given browser resolves the CSS-grid height/overflow chain, the real
+   scrolling element can end up being the sidebar's inner wrap, #page-learn,
+   <html>, or the window itself — so we reset all of them defensively
+   instead of guessing just one. Called both synchronously (covers the
+   common case instantly) and on the next animation frame (covers browsers
+   that only settle their scroll position after the new content has been
+   laid out). */
+function w3ScrollLessonToTop() {
+  const ids = ['w3-center-col', 'lesson-content-area', 'page-learn'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.scrollTop = 0; });
+  if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+
 /* ── Override openLesson to render into center col ── */
 const _w3OrigOpenLesson = window.openLesson;
 window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
+  // On mobile, picking a lesson from the off-canvas drawer should close it
+  // immediately so the student sees the lesson content underneath instead
+  // of having to close it themselves. (The original openLesson() did this,
+  // but this override replaces it wholesale, so it needs to be repeated
+  // here — otherwise the drawer silently stops auto-collapsing.)
+  closeLearnSidebar();
   currentModuleId = moduleId;
   currentLessonId = lessonId;
   const course = coursesCatalog.find(c=>c.id===courseId);
@@ -13079,13 +13105,9 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
 
   // Jump to the very beginning of the newly-opened lesson's content instead
   // of keeping whatever scroll position the previous (possibly long) lesson
-  // was left at. #w3-center-col is the actual scroll container on both
-  // desktop and mobile (it keeps overflow-y:auto at every breakpoint), so
-  // resetting its scrollTop is enough — this matters most for long lessons
-  // and for jumping straight to a lesson far down the list (e.g. lesson 30),
-  // which would otherwise render already scrolled past its own start.
-  const _w3ScrollHost = document.getElementById('w3-center-col');
-  if (_w3ScrollHost) _w3ScrollHost.scrollTop = 0;
+  // was left at — matters most for long lessons and for jumping straight to
+  // a lesson far down the list (e.g. lesson 30).
+  w3ScrollLessonToTop();
 
   // Enrollment / progress data
   const enrollment = myEnrollments[courseId];
@@ -13246,8 +13268,11 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
   // Re-assert the scroll-to-top after the new content is actually in the
   // DOM (belt-and-braces alongside the earlier reset above), so switching
   // between lessons of very different lengths always lands at the top of
-  // the newly-opened lesson rather than mid-scroll.
-  if (_w3ScrollHost) _w3ScrollHost.scrollTop = 0;
+  // the newly-opened lesson rather than mid-scroll. The rAF-deferred call
+  // covers browsers/layouts that only settle scroll position after the
+  // freshly-injected content has actually been laid out and painted.
+  w3ScrollLessonToTop();
+  requestAnimationFrame(w3ScrollLessonToTop);
 };
 
 /* ── Mark lesson complete + advance ── */
