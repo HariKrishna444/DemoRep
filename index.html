@@ -2164,6 +2164,22 @@ select.inp option{background:#eef1f4}
   .w3-body{grid-template-columns:220px 1fr}
   .w3-try-panel{display:none}
 }
+
+/* ─── No inline compiler for this course: drop the whole "Try it Yourself"
+   playground panel and give the lesson content the extra column width,
+   on every screen size (not just the narrow breakpoints above). Toggled
+   via JS by adding/removing the "no-compiler" class on .w3-body. ─── */
+.w3-body.no-compiler .w3-try-panel{display:none}
+.w3-body.no-compiler{grid-template-columns:260px 1fr}
+@media(max-width:1200px){
+  .w3-body.no-compiler{grid-template-columns:240px 1fr}
+}
+@media(max-width:980px){
+  .w3-body.no-compiler{grid-template-columns:220px 1fr}
+}
+@media(max-width:640px){
+  .w3-body.no-compiler{grid-template-columns:1fr}
+}
 @media(max-width:640px){
   .w3-body{grid-template-columns:1fr;position:relative}
   /* Off-canvas drawer instead of hiding the sidebar outright — students
@@ -12634,6 +12650,10 @@ let _w3StaticCbCounter = 0;
 function w3StaticCodeBoxHtml(code) {
   const id = 'w3scb-' + (++_w3StaticCbCounter) + '-' + Math.random().toString(36).slice(2, 6);
   const cb = w3BuildCodeBlock(code, id);
+  // No compiler configured for this course → nowhere to send this code to
+  // run, so drop the "Try it" button (it just opens the playground editor,
+  // which itself is hidden in this case).
+  const _noCompiler = currentLessonCodeLang === 'none';
   return `<div class="w3-example-box">
     <div class="w3-example-label">
       <span>Code Example</span>
@@ -12641,7 +12661,7 @@ function w3StaticCodeBoxHtml(code) {
         <button class="w3-cb-icon-btn" onclick="w3CopyCodeBlock('${id}',this)">⧉ Copy</button>
         ${cb.showExpand ? `<button class="w3-cb-icon-btn" onclick="w3ToggleCbExpand('${id}',this)">⌄ Expand</button>` : ''}
         <button class="w3-cb-icon-btn" onclick="w3ToggleCbTheme('${id}',this)">🌙</button>
-        <button class="w3-try-it-btn" onclick="w3LoadCode(w3GetCodeBlockText('${id}'))">&#9654; Try it</button>
+        ${_noCompiler ? '' : `<button class="w3-try-it-btn" onclick="w3LoadCode(w3GetCodeBlockText('${id}'))">&#9654; Try it</button>`}
       </div>
     </div>
     <div class="w3-example-code-wrap${cb.showExpand ? ' collapsed' : ''}" id="${id}">
@@ -12799,7 +12819,12 @@ function w3RenderSections(sections) {
         // into an inline onclick attribute, which breaks on quotes/newlines).
         const exId = 'w3ex-' + (_exCounter++) + '-' + Math.random().toString(36).slice(2,7);
         const cb = w3BuildCodeBlock(sec.code, exId);
-        const needsStdin = /\binput\s*\(/.test(sec.code || '');
+        // No compiler configured for this course → this example is read-only
+        // reference code: no Run button, no Edit in Playground button, and
+        // (since Run never fires) no "no inline compiler configured" message
+        // ever needs to show up either.
+        const _noCompiler = currentLessonCodeLang === 'none';
+        const needsStdin = !_noCompiler && /\binput\s*\(/.test(sec.code || '');
         const stdinPlaceholder = needsStdin ? w3ExtractInputPrompt(sec.code) : '';
         return `<div class="w3-ex-card">
           ${(sec.title || sec.description) ? `<div class="w3-ex-card-head">
@@ -12813,8 +12838,8 @@ function w3RenderSections(sections) {
                 <button class="w3-cb-icon-btn" onclick="w3CopyCodeBlock('${exId}',this)">⧉ Copy</button>
                 ${cb.showExpand ? `<button class="w3-cb-icon-btn" onclick="w3ToggleCbExpand('${exId}',this)">⌄ Expand</button>` : ''}
                 <button class="w3-cb-icon-btn" onclick="w3ToggleCbTheme('${exId}',this)">🌙</button>
-                <button class="w3-try-it-btn" id="run-${exId}" onclick="w3RunInlineExample('${exId}')">▶ Run</button>
-                <button class="w3-try-it-btn" onclick="w3LoadCode(w3GetCodeBlockText('${exId}'))" style="opacity:.85">✎ Edit in Playground</button>
+                ${_noCompiler ? '' : `<button class="w3-try-it-btn" id="run-${exId}" onclick="w3RunInlineExample('${exId}')">▶ Run</button>`}
+                ${_noCompiler ? '' : `<button class="w3-try-it-btn" onclick="w3LoadCode(w3GetCodeBlockText('${exId}'))" style="opacity:.85">✎ Edit in Playground</button>`}
               </div>
             </div>
             <div class="w3-example-code-wrap${cb.showExpand ? ' collapsed' : ''}" id="${exId}">
@@ -12825,7 +12850,7 @@ function w3RenderSections(sections) {
               <input class="w3-stdin-inp" id="stdin-${exId}" placeholder="${sanitize(stdinPlaceholder)}">
             </div>` : ''}
           </div>
-          <div class="w3-inline-output" id="out-${exId}" style="display:none"></div>
+          ${_noCompiler ? '' : `<div class="w3-inline-output" id="out-${exId}" style="display:none"></div>`}
           ${sec.expectedOutput ? `<div class="w3-ex-card-expected"><b>Expected Output</b>${sanitize(sec.expectedOutput)}</div>` : ''}
         </div>`;
       }
@@ -12892,6 +12917,12 @@ function w3UpdateTopbar(course) {
   if (label) label.textContent = course?.title || 'Course Topics';
   currentLessonCodeLang = inferCourseCodeLang(course);
   w3SetEngineBadge(currentLessonCodeLang);
+  // No language configured for this course → there's nothing to run, so
+  // remove the entire "Try it Yourself" playground panel (not just its
+  // Run button) and let the lesson column reclaim that width. Applies at
+  // every screen size, desktop and mobile alike.
+  const w3BodyEl = document.querySelector('#page-learn .w3-body');
+  if (w3BodyEl) w3BodyEl.classList.toggle('no-compiler', currentLessonCodeLang === 'none');
 }
 
 /* ── Progress ring ── */
@@ -13045,6 +13076,16 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
   renderLearnSidebar(course);
   const area = document.getElementById('lesson-content-area');
   if (!area) return;
+
+  // Jump to the very beginning of the newly-opened lesson's content instead
+  // of keeping whatever scroll position the previous (possibly long) lesson
+  // was left at. #w3-center-col is the actual scroll container on both
+  // desktop and mobile (it keeps overflow-y:auto at every breakpoint), so
+  // resetting its scrollTop is enough — this matters most for long lessons
+  // and for jumping straight to a lesson far down the list (e.g. lesson 30),
+  // which would otherwise render already scrolled past its own start.
+  const _w3ScrollHost = document.getElementById('w3-center-col');
+  if (_w3ScrollHost) _w3ScrollHost.scrollTop = 0;
 
   // Enrollment / progress data
   const enrollment = myEnrollments[courseId];
@@ -13202,6 +13243,11 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
     </div>`;
 
   w3InitStickyProgress();
+  // Re-assert the scroll-to-top after the new content is actually in the
+  // DOM (belt-and-braces alongside the earlier reset above), so switching
+  // between lessons of very different lengths always lands at the top of
+  // the newly-opened lesson rather than mid-scroll.
+  if (_w3ScrollHost) _w3ScrollHost.scrollTop = 0;
 };
 
 /* ── Mark lesson complete + advance ── */
