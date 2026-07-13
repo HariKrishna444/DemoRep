@@ -7736,7 +7736,12 @@ async function runCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
   const template = (getTemplate()||'').trim();
-  if (!code || code === template) {
+  // Only block genuinely empty code. Previously this also blocked code that
+  // was identical to the starter template — but course/practice problems
+  // often ship starter code that's already runnable (e.g. a worked example
+  // or partial scaffold), so an untouched-but-non-empty editor should still
+  // Run/Submit instead of being told to "write code first".
+  if (!code) {
     toast('Write some code first!','warn');
     return;
   }
@@ -7924,8 +7929,7 @@ async function submitCode() {
   if (practiceMode) { return submitPracticeCode(); }
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
-  const template = (getTemplate()||'').trim();
-  if (!code || code === template) {
+  if (!code) {
     toast('Write your solution before submitting!','warn');
     return;
   }
@@ -8163,8 +8167,7 @@ function normalizeForCompare(s) {
 async function submitPracticeCode() {
   if (!monacoReady) { toast('Editor loading...','warn'); return; }
   const code = monaco_editor.getValue().trim();
-  const template = (getTemplate()||'').trim();
-  if (!code || code === template) {
+  if (!code) {
     toast('Write your solution before submitting!','warn');
     return;
   }
@@ -11340,7 +11343,16 @@ async function openEditCourseModal(courseId) {
   const saveBtn = document.querySelector('#course-builder-modal .modal-footer .btn-a');
   if (saveBtn) saveBtn.textContent = 'Save Changes';
 
-  // Render existing modules + lessons + content blocks into #cb-modules-list
+  cbRenderModulesList();
+  document.getElementById('course-builder-modal').classList.add('open');
+}
+function closeCourseBuilder() { document.getElementById('course-builder-modal').classList.remove('open'); }
+
+// Renders (or re-renders, e.g. after deleting a lesson) all modules +
+// lessons + content blocks into #cb-modules-list. Pulled out of
+// openCourseBuilder/openEditCourseModal so cbDeleteLesson() can rebuild the
+// list cleanly after splicing a lesson out, instead of hand-patching indices.
+function cbRenderModulesList() {
   cbModuleCount = courseBuilderModules.length;
   const listEl = document.getElementById('cb-modules-list');
   listEl.innerHTML = '';
@@ -11379,6 +11391,8 @@ async function openEditCourseModal(courseId) {
           </select>
           <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px" value="${cbAttrEsc(lesson.duration)}"
                  oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
+          <button type="button" class="btn btn-ghost btn-sm" title="Delete this lesson" style="color:var(--danger)"
+                  onclick="cbDeleteLesson(${modIdx},${lessonIdx})">🗑 Delete</button>
         </div>
         <input class="inp cb-video-url ${lesson.type==='video'?'':'hidden'}" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
                style="margin:6px 0;padding:7px 10px" value="${cbAttrEsc(lesson.videoUrl)}"
@@ -11402,10 +11416,19 @@ async function openEditCourseModal(courseId) {
       renderCBBlocks(modIdx, lessonIdx);
     });
   });
-
-  document.getElementById('course-builder-modal').classList.add('open');
 }
-function closeCourseBuilder() { document.getElementById('course-builder-modal').classList.remove('open'); }
+
+// Deletes a lesson from a module, then fully re-renders the modules list —
+// simpler and safer than hand-patching every onclick-baked modIdx/lessonIdx
+// pair in the DOM after an index shift.
+function cbDeleteLesson(modIdx, lessonIdx) {
+  const mod = courseBuilderModules[modIdx];
+  if (!mod || !mod.lessons || !mod.lessons[lessonIdx]) return;
+  const title = mod.lessons[lessonIdx].title || 'this lesson';
+  if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+  mod.lessons.splice(lessonIdx, 1);
+  cbRenderModulesList();
+}
 
 // Tracks web-imported modules from fetchAndPreviewWebContent
 let _cbWebModules = [];
