@@ -4797,22 +4797,34 @@ function compilerDecodeState(encoded) {
   } catch (e) { return null; }
 }
 
-// encodedState is the optional URL-hash payload from a shared compiler
-// link (undefined/null → blank compiler with the default Python starter).
-async function openCompiler(encodedState) {
+// param is the optional part after '#/compiler/' from a shared/deep link.
+// Two different things can live there:
+//  - a plain language slug, e.g. '#/compiler/python' — just pre-selects
+//    that language with its default starter code (no code payload)
+//  - a full encoded {code, lang, stdin} blob from compilerShare() — the
+//    original "share my exact code" link
+// A slug matches a COMPILER_TEMPLATES key so it's simple to tell apart
+// from the base64 blob, which never collides with a plain language name.
+async function openCompiler(param) {
   compilerMode      = true;
   practiceMode      = true;   // untimed, unmonitored — same path as Practice
   courseProblemMode = false;
   examActive        = false;
 
   let code = null, lang = 'python', stdin = '';
-  if (encodedState) {
-    const decoded = compilerDecodeState(encodedState);
-    if (decoded && typeof decoded.c === 'string') {
-      code = decoded.c; lang = decoded.l || 'python'; stdin = decoded.i || '';
+  let hashSuffix = '';
+  if (param) {
+    if (Object.prototype.hasOwnProperty.call(COMPILER_TEMPLATES, param)) {
+      lang = param;
+      hashSuffix = '/' + lang;
     } else {
-      toast('That compiler link looks corrupted — starting a blank compiler.', 'warn');
-      encodedState = null;
+      const decoded = compilerDecodeState(param);
+      if (decoded && typeof decoded.c === 'string') {
+        code = decoded.c; lang = decoded.l || 'python'; stdin = decoded.i || '';
+        hashSuffix = '/' + param;
+      } else {
+        toast('That compiler link looks corrupted — starting a blank compiler.', 'warn');
+      }
     }
   }
 
@@ -4825,7 +4837,7 @@ async function openCompiler(encodedState) {
   if (code != null) window._pendingDraft = { code };
 
   showPage('editor');
-  updateUrlHash(encodedState ? ('#/compiler/' + encodedState) : '#/compiler');
+  updateUrlHash('#/compiler' + hashSuffix);
   loadMonaco();
   w3EnterCompilerUI(stdin);
 
@@ -4915,9 +4927,9 @@ async function handleCompilerDeepLink() {
   const hash = location.hash;
   if (!hash.startsWith('#/compiler')) return false;
   _publicDeepLinkActive = true;
-  const rest = hash.slice('#/compiler'.length); // '' or '/<encoded>'
-  const encodedState = rest.startsWith('/') ? rest.slice(1).split('/')[0] : null;
-  await openCompiler(encodedState || undefined);
+  const rest = hash.slice('#/compiler'.length); // '' or '/<lang-or-encoded>'
+  const param = rest.startsWith('/') ? rest.slice(1).split('/')[0] : null;
+  await openCompiler(param || undefined);
   return true;
 }
 
@@ -7718,6 +7730,13 @@ function changeLang(lang) {
   currentLang = lang;
   if (!monaco_editor || !window._mono) return;
 
+  // Keep the address bar in sync so the current language is itself a
+  // shareable link (#/compiler/python, #/compiler/java, …) without the
+  // student needing to hit "Share" first. Only while nothing's actually
+  // been typed beyond the language switch — compilerShare() takes over
+  // once they want to share their actual code.
+  if (compilerMode) updateUrlHash('#/compiler/' + lang);
+
   // Temporarily disable anti-cheat to prevent false violations during
   // language switch (Monaco re-renders and can briefly steal / lose focus)
   const wasEnabled = acEnabled;
@@ -8515,7 +8534,7 @@ function leaveEditor() {
   if (compilerMode) {
     w3ExitCompilerUI();
     practiceMode = false;
-    showPage('stu'); renderStuPage();
+    showStuSection('catalog');
     return;
   }
   if (examActive && !confirm('Leave exam? Your progress will be lost.')) return;
