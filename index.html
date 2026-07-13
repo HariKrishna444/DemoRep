@@ -3457,11 +3457,17 @@ upgrade-insecure-requests;</pre>
 <div id="page-editor" class="page">
   <div class="ed-bar">
     <div class="ed-bar-l">
-      <button class="btn btn-ghost btn-sm" onclick="leaveEditor()">← Exit</button>
+      <button class="btn btn-ghost btn-sm" id="ed-exit-btn" onclick="leaveEditor()">← Exit</button>
+      <span id="ed-course-crumb" class="hidden" style="font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis"></span>
       <div class="ed-prob-name" id="ed-prob-name">Problem</div>
       <span class="diff easy" id="ed-diff">Easy</span>
     </div>
     <div class="sr" style="gap:10px">
+      <div class="sr hidden" id="ed-course-nav" style="gap:6px">
+        <button class="btn btn-ghost btn-sm" id="ed-course-prev-btn" onclick="w3EditorPrevLesson()">← Prev</button>
+        <span id="ed-course-pos" style="font-size:.68rem;font-family:var(--ff-mono);color:var(--muted);white-space:nowrap"></span>
+        <button class="btn btn-ghost btn-sm" id="ed-course-next-btn" onclick="w3EditorNextLesson()">Next →</button>
+      </div>
       <div class="integrity-bar" id="integrity-bar">
         <div class="int-dot"></div>
         <span id="int-text">Integrity: 100%</span>
@@ -3572,8 +3578,8 @@ upgrade-insecure-requests;</pre>
       </div>
       <div class="tc-res-list" id="tc-res-list"></div>
       <div class="res-acts">
-        <button class="btn btn-ghost" onclick="backToProblems()">← All Problems</button>
-        <button class="btn btn-g" onclick="backToProblems()">Next Problem</button>
+        <button class="btn btn-ghost" id="res-btn-back" onclick="w3ResultsBack()">← All Problems</button>
+        <button class="btn btn-g" id="res-btn-next" onclick="backToProblems()">Next Problem</button>
       </div>
     </div>
     <div class="lb-card">
@@ -4474,6 +4480,13 @@ let practiceQuestions = [];       // untimed self-practice problem bank (separat
 let practiceSolvedIds = new Set();
 let practiceMode      = false;    // true while student is solving a practice problem — disables timer/anti-cheat
 let practiceQuestionsUnsub = null; // Firestore onSnapshot unsubscribe handle — live-syncs prof edits to students
+
+// A course lesson of type 'problem' reuses the same untimed, unmonitored
+// grading path as Practice (practiceMode=true), but needs its own flag so
+// leaveEditor()/backToProblems()/submitPracticeCode() can route back into
+// the course (and mark the lesson complete) instead of the Practice list.
+let courseProblemMode = false;
+let courseProblemCtx  = null;    // { courseId, moduleId, lessonId, course }
 
 // Exam session (student)
 let examActive     = false;
@@ -8080,6 +8093,16 @@ function showResults(results, passed, total, totalMs, score, allOk) {
     </div>
   `).join('');
   renderLB(score);
+
+  const backBtn = document.getElementById('res-btn-back');
+  const nextBtn = document.getElementById('res-btn-next');
+  if (courseProblemMode && courseProblemCtx) {
+    if (backBtn) backBtn.textContent = '← Back to Course';
+    if (nextBtn) nextBtn.textContent = courseProblemCtx.next ? 'Next Lesson →' : '🎓 Finish Course';
+  } else {
+    if (backBtn) backBtn.textContent = '← All Problems';
+    if (nextBtn) nextBtn.textContent = 'Next Problem';
+  }
 }
 
 function renderLB(myScore) {
@@ -8152,6 +8175,14 @@ async function submitPracticeCode() {
 
   const tcs = currentQ.testcases || [];
   if (!tcs.length) {
+    if (courseProblemMode) {
+      // Course exercises don't require test cases — submitting a
+      // non-empty, non-template solution is enough to mark it done.
+      outLine('ok', `✓ Solution submitted for "${currentQ.title}".`);
+      await w3MarkProblemLessonComplete();
+      btn.disabled = false; btn.textContent = '✓ Submit';
+      return;
+    }
     outLine('warn', '⚠ No test cases found for this practice question.');
     toast('No test cases — cannot grade', 'warn', 6000);
     btn.disabled = false; btn.textContent = '✓ Submit';
@@ -8185,16 +8216,64 @@ async function submitPracticeCode() {
   const allOk  = passed === total;
 
   outLine(allOk?'ok':'warn', `── ${passed}/${total} test cases passed ──`);
-  if (allOk) practiceSolvedIds.add(currentQ.id);
+  if (allOk) {
+    practiceSolvedIds.add(currentQ.id);
+    if (courseProblemMode) await w3MarkProblemLessonComplete();
+  }
 
   showResults(results, passed, total, 0, score, allOk);
   btn.disabled = false; btn.textContent = '✓ Submit';
 }
 
+// Marks a course 'problem'-type lesson's progress as complete, the same
+// way a normal article lesson gets marked done — reuses markLessonComplete()
+// so the sidebar checkmark, course % progress, and badges all stay in sync.
+async function w3MarkProblemLessonComplete() {
+  const ctx = courseProblemCtx;
+  if (!ctx) return;
+  try { await markLessonComplete(ctx.courseId, ctx.moduleId, ctx.lessonId); }
+  catch (e) { /* non-fatal — grading result still stands even if this sync fails */ }
+}
+
 /* Routes the "back to problems" / "next problem" buttons on the result
    page to the right list depending on whether this was a practice
    session or a real exam attempt. */
+// The results page's "← Back" button: for a course problem lesson this
+// steps back into the course (previous lesson, or the course detail page
+// if this was the first lesson) rather than forward to the next item —
+// distinct from the "Next Lesson →" button, which backToProblems() covers.
+function w3ResultsBack() {
+  if (courseProblemMode && courseProblemCtx) {
+    const ctx = courseProblemCtx;
+    courseProblemMode = false;
+    courseProblemCtx  = null;
+    practiceMode = false;
+    if (ctx.prev) {
+      showPage('learn');
+      openLesson(ctx.courseId, ctx.prev.moduleId, ctx.prev.lesson.id, 'history');
+    } else {
+      openCourseDetail(ctx.courseId);
+    }
+    return;
+  }
+  backToProblems();
+}
+
 function backToProblems() {
+  if (courseProblemMode) {
+    const ctx = courseProblemCtx;
+    if (ctx?.next) {
+      showPage('editor');
+      openLesson(ctx.courseId, ctx.next.moduleId, ctx.next.lesson.id);
+    } else {
+      courseProblemMode = false;
+      courseProblemCtx  = null;
+      practiceMode = false;
+      showPage('learn');
+      if (ctx?.courseId) openLesson(ctx.courseId, ctx.moduleId, ctx.lessonId, 'history');
+    }
+    return;
+  }
   if (practiceMode) {
     practiceMode = false;
     showPage('practice'); renderPracticeList();
@@ -8224,6 +8303,22 @@ function leaveEditor() {
   // Reset integrity for the next attempt
   integrityScore = 100; totalVioCount = 0; tabVioCount = 0;
   updateIntegrity(0);
+  if (courseProblemMode) {
+    const ctx = courseProblemCtx;
+    courseProblemMode = false;
+    courseProblemCtx  = null;
+    practiceMode = false;
+    w3RenderEdCourseBar();
+    if (ctx?.prev) {
+      showPage('learn');
+      openLesson(ctx.courseId, ctx.prev.moduleId, ctx.prev.lesson.id, 'history');
+    } else if (ctx?.courseId) {
+      openCourseDetail(ctx.courseId);
+    } else {
+      showPage('stu'); renderStuPage();
+    }
+    return;
+  }
   if (practiceMode) {
     practiceMode = false;
     showPage('practice'); renderPracticeList();
@@ -11277,8 +11372,9 @@ async function openEditCourseModal(courseId) {
                  oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
           <select class="inp" style="width:100px;padding:7px" id="cb-ltype-${modIdx}-${lessonIdx}"
                   onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx})">
-            <option value="article" ${lesson.type!=='video'?'selected':''}>Article</option>
+            <option value="article" ${lesson.type!=='video'&&lesson.type!=='problem'?'selected':''}>Article</option>
             <option value="video" ${lesson.type==='video'?'selected':''}>Video</option>
+            <option value="problem" ${lesson.type==='problem'?'selected':''}>Coding Problem</option>
           </select>
           <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px" value="${cbAttrEsc(lesson.duration)}"
                  oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
@@ -11286,6 +11382,7 @@ async function openEditCourseModal(courseId) {
         <input class="inp cb-video-url ${lesson.type==='video'?'':'hidden'}" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
                style="margin:6px 0;padding:7px 10px" value="${cbAttrEsc(lesson.videoUrl)}"
                oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
+        ${cbProblemBlockHtml('cb-problem-'+modIdx+'-'+lessonIdx, lesson)}
         <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, table, points, note.</div>
         <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
         <div class="cb-block-add-row">
@@ -11300,6 +11397,7 @@ async function openEditCourseModal(courseId) {
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'imgblock')">+ Image</button>
         </div>`;
       lessonsEl.appendChild(lrow);
+      window._cbProblemRegistry['cb-problem-'+modIdx+'-'+lessonIdx] = () => courseBuilderModules[modIdx].lessons[lessonIdx];
       renderCBBlocks(modIdx, lessonIdx);
     });
   });
@@ -11388,7 +11486,8 @@ function addCourseModule() {
 
 function addCBLesson(modIdx) {
   const lessonIdx = courseBuilderModules[modIdx].lessons.length;
-  courseBuilderModules[modIdx].lessons.push({ id:'l-'+genId(), title:'', type:'article', videoUrl:'', content:'', duration:'', sections:[] });
+  const newLesson = { id:'l-'+genId(), title:'', type:'article', videoUrl:'', content:'', duration:'', sections:[] };
+  courseBuilderModules[modIdx].lessons.push(newLesson);
   const el = document.getElementById('cbmod-lessons-'+modIdx);
   const row = document.createElement('div');
   row.className = 'lesson-builder-item-wrap';
@@ -11401,6 +11500,7 @@ function addCBLesson(modIdx) {
               onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx})">
         <option value="article">Article</option>
         <option value="video">Video</option>
+        <option value="problem">Coding Problem</option>
       </select>
       <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
              oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
@@ -11408,6 +11508,7 @@ function addCBLesson(modIdx) {
     <input class="inp cb-video-url hidden" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
            style="margin:6px 0;padding:7px 10px"
            oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
+    ${cbProblemBlockHtml('cb-problem-'+modIdx+'-'+lessonIdx, newLesson)}
     <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, note — so they render cleanly (not as one mixed paragraph).</div>
     <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
     <div class="cb-block-add-row">
@@ -11422,6 +11523,7 @@ function addCBLesson(modIdx) {
           <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'imgblock')">+ Image</button>
     </div>`;
   el.appendChild(row);
+  window._cbProblemRegistry['cb-problem-'+modIdx+'-'+lessonIdx] = () => courseBuilderModules[modIdx].lessons[lessonIdx];
   renderCBBlocks(modIdx, lessonIdx);
 }
 
@@ -11429,6 +11531,114 @@ function cbToggleLessonType(modIdx, lessonIdx) {
   const sel = document.getElementById(`cb-ltype-${modIdx}-${lessonIdx}`);
   const vidInput = document.getElementById(`cb-video-${modIdx}-${lessonIdx}`);
   if (vidInput) vidInput.classList.toggle('hidden', sel.value !== 'video');
+  const blockId = `cb-problem-${modIdx}-${lessonIdx}`;
+  const isProblem = sel.value === 'problem';
+  const existing = document.getElementById(blockId);
+  if (existing) existing.style.display = isProblem ? '' : 'none';
+  if (isProblem) {
+    cbRerenderProblemBlock(blockId, () => courseBuilderModules[modIdx].lessons[lessonIdx]);
+  }
+}
+
+/* ── Coding Problem authoring block: shared by the main course-builder
+   modal (existing lessons + newly added ones) and the Add-Module modal.
+   Each block registers a getter for its live lesson object (rather than
+   baking array-index path strings into onchange attributes), so the same
+   handful of edit functions work everywhere the block is mounted. ── */
+window._cbProblemRegistry = window._cbProblemRegistry || {};
+
+function cbGetProblemLesson(blockId) {
+  const getter = window._cbProblemRegistry[blockId];
+  return getter ? getter() : null;
+}
+function cbEnsureProblem(lesson) {
+  lesson.problem = lesson.problem || { desc:'', diff:'easy', points:10, example:'', exampleOutput:'', constraints:[], starterCode:'', testcases:[] };
+  return lesson.problem;
+}
+function cbSetProblemField(blockId, field, value) {
+  const lesson = cbGetProblemLesson(blockId);
+  if (!lesson) return;
+  const p = cbEnsureProblem(lesson);
+  if (field === 'points') value = parseInt(value, 10) || 10;
+  if (field === 'constraints') value = String(value).split('\n').map(s=>s.trim()).filter(Boolean);
+  p[field] = value;
+}
+function cbAddTC(blockId) {
+  const lesson = cbGetProblemLesson(blockId);
+  if (!lesson) return;
+  const p = cbEnsureProblem(lesson);
+  p.testcases = p.testcases || [];
+  p.testcases.push({ input:'', expected:'' });
+  cbRerenderProblemBlock(blockId);
+}
+function cbRemoveTC(blockId, ti) {
+  const lesson = cbGetProblemLesson(blockId);
+  if (!lesson) return;
+  (lesson.problem?.testcases || []).splice(ti, 1);
+  cbRerenderProblemBlock(blockId);
+}
+function cbSetTCField(blockId, ti, field, value) {
+  const lesson = cbGetProblemLesson(blockId);
+  if (!lesson?.problem?.testcases?.[ti]) return;
+  lesson.problem.testcases[ti][field] = value;
+}
+function cbRerenderProblemBlock(blockId, getterOverride) {
+  if (getterOverride) window._cbProblemRegistry[blockId] = getterOverride;
+  const lesson = cbGetProblemLesson(blockId);
+  const el = document.getElementById(blockId);
+  if (!lesson || !el) return;
+  el.outerHTML = cbProblemBlockHtml(blockId, lesson);
+}
+function cbProblemBlockHtml(blockId, lesson) {
+  const p = cbEnsureProblem(lesson);
+  const tcHtml = (p.testcases || []).map((tc, ti) => `
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <input class="inp" placeholder="Input" style="flex:1;padding:6px 8px;font-family:var(--ff-mono);font-size:.78rem" value="${cbAttrEsc(tc.input)}"
+        oninput="cbSetTCField('${blockId}',${ti},'input',this.value)">
+      <input class="inp" placeholder="Expected output" style="flex:1;padding:6px 8px;font-family:var(--ff-mono);font-size:.78rem" value="${cbAttrEsc(tc.expected)}"
+        oninput="cbSetTCField('${blockId}',${ti},'expected',this.value)">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="cbRemoveTC('${blockId}',${ti})">✕</button>
+    </div>`).join('');
+
+  return `
+    <div class="cb-problem-fields" id="${blockId}" style="${lesson.type==='problem'?'':'display:none;'}margin:8px 0;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:#fafbfc;display:flex;flex-direction:column;gap:8px">
+      <div class="field"><label>Problem Description</label>
+        <textarea class="inp" rows="3" placeholder="Explain what the student needs to solve…"
+          oninput="cbSetProblemField('${blockId}','desc',this.value)">${sanitize(p.desc)}</textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1"><label>Difficulty</label>
+          <select class="inp" onchange="cbSetProblemField('${blockId}','diff',this.value)">
+            <option value="easy" ${p.diff==='easy'?'selected':''}>Easy</option>
+            <option value="medium" ${p.diff==='medium'?'selected':''}>Medium</option>
+            <option value="hard" ${p.diff==='hard'?'selected':''}>Hard</option>
+          </select>
+        </div>
+        <div class="field" style="width:100px"><label>Points</label>
+          <input class="inp" type="number" value="${p.points||10}" oninput="cbSetProblemField('${blockId}','points',this.value)">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1"><label>Example Input</label>
+          <textarea class="inp" rows="2" oninput="cbSetProblemField('${blockId}','example',this.value)">${sanitize(p.example)}</textarea>
+        </div>
+        <div class="field" style="flex:1"><label>Example Output</label>
+          <textarea class="inp" rows="2" oninput="cbSetProblemField('${blockId}','exampleOutput',this.value)">${sanitize(p.exampleOutput)}</textarea>
+        </div>
+      </div>
+      <div class="field"><label>Constraints (one per line)</label>
+        <textarea class="inp" rows="2" oninput="cbSetProblemField('${blockId}','constraints',this.value)">${sanitize((p.constraints||[]).join('\n'))}</textarea>
+      </div>
+      <div class="field"><label>Starter Code (shown in the editor when a student opens this problem)</label>
+        <textarea class="inp" rows="5" style="font-family:var(--ff-mono);font-size:.8rem"
+          oninput="cbSetProblemField('${blockId}','starterCode',this.value)">${sanitize(p.starterCode)}</textarea>
+      </div>
+      <div class="field">
+        <label>Test Cases <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(optional — leave empty for an ungraded "just run it" exercise)</span></label>
+        ${tcHtml}
+        <button type="button" class="btn btn-ghost btn-sm" onclick="cbAddTC('${blockId}')" style="align-self:flex-start">+ Add Test Case</button>
+      </div>
+    </div>`;
 }
 
 /* ── Structured content blocks: Heading / Paragraph / Code / Note ────────
@@ -12351,6 +12561,7 @@ function addAmmLesson() {
               onchange="_addModuleLessons[${idx}].type=this.value;ammToggleLessonType(${idx})">
         <option value="article">Article</option>
         <option value="video">Video</option>
+        <option value="problem">Coding Problem</option>
       </select>
       <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
              oninput="_addModuleLessons[${idx}].duration=this.value">
@@ -12358,6 +12569,7 @@ function addAmmLesson() {
     <input class="inp amm-video-url hidden" id="amm-video-${idx}" placeholder="YouTube embed URL"
            style="margin:6px 0;padding:7px 10px"
            oninput="_addModuleLessons[${idx}].videoUrl=this.value">
+    ${cbProblemBlockHtml('amm-problem-'+idx, _addModuleLessons[idx])}
     <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, note — so they render cleanly.</div>
     <div class="cb-blocks-wrap" id="amm-blocks-${idx}"></div>
     <div class="cb-block-add-row">
@@ -12372,6 +12584,7 @@ function addAmmLesson() {
       <button type="button" class="btn btn-ghost btn-sm" onclick="addAmmBlock(${idx},'imgblock')">+ Image</button>
     </div>`;
   el.appendChild(row);
+  window._cbProblemRegistry['amm-problem-'+idx] = () => _addModuleLessons[idx];
   renderAmmBlocks(idx);
 }
 
@@ -12379,6 +12592,11 @@ function ammToggleLessonType(idx) {
   const sel = document.getElementById(`amm-ltype-${idx}`);
   const vidInput = document.getElementById(`amm-video-${idx}`);
   if (vidInput) vidInput.classList.toggle('hidden', sel.value !== 'video');
+  const blockId = `amm-problem-${idx}`;
+  const isProblem = sel.value === 'problem';
+  const existing = document.getElementById(blockId);
+  if (existing) existing.style.display = isProblem ? '' : 'none';
+  if (isProblem) cbRerenderProblemBlock(blockId, () => _addModuleLessons[idx]);
 }
 
 /* ── Structured content blocks for the "Add Module to existing course"
@@ -13009,9 +13227,9 @@ window.renderLearnSidebar = function(course) {
     const lessonRows = lessons.map(lesson => {
       const isDone    = completed.includes(lesson.id);
       const isCurrent = lesson.id === currentLessonId;
-      const icon      = isDone ? '✓' : lesson.type === 'video' ? '▶' : '◉';
+      const icon      = isDone ? '✓' : lesson.type === 'video' ? '▶' : lesson.type === 'problem' ? '🧩' : '◉';
       const isMarked  = (enrollment?.bookmarks||[]).includes(lesson.id);
-      const readMins  = lesson.type === 'video' ? null : w3EstimateReadTime(lesson);
+      const readMins  = (lesson.type === 'video' || lesson.type === 'problem') ? null : w3EstimateReadTime(lesson);
       return `
         <div class="lesson-row ${isCurrent?'active':''} ${isDone?'done':''}"
              onclick="openLesson('${currentCourseId}','${mod.id}','${lesson.id}')">
@@ -13121,6 +13339,15 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
   const idx  = allLessons.findIndex(x=>x.lesson.id===lessonId);
   const prev = allLessons[idx-1];
   const next = allLessons[idx+1];
+
+  // Coding-problem lessons get the CodeChef-style split view (problem
+  // statement on the left, real code editor + compiler on the right)
+  // instead of the plain article layout — handled entirely separately
+  // since it reuses the existing Practice-problem editor infrastructure.
+  if (lesson.type === 'problem') {
+    w3OpenLessonProblem(course, mod, lesson, courseId, moduleId, lessonId, prev, next, idx, allLessons.length);
+    return;
+  }
 
   const typeIcon  = lesson.type === 'video' ? '▶ Video' : '◉ Article';
 
@@ -13274,6 +13501,118 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
   w3ScrollLessonToTop();
   requestAnimationFrame(w3ScrollLessonToTop);
 };
+
+/* ── Course lesson type 'problem': CodeChef-style split editor ──────────
+   Left = problem statement (reuses renderProbStmt/renderTC), right = a
+   real Monaco editor + in-browser/Piston execution (reuses loadMonaco(),
+   runCode(), submitPracticeCode() — the exact same untimed, unmonitored
+   grading path already built for the Practice page). The only new pieces
+   here are: mapping a course lesson's authored problem data onto the
+   `currentQ` shape those functions already expect, and wiring Prev/Next
+   lesson navigation (and lesson-complete marking) into the editor's top
+   bar so solving a problem feels like part of the course, not a detour
+   into a separate Practice flow. ── */
+function w3OpenLessonProblem(course, mod, lesson, courseId, moduleId, lessonId, prev, next, idx, totalCount) {
+  const p = lesson.problem || {};
+  // Every course has exactly one compiler language (course.codeLanguage /
+  // course.language, via inferCourseCodeLang) — problems don't author
+  // starter code per-language, just one string, keyed here to whatever
+  // that course's language actually is (falling back to python if the
+  // course itself has no compiler configured).
+  const courseLang = inferCourseCodeLang(course);
+  const langKey = (courseLang && courseLang !== 'none') ? courseLang : 'python';
+
+  currentQ = {
+    id: lessonId,
+    title: lesson.title || 'Problem',
+    desc: p.desc || '',
+    diff: p.diff || 'easy',
+    tags: p.tags || [],
+    points: p.points || 10,
+    example: p.example || '',
+    exampleOutput: p.exampleOutput || '',
+    constraints: p.constraints || [],
+    templates: { [langKey]: p.starterCode || `# Write your solution here\n` },
+    testcases: p.testcases || [],
+  };
+
+  practiceMode      = true;   // untimed, ungraded-by-server — same path as Practice
+  courseProblemMode = true;
+  courseProblemCtx  = { courseId, moduleId, lessonId, course, mod, lesson, prev, next, idx, totalCount };
+
+  showPage('editor');
+  loadMonaco();
+  renderProbStmt();
+  renderTC();
+
+  document.getElementById('ed-prob-name').textContent = lesson.title || 'Problem';
+  const diff = currentQ.diff;
+  const de = document.getElementById('ed-diff');
+  de.textContent = diff; de.className = `diff ${diff}`;
+
+  currentLang = langKey;
+  const langSel = document.getElementById('lang-sel');
+  if (langSel) langSel.value = currentLang;
+
+  // No timer, no monitoring — same as practice mode
+  document.getElementById('timer-wrap').classList.add('hidden');
+  document.getElementById('integrity-bar').classList.add('hidden');
+  document.getElementById('guard-pill')?.classList.remove('vis');
+  document.getElementById('guard-pill')?.classList.add('hidden');
+
+  w3RenderEdCourseBar();
+
+  clearConsole();
+  outLine('info', 'CodingHub execution environment ready.');
+  outLine('info', '🧩 Course exercise — run and submit as many times as you like, then continue.');
+}
+
+// Paints the course-specific breadcrumb + Prev/Next controls in the editor
+// top bar, and repoints the "← Exit" button so it returns to the course
+// (instead of the Practice list) whenever a course problem lesson is open.
+function w3RenderEdCourseBar() {
+  const crumb   = document.getElementById('ed-course-crumb');
+  const nav     = document.getElementById('ed-course-nav');
+  const posEl   = document.getElementById('ed-course-pos');
+  const prevBtn = document.getElementById('ed-course-prev-btn');
+  const nextBtn = document.getElementById('ed-course-next-btn');
+  const exitBtn = document.getElementById('ed-exit-btn');
+  if (!courseProblemMode || !courseProblemCtx) {
+    crumb?.classList.add('hidden');
+    nav?.classList.add('hidden');
+    if (exitBtn) exitBtn.textContent = '← Exit';
+    document.getElementById('lang-sel')?.classList.remove('hidden');
+    return;
+  }
+  const { course, prev, next, idx, totalCount } = courseProblemCtx;
+  if (crumb) { crumb.textContent = course?.title || 'Course'; crumb.classList.remove('hidden'); }
+  if (posEl) posEl.textContent = `Lesson ${idx+1} of ${totalCount}`;
+  if (prevBtn) prevBtn.disabled = !prev;
+  if (nextBtn) nextBtn.textContent = next ? 'Next →' : 'Finish →';
+  nav?.classList.remove('hidden');
+  if (exitBtn) exitBtn.textContent = '← Back to Course';
+  // A course only has one compiler language, so the language switcher
+  // (meant for picking among several in Practice/Exam problems) would just
+  // be confusing here — hide it while a course problem lesson is open.
+  document.getElementById('lang-sel')?.classList.add('hidden');
+}
+
+function w3EditorPrevLesson() {
+  const ctx = courseProblemCtx;
+  if (!ctx?.prev) return;
+  openLesson(ctx.courseId, ctx.prev.moduleId, ctx.prev.lesson.id);
+}
+function w3EditorNextLesson() {
+  const ctx = courseProblemCtx;
+  if (ctx?.next) {
+    openLesson(ctx.courseId, ctx.next.moduleId, ctx.next.lesson.id);
+  } else if (ctx) {
+    // Last item in the course — head back to the course's own lesson view.
+    courseProblemMode = false;
+    showPage('learn');
+    openLesson(ctx.courseId, ctx.moduleId, ctx.lessonId, 'history');
+  }
+}
 
 /* ── Mark lesson complete + advance ── */
 async function w3MarkAndAdvance(courseId, moduleId, lessonId, nextModId, nextLesId) {
