@@ -543,30 +543,30 @@ select.inp option{background:#eef1f4}
 .psec.active{display:block}
 
 /* Problem statement */
-.prob-stmt h3{font-size:1.05rem;font-weight:800;color:#0f172a;margin-bottom:12px}
-.prob-stmt p{font-size:.82rem;color:#374151;line-height:1.8;margin-bottom:14px}
-.prob-stmt h4{font-size:.7rem;font-weight:700;color:var(--stu);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.prob-stmt h3{font-size:1.15rem;font-weight:800;color:#0f172a;margin-bottom:12px}
+.prob-stmt p{font-size:16px;color:#374151;line-height:1.8;margin-bottom:14px}
+.prob-stmt h4{font-size:.78rem;font-weight:700;color:var(--stu);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
 .ex-block{
   background:#ffffff;border:1px solid #e2e5ea;
   border-radius:var(--r-sm);padding:13px;margin-bottom:12px;
 }
-.ex-block strong{font-family:var(--ff-mono);font-size:.65rem;color:#6b7280;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
-.ex-block code{font-family:var(--ff-mono);font-size:.78rem;color:var(--green);display:block;white-space:pre;line-height:1.6}
+.ex-block strong{font-family:var(--ff-mono);font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
+.ex-block code{font-family:var(--ff-mono);font-size:16px;color:var(--green);display:block;white-space:pre;line-height:1.6}
 .con-list{list-style:none}
-.con-list li{font-size:.78rem;color:#374151;padding:3px 0;display:flex;gap:7px}
+.con-list li{font-size:16px;color:#374151;padding:3px 0;display:flex;gap:7px}
 .con-list li::before{content:'›';color:var(--stu);flex-shrink:0}
 
 /* Test cases */
 .tc-list{display:flex;flex-direction:column;gap:10px}
 .tc-item{background:#ffffff;border:1px solid #e2e5ea;border-radius:var(--r-sm);overflow:hidden}
-.tc-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#f6f8fa;font-size:.75rem;font-weight:600}
+.tc-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#f6f8fa;font-size:.85rem;font-weight:600}
 .tc-stat{font-size:.68rem;padding:2px 8px;border-radius:99px}
 .tc-stat.pass{background:rgba(0,229,160,.12);color:var(--stu)}
 .tc-stat.fail{background:rgba(255,59,92,.12);color:var(--danger)}
 .tc-stat.pending{background:#eef1f4;color:#6b7280}
-.tc-body{padding:11px 12px;font-size:.76rem;font-family:var(--ff-mono)}
-.tc-lbl{color:#6b7280;font-size:.65rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
-.tc-val{color:var(--green);margin-bottom:8px}
+.tc-body{padding:11px 12px;font-size:16px;font-family:var(--ff-mono)}
+.tc-lbl{color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.tc-val{color:var(--green);margin-bottom:8px;font-size:16px}
 
 /* Code toolbar */
 .code-tb{
@@ -2389,8 +2389,8 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 .chrono-stage-pill.current{background:var(--stu);color:#04231a;border-color:var(--stu)}
 .chrono-stage-pill.past{background:rgba(0,229,160,.12);color:var(--stu);border-color:rgba(0,229,160,.3)}
 .chrono-req-block{border-left:2px solid var(--stu);padding-left:12px;margin-bottom:16px}
-.chrono-req-block h4{margin:0 0 6px;font-size:.8rem;color:var(--stu)}
-.chrono-req-block .body{font-size:.76rem;color:#374151;line-height:1.55;white-space:pre-wrap}
+.chrono-req-block h4{margin:0 0 6px;font-size:.9rem;color:var(--stu)}
+.chrono-req-block .body{font-size:16px;color:#374151;line-height:1.55;white-space:pre-wrap}
 .chrono-flash{animation:chronoFlash 1.4s ease}
 @keyframes chronoFlash{0%{background:rgba(0,229,160,.18)}100%{background:transparent}}
 
@@ -3461,6 +3461,7 @@ upgrade-insecure-requests;</pre>
       <span id="ed-course-crumb" class="hidden" style="font-size:.72rem;color:var(--muted);font-family:var(--ff-mono);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis"></span>
       <div class="ed-prob-name" id="ed-prob-name">Problem</div>
       <span class="diff easy" id="ed-diff">Easy</span>
+      <select class="sel hidden" id="ed-problem-sel" style="font-size:.72rem" onchange="w3SelectLessonProblem(this.value)"></select>
     </div>
     <div class="sr" style="gap:10px">
       <div class="sr hidden" id="ed-course-nav" style="gap:6px">
@@ -11551,36 +11552,84 @@ function cbGetProblemLesson(blockId) {
   const getter = window._cbProblemRegistry[blockId];
   return getter ? getter() : null;
 }
-function cbEnsureProblem(lesson) {
-  lesson.problem = lesson.problem || { desc:'', diff:'easy', points:10, example:'', exampleOutput:'', constraints:[], starterCode:'', testcases:[] };
-  return lesson.problem;
+function cbBlankProblem() {
+  return { title:'', desc:'', diff:'easy', points:10, example:'', exampleOutput:'', constraints:[], starterCode:'', testcases:[] };
+}
+// A lesson can now hold any number of coding problems (lesson.problems).
+// Older lessons saved with a single lesson.problem are migrated in place
+// the first time this block is touched, so existing courses keep working.
+function cbEnsureProblems(lesson) {
+  if (!Array.isArray(lesson.problems) || !lesson.problems.length) {
+    lesson.problems = lesson.problem ? [lesson.problem] : [cbBlankProblem()];
+    delete lesson.problem;
+  }
+  return lesson.problems;
+}
+// Tracks which problem is currently being edited in each authoring block
+// (keyed by blockId), since multiple problems now share one block.
+window._cbActiveProblemIdx = window._cbActiveProblemIdx || {};
+function cbActiveIdx(blockId, problems) {
+  let idx = window._cbActiveProblemIdx[blockId] || 0;
+  if (idx > problems.length - 1) idx = problems.length - 1;
+  if (idx < 0) idx = 0;
+  window._cbActiveProblemIdx[blockId] = idx;
+  return idx;
+}
+function cbGetActiveProblem(blockId) {
+  const lesson = cbGetProblemLesson(blockId);
+  if (!lesson) return null;
+  const problems = cbEnsureProblems(lesson);
+  return problems[cbActiveIdx(blockId, problems)];
 }
 function cbSetProblemField(blockId, field, value) {
-  const lesson = cbGetProblemLesson(blockId);
-  if (!lesson) return;
-  const p = cbEnsureProblem(lesson);
+  const p = cbGetActiveProblem(blockId);
+  if (!p) return;
   if (field === 'points') value = parseInt(value, 10) || 10;
   if (field === 'constraints') value = String(value).split('\n').map(s=>s.trim()).filter(Boolean);
   p[field] = value;
 }
 function cbAddTC(blockId) {
-  const lesson = cbGetProblemLesson(blockId);
-  if (!lesson) return;
-  const p = cbEnsureProblem(lesson);
+  const p = cbGetActiveProblem(blockId);
+  if (!p) return;
   p.testcases = p.testcases || [];
   p.testcases.push({ input:'', expected:'' });
   cbRerenderProblemBlock(blockId);
 }
 function cbRemoveTC(blockId, ti) {
-  const lesson = cbGetProblemLesson(blockId);
-  if (!lesson) return;
-  (lesson.problem?.testcases || []).splice(ti, 1);
+  const p = cbGetActiveProblem(blockId);
+  if (!p) return;
+  (p.testcases || []).splice(ti, 1);
   cbRerenderProblemBlock(blockId);
 }
 function cbSetTCField(blockId, ti, field, value) {
+  const p = cbGetActiveProblem(blockId);
+  if (!p?.testcases?.[ti]) return;
+  p.testcases[ti][field] = value;
+}
+// Adds a brand-new coding problem to this lesson and switches the block to
+// show/edit it — this is what lets a lesson carry any number of questions.
+function cbAddProblem(blockId) {
   const lesson = cbGetProblemLesson(blockId);
-  if (!lesson?.problem?.testcases?.[ti]) return;
-  lesson.problem.testcases[ti][field] = value;
+  if (!lesson) return;
+  const problems = cbEnsureProblems(lesson);
+  problems.push(cbBlankProblem());
+  window._cbActiveProblemIdx[blockId] = problems.length - 1;
+  cbRerenderProblemBlock(blockId);
+}
+function cbRemoveProblem(blockId) {
+  const lesson = cbGetProblemLesson(blockId);
+  if (!lesson) return;
+  const problems = cbEnsureProblems(lesson);
+  if (problems.length <= 1) { toast('A coding-problem lesson needs at least one problem', 'warn'); return; }
+  if (!confirm('Remove this problem from the lesson?')) return;
+  const idx = cbActiveIdx(blockId, problems);
+  problems.splice(idx, 1);
+  window._cbActiveProblemIdx[blockId] = Math.max(0, idx - 1);
+  cbRerenderProblemBlock(blockId);
+}
+function cbSelectProblem(blockId, idx) {
+  window._cbActiveProblemIdx[blockId] = parseInt(idx, 10) || 0;
+  cbRerenderProblemBlock(blockId);
 }
 function cbRerenderProblemBlock(blockId, getterOverride) {
   if (getterOverride) window._cbProblemRegistry[blockId] = getterOverride;
@@ -11590,7 +11639,9 @@ function cbRerenderProblemBlock(blockId, getterOverride) {
   el.outerHTML = cbProblemBlockHtml(blockId, lesson);
 }
 function cbProblemBlockHtml(blockId, lesson) {
-  const p = cbEnsureProblem(lesson);
+  const problems  = cbEnsureProblems(lesson);
+  const activeIdx = cbActiveIdx(blockId, problems);
+  const p         = problems[activeIdx];
   const tcHtml = (p.testcases || []).map((tc, ti) => `
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <input class="inp" placeholder="Input" style="flex:1;padding:6px 8px;font-family:var(--ff-mono);font-size:.78rem" value="${cbAttrEsc(tc.input)}"
@@ -11600,8 +11651,22 @@ function cbProblemBlockHtml(blockId, lesson) {
       <button type="button" class="btn btn-ghost btn-sm" onclick="cbRemoveTC('${blockId}',${ti})">✕</button>
     </div>`).join('');
 
+  const problemSelectorHtml = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <select class="inp" style="flex:1;padding:6px 8px" onchange="cbSelectProblem('${blockId}',this.value)">
+        ${problems.map((pp, i) => `<option value="${i}" ${i===activeIdx?'selected':''}>Problem ${i+1}${pp.title ? ': '+cbAttrEsc(pp.title) : ''}</option>`).join('')}
+      </select>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="cbAddProblem('${blockId}')">+ Add Problem</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="cbRemoveProblem('${blockId}')">✕ Remove Problem</button>
+    </div>`;
+
   return `
     <div class="cb-problem-fields" id="${blockId}" style="${lesson.type==='problem'?'':'display:none;'}margin:8px 0;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:#fafbfc;display:flex;flex-direction:column;gap:8px">
+      ${problemSelectorHtml}
+      <div class="field"><label>Problem Title <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(shown in the problem dropdown)</span></label>
+        <input class="inp" placeholder="e.g. Two Sum" value="${cbAttrEsc(p.title)}"
+          oninput="cbSetProblemField('${blockId}','title',this.value)">
+      </div>
       <div class="field"><label>Problem Description</label>
         <textarea class="inp" rows="3" placeholder="Explain what the student needs to solve…"
           oninput="cbSetProblemField('${blockId}','desc',this.value)">${sanitize(p.desc)}</textarea>
@@ -13349,6 +13414,22 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
     return;
   }
 
+  // Article/video lessons render into #lesson-content-area on the 'learn'
+  // page. If the student just arrived here via Prev/Next from a coding-
+  // problem lesson (which lives on the separate #page-editor split view),
+  // #page-editor is still the 'active' page and this freshly-rendered
+  // content would be invisible behind it — Prev/Next would look "broken"
+  // even though the data updated correctly underneath. Explicitly switch
+  // back to the learn page and drop the stale problem-mode flags so the
+  // editor doesn't think it's still showing a live course problem.
+  if (courseProblemMode || document.getElementById('page-editor')?.classList.contains('active')) {
+    courseProblemMode = false;
+    courseProblemCtx  = null;
+    practiceMode      = false;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-learn')?.classList.add('active');
+  }
+
   const typeIcon  = lesson.type === 'video' ? '▶ Video' : '◉ Article';
 
   // Video embed
@@ -13512,8 +13593,19 @@ window.openLesson = function(courseId, moduleId, lessonId, _navMode) {
    lesson navigation (and lesson-complete marking) into the editor's top
    bar so solving a problem feels like part of the course, not a detour
    into a separate Practice flow. ── */
-function w3OpenLessonProblem(course, mod, lesson, courseId, moduleId, lessonId, prev, next, idx, totalCount) {
-  const p = lesson.problem || {};
+// A lesson can now carry any number of coding problems (lesson.problems),
+// selectable via the dropdown in the editor top bar. Older lessons saved
+// with a single lesson.problem still work — normalized into a 1-item array.
+function w3LessonProblems(lesson) {
+  if (Array.isArray(lesson.problems) && lesson.problems.length) return lesson.problems;
+  if (lesson.problem) return [lesson.problem];
+  return [{}];
+}
+
+function w3OpenLessonProblem(course, mod, lesson, courseId, moduleId, lessonId, prev, next, idx, totalCount, problemIdx) {
+  const problems = w3LessonProblems(lesson);
+  problemIdx = Math.max(0, Math.min(problemIdx || 0, problems.length - 1));
+  const p = problems[problemIdx] || {};
   // Every course has exactly one compiler language (course.codeLanguage /
   // course.language, via inferCourseCodeLang) — problems don't author
   // starter code per-language, just one string, keyed here to whatever
@@ -13523,8 +13615,8 @@ function w3OpenLessonProblem(course, mod, lesson, courseId, moduleId, lessonId, 
   const langKey = (courseLang && courseLang !== 'none') ? courseLang : 'python';
 
   currentQ = {
-    id: lessonId,
-    title: lesson.title || 'Problem',
+    id: lessonId + (problems.length > 1 ? ':' + problemIdx : ''),
+    title: p.title || lesson.title || 'Problem',
     desc: p.desc || '',
     diff: p.diff || 'easy',
     tags: p.tags || [],
@@ -13536,21 +13628,27 @@ function w3OpenLessonProblem(course, mod, lesson, courseId, moduleId, lessonId, 
     testcases: p.testcases || [],
   };
 
+  // Set the language BEFORE loadMonaco() — if Monaco was already loaded by
+  // a previous lesson, its internal require() can resolve synchronously and
+  // read currentLang immediately, so setting it after loadMonaco() risked
+  // loading the previous lesson's language/starter code into this one.
+  currentLang = langKey;
+
   practiceMode      = true;   // untimed, ungraded-by-server — same path as Practice
   courseProblemMode = true;
-  courseProblemCtx  = { courseId, moduleId, lessonId, course, mod, lesson, prev, next, idx, totalCount };
+  courseProblemCtx  = { courseId, moduleId, lessonId, course, mod, lesson, prev, next, idx, totalCount, problems, problemIdx };
 
   showPage('editor');
   loadMonaco();
   renderProbStmt();
   renderTC();
 
-  document.getElementById('ed-prob-name').textContent = lesson.title || 'Problem';
+  document.getElementById('ed-prob-name').textContent =
+    (problems.length > 1 ? `[${problemIdx+1}/${problems.length}] ` : '') + (p.title || lesson.title || 'Problem');
   const diff = currentQ.diff;
   const de = document.getElementById('ed-diff');
   de.textContent = diff; de.className = `diff ${diff}`;
 
-  currentLang = langKey;
   const langSel = document.getElementById('lang-sel');
   if (langSel) langSel.value = currentLang;
 
@@ -13571,20 +13669,22 @@ function w3OpenLessonProblem(course, mod, lesson, courseId, moduleId, lessonId, 
 // top bar, and repoints the "← Exit" button so it returns to the course
 // (instead of the Practice list) whenever a course problem lesson is open.
 function w3RenderEdCourseBar() {
-  const crumb   = document.getElementById('ed-course-crumb');
-  const nav     = document.getElementById('ed-course-nav');
-  const posEl   = document.getElementById('ed-course-pos');
-  const prevBtn = document.getElementById('ed-course-prev-btn');
-  const nextBtn = document.getElementById('ed-course-next-btn');
-  const exitBtn = document.getElementById('ed-exit-btn');
+  const crumb    = document.getElementById('ed-course-crumb');
+  const nav      = document.getElementById('ed-course-nav');
+  const posEl    = document.getElementById('ed-course-pos');
+  const prevBtn  = document.getElementById('ed-course-prev-btn');
+  const nextBtn  = document.getElementById('ed-course-next-btn');
+  const exitBtn  = document.getElementById('ed-exit-btn');
+  const probSel  = document.getElementById('ed-problem-sel');
   if (!courseProblemMode || !courseProblemCtx) {
     crumb?.classList.add('hidden');
     nav?.classList.add('hidden');
+    probSel?.classList.add('hidden');
     if (exitBtn) exitBtn.textContent = '← Exit';
     document.getElementById('lang-sel')?.classList.remove('hidden');
     return;
   }
-  const { course, prev, next, idx, totalCount } = courseProblemCtx;
+  const { course, prev, next, idx, totalCount, problems, problemIdx } = courseProblemCtx;
   if (crumb) { crumb.textContent = course?.title || 'Course'; crumb.classList.remove('hidden'); }
   if (posEl) posEl.textContent = `Lesson ${idx+1} of ${totalCount}`;
   if (prevBtn) prevBtn.disabled = !prev;
@@ -13595,6 +13695,29 @@ function w3RenderEdCourseBar() {
   // (meant for picking among several in Practice/Exam problems) would just
   // be confusing here — hide it while a course problem lesson is open.
   document.getElementById('lang-sel')?.classList.add('hidden');
+
+  // Problem selector — only shown when this lesson has more than one
+  // coding problem attached.
+  if (probSel) {
+    if (problems && problems.length > 1) {
+      probSel.innerHTML = problems.map((pp, i) =>
+        `<option value="${i}" ${i === problemIdx ? 'selected' : ''}>Problem ${i+1} of ${problems.length}${pp.title ? ' — ' + cbAttrEsc(pp.title) : ''}</option>`
+      ).join('');
+      probSel.classList.remove('hidden');
+    } else {
+      probSel.classList.add('hidden');
+    }
+  }
+}
+
+// Switches to a different coding problem within the same lesson (from the
+// problem-selector dropdown), without navigating away from the lesson.
+function w3SelectLessonProblem(newIdx) {
+  const ctx = courseProblemCtx;
+  if (!ctx) return;
+  newIdx = parseInt(newIdx, 10) || 0;
+  if (newIdx === ctx.problemIdx) return;
+  w3OpenLessonProblem(ctx.course, ctx.mod, ctx.lesson, ctx.courseId, ctx.moduleId, ctx.lessonId, ctx.prev, ctx.next, ctx.idx, ctx.totalCount, newIdx);
 }
 
 function w3EditorPrevLesson() {
