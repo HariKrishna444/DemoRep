@@ -5570,20 +5570,46 @@ function onAuthSuccess() {
     renderProfDashboard();
     showPage('prof');
     toast('Welcome, '+name+'! 👨‍🏫','ok');
-  } else {
-    document.getElementById('stu-av').textContent   = name[0].toUpperCase();
-    document.getElementById('stu-name').textContent = name;
+    return;
+  }
+
+  document.getElementById('stu-av').textContent   = name[0].toUpperCase();
+  document.getElementById('stu-name').textContent = name;
+
+  // If the student was already mid-task in the compiler when they logged in
+  // (e.g. hitting "Sign in to run code" and going to sign in), jump straight
+  // back into it instead of flashing the exams dashboard (plus its "Welcome!
+  // Your exam is ready" toast and the full-screen Python-engine loader) in
+  // between. That flash, followed by the compiler reappearing, is what reads
+  // as an unwanted page refresh even though nothing actually reloaded.
+  // Checked via the in-memory compilerMode flag rather than the URL hash,
+  // since navigating to the login screen may have overwritten the hash to
+  // #/login along the way — compilerMode itself isn't affected by that.
+  if (compilerMode) {
+    if (monacoReady && monaco_editor) {
+      // Capture whatever's already typed *before* reopening the compiler —
+      // reopening disposes and recreates the Monaco instance from a
+      // template, which would otherwise silently wipe it out.
+      try { window._pendingDraft = { code: monaco_editor.getValue() }; } catch (e) {}
+    }
+    openCompiler(currentLang);
+    startPyodide();
+    return;
+  }
+
+  const restoredRoute = restorePostAuthRoute();
+
+  if (!restoredRoute) {
     renderStuPage();
     showPage('stu');
     toast('Welcome! Your exam is ready. 🚀','ok');
     document.getElementById('py-loader').classList.remove('hidden');
-    startPyodide();
     _animatePyLoader();
-    // If the URL hash points at a specific real exam, Practice, or
-    // ChronoCode tab (e.g. from a refresh), restore that tab instead of
-    // leaving the student stuck on the dashboard we just showed above.
-    restorePostAuthRoute();
   }
+  // Pyodide itself loads silently in a hidden iframe regardless of which
+  // view is showing — only the big loading overlay above is skipped when
+  // restoring straight into another view.
+  startPyodide();
 }
 
 /* ─────────────────────────────────────────────────────────────
