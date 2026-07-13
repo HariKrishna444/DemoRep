@@ -518,7 +518,7 @@ select.inp option{background:#eef1f4}
 /* Split layout */
 .ed-body{flex:1;display:flex;overflow:hidden;min-height:0}
 .prob-panel{
-  width:36%;min-width:280px;max-width:520px;
+  width:40%;min-width:280px;max-width:680px;
   background:#f6f8fa;border-right:1px solid #e2e5ea;
   display:flex;flex-direction:column;flex-shrink:0;
 }
@@ -3810,6 +3810,7 @@ upgrade-insecure-requests;</pre>
     <div class="stu-nav-tab" onclick="showStuSection('my-learning')">📖 My Learning</div>
     <div class="stu-nav-tab" onclick="goToExamsTab()">📝 Exams</div>
     <div class="stu-nav-tab" onclick="showPage('practice');renderPracticeList()">🧩 Practice</div>
+    <div class="stu-nav-tab" onclick="openCompiler()">💻 Compiler</div>
     <div class="stu-nav-tab" onclick="goToChronoCodeTab()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
@@ -4001,6 +4002,7 @@ upgrade-insecure-requests;</pre>
     <div class="stu-nav-tab active" onclick="showStuSection('my-learning')">📖 My Learning</div>
     <div class="stu-nav-tab" onclick="goToExamsTab()">📝 Exams</div>
     <div class="stu-nav-tab" onclick="showPage('practice');renderPracticeList()">🧩 Practice</div>
+    <div class="stu-nav-tab" onclick="openCompiler()">💻 Compiler</div>
     <div class="stu-nav-tab" onclick="goToChronoCodeTab()">⏱️ ChronoCode</div>
   </div>
   <div style="padding:28px 32px">
@@ -4489,6 +4491,15 @@ let practiceQuestionsUnsub = null; // Firestore onSnapshot unsubscribe handle �
 let courseProblemMode = false;
 let courseProblemCtx  = null;    // { courseId, moduleId, lessonId, course }
 
+// Standalone multi-language Online Compiler tab: reuses the exact same
+// Monaco editor / Run / language-switching / theming infrastructure as
+// Practice (practiceMode=true) and the same #page-editor split view, but
+// has no problem statement or test cases — just code, custom stdin, and a
+// shareable link that round-trips the code/language/stdin through the URL
+// hash itself (no backend/Firestore doc needed, so the link works even for
+// signed-out visitors and in demo mode).
+let compilerMode = false;
+
 // Exam session (student)
 let examActive     = false;
 let currentQ       = null;
@@ -4749,6 +4760,164 @@ async function handlePracticeDeepLink() {
   if (!currentUser) {
     setTimeout(() => toast('💡 Log in to save your submissions and track progress!', 'info', 6000), 1200);
   }
+  return true;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ONLINE COMPILER (student) — standalone multi-language editor tab.
+   Reuses #page-editor (same Monaco/Run/language/theme/console features as
+   Practice) but has no problem statement or test cases. Shareable links
+   round-trip the code/language/stdin through the URL hash itself, so a
+   shared link works for signed-out visitors too — no Firestore doc, no
+   new security rules required.
+   ═══════════════════════════════════════════════════════════════ */
+const COMPILER_TEMPLATES = {
+  python:     '# Write your code here\n\nprint("Hello, World!")\n',
+  javascript: '// Write your code here\nconsole.log("Hello, World!");\n',
+  cpp:        '#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n  cout << "Hello, World!" << endl;\n  return 0;\n}',
+  java:       'import java.util.*;\npublic class Main{\n  public static void main(String[] args) {\n    System.out.println("Hello, World!");\n  }\n}',
+  c:          '#include<stdio.h>\nint main(){\n  printf("Hello, World!\\n");\n  return 0;\n}',
+};
+
+// URL-safe base64 of a small JSON blob {c: code, l: language, i: stdin}.
+// unescape/encodeURIComponent round-trip keeps this correct for non-ASCII
+// code (comments, string literals, etc.), not just plain ASCII source.
+function compilerEncodeState(code, lang, stdin) {
+  try {
+    const json = JSON.stringify({ c: code, l: lang, i: stdin || '' });
+    const b64  = btoa(unescape(encodeURIComponent(json)));
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  } catch (e) { return null; }
+}
+function compilerDecodeState(encoded) {
+  try {
+    let b64 = String(encoded).replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(b64))));
+  } catch (e) { return null; }
+}
+
+// encodedState is the optional URL-hash payload from a shared compiler
+// link (undefined/null → blank compiler with the default Python starter).
+async function openCompiler(encodedState) {
+  compilerMode      = true;
+  practiceMode      = true;   // untimed, unmonitored — same path as Practice
+  courseProblemMode = false;
+  examActive        = false;
+
+  let code = null, lang = 'python', stdin = '';
+  if (encodedState) {
+    const decoded = compilerDecodeState(encodedState);
+    if (decoded && typeof decoded.c === 'string') {
+      code = decoded.c; lang = decoded.l || 'python'; stdin = decoded.i || '';
+    } else {
+      toast('That compiler link looks corrupted — starting a blank compiler.', 'warn');
+      encodedState = null;
+    }
+  }
+
+  currentQ = {
+    id: 'compiler', title: 'Online Compiler', desc: '', diff: '', tags: [], points: 0,
+    example: '', exampleOutput: '', constraints: [], testcases: [],
+    templates: COMPILER_TEMPLATES,
+  };
+  currentLang = lang;
+  if (code != null) window._pendingDraft = { code };
+
+  showPage('editor');
+  updateUrlHash(encodedState ? ('#/compiler/' + encodedState) : '#/compiler');
+  loadMonaco();
+  w3EnterCompilerUI(stdin);
+
+  if (!currentUser) {
+    setTimeout(() => toast('💡 Log in to save your work across sessions — the shareable link works either way!', 'info', 6000), 1200);
+  }
+}
+
+// Repurposes the shared editor chrome for the compiler: hides exam-only
+// widgets (timer/integrity/diff/save-indicator), hides the Test Cases and
+// Submissions tabs (nothing to grade), and turns the Submit button into a
+// Share action.
+function w3EnterCompilerUI(stdin) {
+  const nameEl = document.getElementById('ed-prob-name');
+  if (nameEl) nameEl.textContent = '💻 Online Compiler';
+  document.getElementById('ed-diff')?.classList.add('hidden');
+  document.getElementById('timer-wrap')?.classList.add('hidden');
+  document.getElementById('integrity-bar')?.classList.add('hidden');
+  document.getElementById('save-indicator')?.classList.add('hidden');
+
+  const ptabs = document.querySelectorAll('#prob-panel .ptab');
+  if (ptabs[1]) ptabs[1].style.display = 'none';
+  if (ptabs[2]) ptabs[2].style.display = 'none';
+  if (ptabs[0]) ptab('stmt', ptabs[0]);
+  const stmtEl = document.getElementById('stmt-html');
+  if (stmtEl) {
+    stmtEl.innerHTML = `
+      <h3 style="margin-bottom:10px">💻 Online Compiler</h3>
+      <p style="color:var(--muted);font-size:.85rem;line-height:1.65">
+        Write code in any supported language, run it instantly with the
+        same in-browser/Judge0 execution engine as Practice, and share a
+        link so anyone can open this exact code — no login required.
+      </p>
+      <button class="btn btn-a" style="margin-top:16px;width:100%;justify-content:center" onclick="compilerShare()">🔗 Get Shareable Link</button>
+    `;
+  }
+
+  const subBtn = document.getElementById('btn-sub');
+  if (subBtn) { subBtn.textContent = '🔗 Share'; subBtn.setAttribute('onclick', 'compilerShare()'); }
+
+  if (stdin) {
+    const ta = document.getElementById('stdin-ta');
+    if (ta) ta.value = stdin;
+    const tabs = document.querySelectorAll('.con-tab');
+    if (tabs[1]) conTab('custom', tabs[1]);
+  }
+}
+
+// Undoes w3EnterCompilerUI()'s tweaks so switching back to a real exam or
+// Practice question afterwards shows the normal chrome again.
+function w3ExitCompilerUI() {
+  compilerMode = false;
+  document.getElementById('ed-diff')?.classList.remove('hidden');
+  document.getElementById('timer-wrap')?.classList.remove('hidden');
+  document.getElementById('integrity-bar')?.classList.remove('hidden');
+  document.getElementById('save-indicator')?.classList.remove('hidden');
+  const ptabs = document.querySelectorAll('#prob-panel .ptab');
+  if (ptabs[1]) ptabs[1].style.display = '';
+  if (ptabs[2]) ptabs[2].style.display = '';
+  const subBtn = document.getElementById('btn-sub');
+  if (subBtn) { subBtn.textContent = '✓ Submit'; subBtn.setAttribute('onclick', 'submitCode()'); }
+}
+
+function compilerShare() {
+  if (!monacoReady || !monaco_editor) { toast('Editor still loading…', 'warn'); return; }
+  const code    = monaco_editor.getValue();
+  const stdinEl = document.getElementById('stdin-ta');
+  const stdin   = stdinEl ? stdinEl.value : '';
+  const encoded = compilerEncodeState(code, currentLang, stdin);
+  if (!encoded) { toast('Could not build a shareable link for this code.', 'err'); return; }
+
+  updateUrlHash('#/compiler/' + encoded);
+  const url = location.href;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(() => toast('🔗 Shareable link copied to clipboard!', 'ok', 4000))
+      .catch(() => toast('🔗 Link ready in the address bar — copy it from there.', 'info', 5000));
+  } else {
+    toast('🔗 Link ready in the address bar — copy it from there.', 'info', 5000);
+  }
+}
+
+// Public deep link — like Practice's #/exam/pq-XXXXX, a shared compiler
+// link should open directly for signed-out visitors (the code itself lives
+// in the URL, so there's nothing server-side to gate).
+async function handleCompilerDeepLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#/compiler')) return false;
+  _publicDeepLinkActive = true;
+  const rest = hash.slice('#/compiler'.length); // '' or '/<encoded>'
+  const encodedState = rest.startsWith('/') ? rest.slice(1).split('/')[0] : null;
+  await openCompiler(encodedState || undefined);
   return true;
 }
 
@@ -5091,6 +5260,7 @@ const PAGE_HASH_MAP = {
   stu:              '#/exams',
   catalog:          '#/courses',
   quiz:             '#/quiz',
+  practice:         '#/practice',
   'my-learning':    '#/my-learning',
   certificate:      '#/certificate',
   verify:           '#/verify',
@@ -5112,8 +5282,13 @@ function showPage(id, _fromHistory) {
   // even while you were looking at, say, the exam result page.
   try {
     let hash = null;
-    if (id === 'editor' && currentQ?.id) {
+    if (id === 'editor' && currentQ?.id && !courseProblemMode && !compilerMode) {
+      // Real timed/practice exam — safe to expose as its own deep link.
       hash = '#/exam/' + currentQ.id;
+    } else if (id === 'editor' && (courseProblemMode || compilerMode)) {
+      // Course-embedded coding problem or the Online Compiler: the caller
+      // (openLesson/w3OpenLessonProblem or openCompiler) already set the
+      // correct hash right before showPage('editor') ran — leave it alone.
     } else if (id === 'result' && currentQ?.id) {
       hash = '#/exam/' + currentQ.id + '/result';
     } else if (PAGE_HASH_MAP[id]) {
@@ -5331,6 +5506,49 @@ async function handleRegister() {
   }
 }
 
+// Restores whichever authenticated student tab the URL hash points to, once
+// auth + questions/practice data are ready. Called at the end of
+// onAuthSuccess(), AFTER its default showPage('stu'), so refreshing (or
+// following a link) while on the real exam editor, Practice, or ChronoCode
+// tabs lands back on that same tab instead of always bouncing to the exams
+// dashboard. #/course/..., #/exam/pq-... and #/courses are public deep
+// links already handled separately (before login even resolves) — this only
+// covers the login-gated routes those can't reach.
+function restorePostAuthRoute() {
+  const hash = location.hash;
+  if (!hash || currentRole === 'prof') return false;
+
+  // Real (timed/proctored) exam — startExam() already re-claims the attempt
+  // server-side (restoring real integrity/violation/remaining-time state
+  // from Firestore), so resuming here on refresh is safe, not a shortcut.
+  if (hash.startsWith('#/exam/') && !hash.startsWith('#/exam/pq-')) {
+    const qId = hash.replace('#/exam/', '').split('/')[0];
+    if (qId && questions.find(q => q.id === qId)) { startExam(qId); return true; }
+    return false;
+  }
+
+  if (hash.startsWith('#/practice')) {
+    showPage('practice');
+    renderPracticeList();
+    return true;
+  }
+
+  if (hash.startsWith('#/chronocode')) {
+    const m = hash.match(/^#\/chronocode\/take\/(.+)$/);
+    if (m && m[1]) { openChronoTake(m[1]); } else { openChronoStudent(); }
+    return true;
+  }
+
+  if (hash.startsWith('#/compiler')) {
+    const rest = hash.slice('#/compiler'.length);
+    const encodedState = rest.startsWith('/') ? rest.slice(1).split('/')[0] : null;
+    openCompiler(encodedState || undefined);
+    return true;
+  }
+
+  return false;
+}
+
 function onAuthSuccess() {
   const name = currentUser.displayName || currentUser.email.split('@')[0];
   startPracticeQuestionsListener(); // live-sync practice bank for prof + student views
@@ -5349,6 +5567,10 @@ function onAuthSuccess() {
     document.getElementById('py-loader').classList.remove('hidden');
     startPyodide();
     _animatePyLoader();
+    // If the URL hash points at a specific real exam, Practice, or
+    // ChronoCode tab (e.g. from a refresh), restore that tab instead of
+    // leaving the student stuck on the dashboard we just showed above.
+    restorePostAuthRoute();
   }
 }
 
@@ -8290,6 +8512,12 @@ function backToProblems() {
    EDITOR BACK BUTTON
    ═══════════════════════════════════════════════════════════════ */
 function leaveEditor() {
+  if (compilerMode) {
+    w3ExitCompilerUI();
+    practiceMode = false;
+    showPage('stu'); renderStuPage();
+    return;
+  }
   if (examActive && !confirm('Leave exam? Your progress will be lost.')) return;
   if (examActive) logViolation('nav-escape', 'Exam Left Early', 'Exited exam via editor back button before submitting');
   // NOTE: intentionally NOT locking examAttemptId here — the attempt stays
@@ -8339,7 +8567,7 @@ function initResize() {
   const p=document.getElementById('prob-panel');
   let drag=false,sx,sw;
   h.addEventListener('mousedown',e=>{drag=true;sx=e.clientX;sw=p.offsetWidth;document.body.style.cursor='col-resize';document.body.style.userSelect='none';});
-  document.addEventListener('mousemove',e=>{if(!drag)return;p.style.width=Math.max(240,Math.min(560,sw+(e.clientX-sx)))+'px';});
+  document.addEventListener('mousemove',e=>{if(!drag)return;p.style.width=Math.max(240,Math.min(680,sw+(e.clientX-sx)))+'px';});
   document.addEventListener('mouseup',()=>{drag=false;document.body.style.cursor='';document.body.style.userSelect='';});
 }
 
@@ -8497,7 +8725,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // a logged-out visitor opening a shared course/lesson or practice-question
   // link never gets bounced to the login page — free content stays viewable
   // without login.
-  if (location.hash.startsWith('#/course/') || location.hash.startsWith('#/exam/pq-') || location.hash.startsWith('#/courses')) _publicDeepLinkActive = true;
+  if (location.hash.startsWith('#/course/') || location.hash.startsWith('#/exam/pq-') || location.hash.startsWith('#/courses') || location.hash.startsWith('#/compiler')) _publicDeepLinkActive = true;
   await initApp();
   // After app boots, check for a deep link in the URL hash
   if (location.hash.startsWith('#/course/')) {
@@ -8508,12 +8736,16 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if (!handled) initApp(); // fallback
   } else if (location.hash.startsWith('#/courses')) {
     await handleCatalogDeepLink();
+  } else if (location.hash.startsWith('#/compiler')) {
+    await handleCompilerDeepLink();
   }
 });
 window.addEventListener('hashchange', () => {
   if (location.hash.startsWith('#/course/')) handleDeepLink();
   else if (location.hash.startsWith('#/exam/pq-')) handlePracticeDeepLink();
   else if (location.hash.startsWith('#/courses')) handleCatalogDeepLink();
+  else if (location.hash.startsWith('#/compiler')) handleCompilerDeepLink();
+  else if (currentUser) restorePostAuthRoute();
 });
 
 
@@ -11666,11 +11898,11 @@ function cbProblemBlockHtml(blockId, lesson) {
   const activeIdx = cbActiveIdx(blockId, problems);
   const p         = problems[activeIdx];
   const tcHtml = (p.testcases || []).map((tc, ti) => `
-    <div style="display:flex;gap:6px;margin-bottom:6px">
-      <input class="inp" placeholder="Input" style="flex:1;padding:6px 8px;font-family:var(--ff-mono);font-size:.78rem" value="${cbAttrEsc(tc.input)}"
-        oninput="cbSetTCField('${blockId}',${ti},'input',this.value)">
-      <input class="inp" placeholder="Expected output" style="flex:1;padding:6px 8px;font-family:var(--ff-mono);font-size:.78rem" value="${cbAttrEsc(tc.expected)}"
-        oninput="cbSetTCField('${blockId}',${ti},'expected',this.value)">
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
+      <textarea class="inp cb-tc-in" placeholder="Input&#10;(multi-line OK)" rows="2" style="flex:1;padding:6px 8px;font-family:var(--ff-mono);font-size:.78rem;resize:vertical"
+        oninput="cbSetTCField('${blockId}',${ti},'input',this.value)">${sanitize(tc.input||'')}</textarea>
+      <textarea class="inp cb-tc-out" placeholder="Expected output&#10;(multi-line OK)" rows="2" style="flex:1;padding:6px 8px;font-family:var(--ff-mono);font-size:.78rem;resize:vertical"
+        oninput="cbSetTCField('${blockId}',${ti},'expected',this.value)">${sanitize(tc.expected||'')}</textarea>
       <button type="button" class="btn btn-ghost btn-sm" onclick="cbRemoveTC('${blockId}',${ti})">✕</button>
     </div>`).join('');
 
@@ -14592,6 +14824,7 @@ let chronoSnapshotTimer = null;
 
 async function openChronoTake(challengeId) {
   showPage('chrono-take');
+  updateUrlHash('#/chronocode/take/' + challengeId);
   document.getElementById('chrono-pre-start').classList.remove('hidden');
   document.getElementById('chrono-live-shell').classList.add('hidden');
   const ch = await chronoGetChallenge(challengeId);
