@@ -3341,6 +3341,42 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.resource.data.userId == uid();
     }
 
+    // ── chrono_challenges/ — ChronoCode 4D challenge definitions ──
+    // FIX: this collection had no rule at all, which Firestore treats as
+    // implicit deny-all — that's what was causing the "Missing or
+    // insufficient permissions" error when opening ChronoCode. Challenges
+    // are catalog data (like courses/), so public read; only profs write.
+    match /chrono_challenges/{challengeId} {
+      allow read:  if true;
+      allow write: if isProf();
+    }
+
+    // ── chrono_sessions/ — ChronoCode live/replay session state ───
+    // FIX: same missing-rule issue as chrono_challenges above. A session
+    // belongs to the student who started it (candidateUid), and profs need
+    // to read/replay every session (Sessions & Replay tab lists them all).
+    // chronoBeginSession() in the client lets a visitor start a session
+    // without signing in — candidateUid is then null with just a typed
+    // name — so those anonymous sessions can't be scoped to a uid the way
+    // examAttempts/drafts are; they're treated like a public/guest session
+    // (readable/writable by anyone) the same way courses/certificates are
+    // public elsewhere in these rules. Signed-in candidates DO get scoped
+    // to their own uid. Snapshots inherit the parent session's access.
+    match /chrono_sessions/{sessionId} {
+      allow read:   if isProf() || resource.data.candidateUid == null ||
+        (isSignedIn() && resource.data.candidateUid == uid());
+      allow create: if request.resource.data.candidateUid == null ||
+        (isSignedIn() && request.resource.data.candidateUid == uid());
+      allow update: if isProf() || resource.data.candidateUid == null ||
+        (isSignedIn() && resource.data.candidateUid == uid());
+    }
+    match /chrono_sessions/{sessionId}/snapshots/{snapId} {
+      allow read, create: if isProf() ||
+        get(/databases/$(database)/documents/chrono_sessions/$(sessionId)).data.candidateUid == null ||
+        (isSignedIn() &&
+         get(/databases/$(database)/documents/chrono_sessions/$(sessionId)).data.candidateUid == uid());
+    }
+
           <!-- HIDDEN END TAG -->
 </pre>
         </div>
@@ -4374,6 +4410,23 @@ function startPyodide() {
   f.src = blobUrl;
   document.body.appendChild(f);
   _pyFrame = f;
+}
+
+// PERF: startPyodide() kicks off a multi-MB download (WASM engine + Python
+// stdlib) via a hidden iframe. It used to be called synchronously right
+// inside onAuthSuccess(), i.e. in the exact same tick as the freshly-logged-
+// in dashboard trying to paint and Firestore trying to fetch questions —
+// all fighting over the same network/CPU budget right when the page feels
+// slowest. This still pre-warms Pyodide automatically (so it's usually
+// ready by the time a student hits Run) but waits for the browser to be
+// idle first instead of competing with the initial render.
+function startPyodideIdle() {
+  if (_pyFrame) return;
+  if (window.requestIdleCallback) {
+    requestIdleCallback(startPyodide, { timeout: 3000 });
+  } else {
+    setTimeout(startPyodide, 800);
+  }
 }
 
 function waitPyReady(ms) {
@@ -5704,8 +5757,10 @@ function onAuthSuccess() {
   }
   // Pyodide itself loads silently in a hidden iframe regardless of which
   // view is showing — only the big loading overlay above is skipped when
-  // restoring straight into another view.
-  startPyodide();
+  // restoring straight into another view. PERF: deferred to idle time (see
+  // startPyodideIdle) so this multi-MB download doesn't compete with the
+  // dashboard's own render/Firestore fetches in the same tick.
+  startPyodideIdle();
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -6718,6 +6773,12 @@ async function startExam(qId) {
   currentQ    = questions.find(q=>q.id===qId);
   if (!currentQ) return;
   practiceMode = false;
+  // FIX: bind right-click blocking here (exam page open) rather than only
+  // once setupAntiCheat() runs post-fullscreen — see onContextMenu comment.
+  // Safe to call unconditionally: addEventListener with the same function
+  // reference is a no-op if already attached, and disableAntiCheat() (called
+  // from every exam-exit path) already removes this same listener.
+  document.addEventListener('contextmenu', onContextMenu);
 
   // SECURITY FIX (audit findings #1 and #2): claim/resume the exam attempt
   // server-side BEFORE anything else. Previously this function unconditionally
@@ -7226,10 +7287,19 @@ function disableDOMGuard() {
 }
 
 /* ── Right-click block ───────────────────────────────────────── */
+// FIX: previously guarded by (examActive && acEnabled), and the listener was
+// only attached inside setupAntiCheat() — which doesn't run until AFTER the
+// student clicks through the fullscreen gate in enterFullscreen(). That left
+// a real gap: the exam page (problem statement, code editor, running timer)
+// is already fully visible during the fullscreen-gate screen, and right-click
+// worked fine there. The listener is now attached the moment startExam()
+// begins (see there) instead of waiting for setupAntiCheat(), so guard on
+// practiceMode alone — practice problems remain untimed/unmonitored and
+// intentionally keep the normal context menu.
 function onContextMenu(e) {
-  if (!examActive||!acEnabled) return;
+  if (practiceMode) return;
   e.preventDefault();
-  toast('Right-click disabled during exam','warn');
+  toast('Right-click is disabled during the exam','warn');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -10266,7 +10336,7 @@ function inferCourseCodeLang(course) {
 function courseThumbHtml(course) {
   const t = course?.thumbnail || '📚';
   if (/^(https?:\/\/|data:image\/)/i.test(t)) {
-    return `<img src="${sanitize(t)}" alt="${sanitize(course?.title||'Course')} thumbnail" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='📚'">`;
+    return `<img src="${sanitize(t)}" alt="${sanitize(course?.title||'Course')} thumbnail" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async" onerror="this.parentElement.textContent='📚'">`;
   }
   return sanitize(t);
 }
@@ -13682,6 +13752,7 @@ function w3RenderSections(sections) {
         return `<div style="margin:20px 0;text-align:center">
           <img src="${sanitize(sec.url)}" alt="${sanitize(sec.caption||'')}"
             style="max-width:100%;border-radius:var(--r);border:1px solid var(--line);box-shadow:var(--sh)"
+            loading="lazy" decoding="async"
             onerror="this.style.opacity='.3'">
           ${sec.caption ? `<p style="font-size:.78rem;color:var(--muted);margin:6px 0 0">${sanitize(sec.caption)}</p>` : ''}
         </div>`;
@@ -14789,13 +14860,28 @@ if (window._pyReadyQ) {
 let chronoLocal = { challenges: {}, sessions: {} };
 function chronoUid(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
 
+// FIX: every Firestore call below used to be a bare `await` with no catch
+// anywhere up the call chain, so a rules problem (e.g. the missing
+// chrono_challenges/chrono_sessions rules) surfaced only as an uncaught
+// promise rejection in the console — the UI just silently did nothing.
+// This wraps each call and turns a failure into a visible toast instead.
+function chronoErrToast(action, e) {
+  console.warn('ChronoCode ' + action + ' failed:', e);
+  const denied = e && (e.code === 'permission-denied' || /insufficient permissions/i.test(e.message || ''));
+  toast(denied
+    ? '⚠ ChronoCode: permission denied. Ask your professor to check the Firestore rules for chrono_challenges / chrono_sessions.'
+    : ('⚠ ChronoCode: ' + action + ' failed. Please try again.'), 'err', 6000);
+}
+
 // ── Data layer ──────────────────────────────────────────────────
 async function chronoCreateChallenge(data) {
   data.createdAt = Date.now();
   data.createdBy = (currentUser && currentUser.uid) || 'demo';
   if (fsReady()) {
-    const ref = await db.collection('chrono_challenges').add(data);
-    return ref.id;
+    try {
+      const ref = await db.collection('chrono_challenges').add(data);
+      return ref.id;
+    } catch (e) { chronoErrToast('creating challenge', e); throw e; }
   }
   const id = chronoUid('ch');
   chronoLocal.challenges[id] = Object.assign({}, data, { id });
@@ -14803,15 +14889,19 @@ async function chronoCreateChallenge(data) {
 }
 async function chronoListChallenges() {
   if (fsReady()) {
-    const snap = await db.collection('chrono_challenges').get();
-    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    try {
+      const snap = await db.collection('chrono_challenges').get();
+      return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    } catch (e) { chronoErrToast('loading challenges', e); return []; }
   }
   return Object.values(chronoLocal.challenges);
 }
 async function chronoGetChallenge(id) {
   if (fsReady()) {
-    const doc = await db.collection('chrono_challenges').doc(id).get();
-    return doc.exists ? Object.assign({ id: doc.id }, doc.data()) : null;
+    try {
+      const doc = await db.collection('chrono_challenges').doc(id).get();
+      return doc.exists ? Object.assign({ id: doc.id }, doc.data()) : null;
+    } catch (e) { chronoErrToast('loading challenge', e); return null; }
   }
   return chronoLocal.challenges[id] || null;
 }
@@ -14819,35 +14909,47 @@ async function chronoCreateSession(data) {
   data.startedAt = Date.now();
   data.status = 'live';
   if (fsReady()) {
-    const ref = await db.collection('chrono_sessions').add(data);
-    return ref.id;
+    try {
+      const ref = await db.collection('chrono_sessions').add(data);
+      return ref.id;
+    } catch (e) { chronoErrToast('starting session', e); throw e; }
   }
   const id = chronoUid('sess');
   chronoLocal.sessions[id] = Object.assign({}, data, { id, snapshots: [] });
   return id;
 }
 async function chronoUpdateSession(id, patch) {
-  if (fsReady()) { await db.collection('chrono_sessions').doc(id).update(patch); return; }
+  if (fsReady()) {
+    try { await db.collection('chrono_sessions').doc(id).update(patch); }
+    catch (e) { chronoErrToast('saving session', e); throw e; }
+    return;
+  }
   chronoLocal.sessions[id] = Object.assign({}, chronoLocal.sessions[id], patch);
 }
 async function chronoGetSession(id) {
   if (fsReady()) {
-    const d = await db.collection('chrono_sessions').doc(id).get();
-    return d.exists ? Object.assign({ id: d.id }, d.data()) : null;
+    try {
+      const d = await db.collection('chrono_sessions').doc(id).get();
+      return d.exists ? Object.assign({ id: d.id }, d.data()) : null;
+    } catch (e) { chronoErrToast('loading session', e); return null; }
   }
   return chronoLocal.sessions[id] || null;
 }
 async function chronoListSessions() {
   if (fsReady()) {
-    const snap = await db.collection('chrono_sessions').get();
-    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    try {
+      const snap = await db.collection('chrono_sessions').get();
+      return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    } catch (e) { chronoErrToast('loading sessions', e); return []; }
   }
   return Object.values(chronoLocal.sessions);
 }
 async function chronoAddSnapshot(sessionId, snap) {
   snap.ts = Date.now();
   if (fsReady()) {
-    await db.collection('chrono_sessions').doc(sessionId).collection('snapshots').add(snap);
+    try {
+      await db.collection('chrono_sessions').doc(sessionId).collection('snapshots').add(snap);
+    } catch (e) { chronoErrToast('saving snapshot', e); throw e; }
     return;
   }
   chronoLocal.sessions[sessionId] = chronoLocal.sessions[sessionId] || { snapshots: [] };
@@ -14856,9 +14958,11 @@ async function chronoAddSnapshot(sessionId, snap) {
 }
 async function chronoListSnapshots(sessionId) {
   if (fsReady()) {
-    const snap = await db.collection('chrono_sessions').doc(sessionId)
-      .collection('snapshots').orderBy('elapsedSeconds', 'asc').get();
-    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    try {
+      const snap = await db.collection('chrono_sessions').doc(sessionId)
+        .collection('snapshots').orderBy('elapsedSeconds', 'asc').get();
+      return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    } catch (e) { chronoErrToast('loading snapshots', e); return []; }
   }
   return ((chronoLocal.sessions[sessionId] || {}).snapshots || []).slice().sort((a, b) => a.elapsedSeconds - b.elapsedSeconds);
 }
