@@ -7491,6 +7491,7 @@ async function saveDraftToFirestore() {
   setSaveIndicator('saving'); // PRIORITY 4: show saving state
   try {
     await db.collection('drafts').doc(draftId).set({
+      userId:   currentUser.uid,
       code:     monaco_editor.getValue(),
       language: currentLang,
       savedAt:  firebase.firestore.FieldValue.serverTimestamp(),
