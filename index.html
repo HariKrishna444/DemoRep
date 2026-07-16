@@ -64,7 +64,7 @@
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:15px;height:100%}
+html{font-size:21px;height:100%}
 body{
   background:#ffffff;
   color:#1f2328;
@@ -72,6 +72,7 @@ body{
   min-height:100vh;
   overflow-x:hidden;
   -webkit-text-size-adjust:100%;
+  word-spacing:.12em;
 }
 
 /* noise grain overlay removed for white theme */
@@ -573,6 +574,14 @@ select.inp option{background:#eef1f4}
 .resize-h:hover{background:var(--stu)}
 .code-half{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 
+/* Compiler tab: left = code editor, right = output/console, side by side.
+   Applied via JS (w3EnterCompilerUI/w3ExitCompilerUI) as #ed-body.compiler-mode. */
+#ed-body.compiler-mode .prob-panel,
+#ed-body.compiler-mode .resize-h{display:none}
+#ed-body.compiler-mode .code-half{flex-direction:row}
+#ed-body.compiler-mode .editor-col{flex:1 1 55%;display:flex;flex-direction:column;min-width:0;border-right:1px solid #e2e5ea}
+#ed-body.compiler-mode .console{flex:1 1 45%;height:auto;width:auto;border-top:none;min-width:0}
+
 /* Panel tabs */
 .ptabs{display:flex;border-bottom:1px solid #e2e5ea;background:#ffffff}
 .ptab{
@@ -591,16 +600,16 @@ select.inp option{background:#eef1f4}
 
 /* Problem statement */
 .prob-stmt h3{font-size:1.15rem;font-weight:800;color:#0f172a;margin-bottom:12px}
-.prob-stmt p{font-size:16px;color:#374151;line-height:1.8;margin-bottom:14px}
+.prob-stmt p{font-size:19px;color:#374151;line-height:1.8;margin-bottom:14px}
 .prob-stmt h4{font-size:.78rem;font-weight:700;color:var(--stu);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
 .ex-block{
   background:#ffffff;border:1px solid #e2e5ea;
   border-radius:var(--r-sm);padding:13px;margin-bottom:12px;
 }
 .ex-block strong{font-family:var(--ff-mono);font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
-.ex-block code{font-family:var(--ff-mono);font-size:16px;color:var(--green);display:block;white-space:pre;line-height:1.6}
+.ex-block code{font-family:var(--ff-mono);font-size:19px;color:var(--green);display:block;white-space:pre;line-height:1.6}
 .con-list{list-style:none}
-.con-list li{font-size:16px;color:#374151;padding:3px 0;display:flex;gap:7px}
+.con-list li{font-size:19px;color:#374151;padding:3px 0;display:flex;gap:7px}
 .con-list li::before{content:'›';color:var(--stu);flex-shrink:0}
 
 /* Test cases */
@@ -611,9 +620,9 @@ select.inp option{background:#eef1f4}
 .tc-stat.pass{background:rgba(0,229,160,.12);color:var(--stu)}
 .tc-stat.fail{background:rgba(255,59,92,.12);color:var(--danger)}
 .tc-stat.pending{background:#eef1f4;color:#6b7280}
-.tc-body{padding:11px 12px;font-size:16px;font-family:var(--ff-mono)}
+.tc-body{padding:11px 12px;font-size:19px;font-family:var(--ff-mono)}
 .tc-lbl{color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
-.tc-val{color:var(--green);margin-bottom:8px;font-size:16px}
+.tc-val{color:var(--green);margin-bottom:8px;font-size:19px}
 
 /* Code toolbar */
 .code-tb{
@@ -873,6 +882,11 @@ select.inp option{background:#eef1f4}
   /* Console: taller on mobile since editor is shorter */
   .console{height:160px}
 
+  /* Compiler tab on mobile: stack editor above output instead of side-by-side */
+  #ed-body.compiler-mode .code-half{flex-direction:column}
+  #ed-body.compiler-mode .editor-col{border-right:none;border-bottom:1px solid #e2e5ea;flex:1 1 auto}
+  #ed-body.compiler-mode .console{border-top:1px solid #e2e5ea;height:160px;flex:0 0 160px}
+
   /* Editor topbar: stack on mobile */
   .ed-bar{flex-wrap:wrap;gap:8px;padding:8px 12px}
   .ed-bar-l{gap:8px}
@@ -901,7 +915,7 @@ select.inp option{background:#eef1f4}
 
 /* Extra small (phones < 480px) */
 @media(max-width:480px){
-  html{font-size:13px}
+  html{font-size:19px}
   .stat-grid{grid-template-columns:1fr 1fr}
   .res-stats{grid-template-columns:1fr 1fr}
   .monitor-grid{grid-template-columns:1fr}
@@ -1762,7 +1776,7 @@ select.inp option{background:#eef1f4}
 }
 
 @media(max-width:480px){
-  html{font-size:14px}
+  html{font-size:17px}
   .course-card{border-radius:var(--r)}
   .stat-grid{grid-template-columns:1fr 1fr!important}
   .quiz-opt-letter{width:22px;height:22px;font-size:.65rem}
@@ -2438,7 +2452,7 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 .chrono-stage-pill.past{background:rgba(0,229,160,.12);color:var(--stu);border-color:rgba(0,229,160,.3)}
 .chrono-req-block{border-left:2px solid var(--stu);padding-left:12px;margin-bottom:16px}
 .chrono-req-block h4{margin:0 0 6px;font-size:.9rem;color:var(--stu)}
-.chrono-req-block .body{font-size:16px;color:#374151;line-height:1.55;white-space:pre-wrap}
+.chrono-req-block .body{font-size:19px;color:#374151;line-height:1.55;white-space:pre-wrap}
 .chrono-flash{animation:chronoFlash 1.4s ease}
 @keyframes chronoFlash{0%{background:rgba(0,229,160,.18)}100%{background:transparent}}
 
@@ -3222,6 +3236,16 @@ service cloud.firestore {
       allow write: if isProf();
     }
 
+    // ── subjectAllocations/ — Year-wise Subject Allocation ────────
+    // FIX: this collection had no rule at all, which Firestore treats
+    // as implicit deny-all — that's what was causing the "Missing or
+    // insufficient permissions" errors when adding/editing/removing
+    // subject allocations. Same read/write pattern as departments/.
+    match /subjectAllocations/{allocId} {
+      allow read:  if isSignedIn();
+      allow write: if isProf();
+    }
+
     // ── halls/ ───────────────────────────────────────────────────
     match /halls/{hallId} {
       allow read:  if isSignedIn();
@@ -3588,6 +3612,7 @@ upgrade-insecure-requests;</pre>
 
     <!-- Code panel -->
     <div class="code-half">
+      <div class="editor-col" id="editor-col">
       <div class="code-tb">
         <div class="code-tb-l">
           <select class="sel" id="lang-sel" onchange="changeLang(this.value);updateLangBadge(this.value)">
@@ -3620,6 +3645,7 @@ upgrade-insecure-requests;</pre>
         </div>
       </div>
       <div id="monaco-wrap"></div>
+      </div>
       <!-- Console -->
       <div class="console">
         <div class="con-tabs">
@@ -3774,7 +3800,7 @@ upgrade-insecure-requests;</pre>
 <div class="modal-bg" id="course-builder-modal">
   <div class="modal" style="max-width:780px">
     <h3>📚 Course Builder</h3>
-    <p class="sub">Create a new course — or auto-import content from the web.</p>
+    <p class="sub">Create a new course.</p>
     <div class="modal-fields">
       <div class="modal-row">
         <div class="field"><label>Course Title</label><input class="inp" id="cb-title" placeholder="Introduction to Python"></div>
@@ -3819,32 +3845,6 @@ upgrade-insecure-requests;</pre>
         </div>
       </div>
       <div class="field"><label>Description</label><textarea class="inp" id="cb-desc" rows="2" placeholder="What will students learn?"></textarea></div>
-
-      <!-- Web Import Section -->
-      <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:var(--r);padding:16px;margin-top:4px">
-        <div style="font-size:.78rem;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:7px">🌐 Auto-Import Content from Web</div>
-        <div style="font-size:.72rem;color:var(--soft);margin-bottom:10px;line-height:1.6">Automatically pull article lessons from <strong style="color:#0f172a">Wikipedia</strong>, video lessons from <strong style="color:#0f172a">YouTube</strong> (oEmbed), and reference books from <strong style="color:#0f172a">Open Library</strong>.</div>
-        <div class="modal-row" style="margin-bottom:8px">
-          <div class="field">
-            <label>Wikipedia Topics (comma-separated)</label>
-            <input class="inp" id="cb-wiki-topics" placeholder="Python programming, Functions, Control flow">
-          </div>
-        </div>
-        <div class="modal-row" style="margin-bottom:8px">
-          <div class="field">
-            <label>YouTube Video IDs (comma-separated)</label>
-            <input class="inp" id="cb-yt-ids" placeholder="rfscVS0vtbw, 8DvywoWv6fI">
-          </div>
-        </div>
-        <div class="modal-row" style="margin-bottom:8px">
-          <div class="field">
-            <label>Open Library Book Search Query</label>
-            <input class="inp" id="cb-book-query" placeholder="Python programming Lutz">
-          </div>
-        </div>
-        <button class="btn btn-blue btn-sm" id="cb-fetch-btn" onclick="fetchAndPreviewWebContent()">⬇ Fetch &amp; Preview Content</button>
-        <div id="cb-fetch-preview" style="margin-top:10px;font-size:.75rem;color:var(--soft);font-family:var(--ff-mono)"></div>
-      </div>
 
       <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:8px;display:flex;align-items:center;justify-content:space-between">
         <span>Modules &amp; Lessons</span>
@@ -4948,6 +4948,9 @@ function w3EnterCompilerUI(stdin) {
   document.getElementById('timer-wrap')?.classList.add('hidden');
   document.getElementById('integrity-bar')?.classList.add('hidden');
   document.getElementById('save-indicator')?.classList.add('hidden');
+  // Left = code editor, right = output — the Problem-info panel isn't
+  // needed for a plain compiler, so give the editor/console the full width.
+  document.getElementById('ed-body')?.classList.add('compiler-mode');
 
   const ptabs = document.querySelectorAll('#prob-panel .ptab');
   if (ptabs[1]) ptabs[1].style.display = 'none';
@@ -4985,6 +4988,7 @@ function w3ExitCompilerUI() {
   document.getElementById('timer-wrap')?.classList.remove('hidden');
   document.getElementById('integrity-bar')?.classList.remove('hidden');
   document.getElementById('save-indicator')?.classList.remove('hidden');
+  document.getElementById('ed-body')?.classList.remove('compiler-mode');
   const ptabs = document.querySelectorAll('#prob-panel .ptab');
   if (ptabs[1]) ptabs[1].style.display = '';
   if (ptabs[2]) ptabs[2].style.display = '';
@@ -7802,7 +7806,7 @@ function _monacoFallback() {
   if (!wrap) return;
   wrap.innerHTML = `<textarea id="monaco-fallback-ta"
     style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;
-           font-family:'DM Mono',monospace;font-size:16px;padding:16px;
+           font-family:'DM Mono',monospace;font-size:19px;padding:16px;
            border:none;outline:none;resize:none;box-sizing:border-box;line-height:1.6;tab-size:4"
     spellcheck="false" autocomplete="off" autocorrect="off"
     placeholder="// Type your code here..."
@@ -11803,10 +11807,6 @@ function openCourseBuilder() {
   const _thumbPrev = document.getElementById('cb-thumb-preview');
   if (_thumbPrev) _thumbPrev.dataset.fallback = '📚';
   cbUpdateThumbPreview();
-  document.getElementById('cb-wiki-topics').value = '';
-  document.getElementById('cb-yt-ids').value = '';
-  document.getElementById('cb-book-query').value = '';
-  document.getElementById('cb-fetch-preview').innerHTML = '';
   _cbExpandedMods = new Set();
   _cbActiveModIdx = null;
   _cbActiveLessonIdx = null;
@@ -11854,10 +11854,6 @@ async function openEditCourseModal(courseId) {
     }
     cbUpdateThumbPreview();
   }
-  document.getElementById('cb-wiki-topics').value = '';
-  document.getElementById('cb-yt-ids').value = '';
-  document.getElementById('cb-book-query').value = '';
-  document.getElementById('cb-fetch-preview').innerHTML = '';
 
   const h3 = document.querySelector('#course-builder-modal h3');
   if (h3) h3.textContent = '✎ Edit Course: ' + (course.title || '');
@@ -12024,61 +12020,9 @@ function cbDeleteLesson(modIdx, lessonIdx) {
   cbRenderModulesList();
 }
 
-// Tracks web-imported modules from fetchAndPreviewWebContent
+// Web-import feature removed; kept as an always-empty array since
+// saveCourse()/openEditCourseModal() still reference it when merging modules.
 let _cbWebModules = [];
-
-async function fetchAndPreviewWebContent() {
-  const btn     = document.getElementById('cb-fetch-btn');
-  const preview = document.getElementById('cb-fetch-preview');
-  const wikiRaw = document.getElementById('cb-wiki-topics').value.trim();
-  const ytRaw   = document.getElementById('cb-yt-ids').value.trim();
-  const bookQ   = document.getElementById('cb-book-query').value.trim();
-
-  if (!wikiRaw && !ytRaw && !bookQ) {
-    toast('Enter at least one Wikipedia topic, YouTube ID, or book query', 'warn');
-    return;
-  }
-
-  btn.disabled = true; btn.textContent = '⏳ Fetching…';
-  preview.innerHTML = '<span style="color:#6b7280">Fetching content from Wikipedia / YouTube / Open Library…</span>';
-
-  const wikiTopics = wikiRaw ? wikiRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
-  const videoIds   = ytRaw   ? ytRaw.split(',').map(s=>s.trim()).filter(Boolean).map(id=>({ id, title:'YouTube Video' })) : [];
-
-  // Build a temporary course object
-  const tempMeta = {
-    id: 'temp-preview', title: document.getElementById('cb-title').value || 'Preview',
-    language: document.getElementById('cb-lang').value || 'General',
-    difficulty: document.getElementById('cb-diff').value, thumbnail: '📚',
-  };
-
-  let builtCourse;
-  try {
-    builtCourse = await buildCourseFromWeb(tempMeta, videoIds, wikiTopics, bookQ);
-  } catch(e) {
-    preview.innerHTML = `<span style="color:var(--danger)">Fetch error: ${e.message}</span>`;
-    btn.disabled = false; btn.textContent = '⬇ Fetch & Preview Content';
-    return;
-  }
-
-  _cbWebModules = builtCourse.modules || [];
-  const lessonCount = _cbWebModules.reduce((a,m)=>a+(m.lessons||[]).length,0);
-
-  if (!lessonCount) {
-    preview.innerHTML = '<span style="color:var(--amber)">⚠ No content could be fetched. Check topics/IDs and try again.</span>';
-    btn.disabled = false; btn.textContent = '⬇ Fetch & Preview Content';
-    return;
-  }
-
-  // Show summary
-  const summaryLines = _cbWebModules.map(m =>
-    `  📦 ${m.title} — ${m.lessons.length} lessons: ${m.lessons.map(l=>`"${l.title.substring(0,40)}"`).join(', ')}`
-  ).join('\n');
-  preview.innerHTML = `<span style="color:var(--stu)">✅ Fetched ${lessonCount} lessons across ${_cbWebModules.length} module(s):</span>\n${summaryLines.replace(/\n/g,'<br>')}`;
-  toast(`✅ Fetched ${lessonCount} lessons from web!`, 'ok');
-
-  btn.disabled = false; btn.textContent = '✅ Refetch Content';
-}
 
 let cbModuleCount = 0;
 function addCourseModule() {
@@ -13204,7 +13148,7 @@ function addAmmLesson() {
              oninput="_addModuleLessons[${idx}].title=this.value">
       <select class="inp" style="width:100px;padding:7px" id="amm-ltype-${idx}"
               onchange="_addModuleLessons[${idx}].type=this.value;ammToggleLessonType(${idx})">
-        <option value="article">Article</option>
+        <option value="article" selected>Article</option>
         <option value="video">Video</option>
         <option value="problem">Coding Problem</option>
       </select>
@@ -15328,7 +15272,7 @@ function chronoLoadMonaco(initialCode, lang, onReady) {
 function chronoMonacoFallback(code) {
   const host = document.getElementById('chrono-monaco-wrap');
   if (!host) return;
-  host.innerHTML = `<textarea id="chrono-fallback-ta" style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;font-family:'DM Mono',monospace;font-size:14px;padding:14px;border:none;outline:none;resize:none;box-sizing:border-box"></textarea>`;
+  host.innerHTML = `<textarea id="chrono-fallback-ta" style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;font-family:'DM Mono',monospace;font-size:17px;padding:14px;border:none;outline:none;resize:none;box-sizing:border-box"></textarea>`;
   const ta = document.getElementById('chrono-fallback-ta');
   ta.value = code;
   chronoEditor = { getValue: () => ta.value, setValue: (v) => { ta.value = v; }, dispose: () => {} };
