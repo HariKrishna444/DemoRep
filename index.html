@@ -6222,14 +6222,34 @@ async function renderTerminatedAttempts() {
     const snap = await fsDb().collection('examAttempts').where('needsReactivation', '==', true).get();
     if (snap.empty) { el.innerHTML = '<div style="color:#6b7280;font-size:.82rem">No terminated attempts.</div>'; return; }
     const qById = Object.fromEntries(questions.map(q => [q.id, q.title]));
+
+    // FIX: examAttempts docs only ever stored the raw userId (Firebase UID),
+    // so this list showed a truncated random-looking ID instead of the
+    // student's name. Resolve each uid against users/{uid} (already
+    // populated with displayName/email at first login — see loadUserRole())
+    // and show that instead; fall back to the truncated uid only if the
+    // profile is missing. Professors can read any users/ doc per the rules.
+    const uids = [...new Set(snap.docs.map(d => d.data().userId).filter(Boolean))];
+    const nameByUid = {};
+    await Promise.all(uids.map(async uid => {
+      try {
+        const uSnap = await fsDb().collection('users').doc(uid).get();
+        if (uSnap.exists) {
+          const u = uSnap.data();
+          nameByUid[uid] = u.displayName || (u.email ? u.email.split('@')[0] : null);
+        }
+      } catch (e) { /* profile unreadable — falls back to truncated uid below */ }
+    }));
+
     el.innerHTML = snap.docs.map(d => {
       const a = d.data();
-      const studentName = a.userId ? (a.userId.length > 10 ? a.userId.slice(0,10)+'…' : a.userId) : 'Unknown';
+      const studentName = (a.userId && nameByUid[a.userId]) ||
+        (a.userId ? (a.userId.length > 10 ? a.userId.slice(0,10)+'…' : a.userId) : 'Unknown');
       const probTitle = qById[a.questionId] || a.questionId || 'N/A';
       return `
         <div class="vio-row" style="align-items:center">
           <span class="vio-type">TERMINATED</span>
-          <span class="vio-name" title="${d.id}">${sanitize(studentName)}</span>
+          <span class="vio-name" title="${sanitize(a.userId || d.id)}">${sanitize(studentName)}</span>
           <span style="color:#374151;font-size:.78rem">${sanitize(probTitle)} — ${a.tabSwitchCount||0} tab switches</span>
           <label class="rswitch" title="Reactivate this student's attempt">
             <input type="checkbox" onclick="if(confirm('Reactivate this attempt? The student will get a fresh timer and 3 tab-switch strikes.')) reactivateExamAttempt('${d.id}'); else this.checked=false; return false;">
