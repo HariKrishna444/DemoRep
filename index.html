@@ -249,7 +249,12 @@ select.inp option{background:#eef1f4}
   background:#f6f8fa;border-right:1px solid #e2e5ea;
   padding:24px 16px;display:flex;flex-direction:column;gap:6px;
 }
-.sbar-section{color:#6b7280;font-family:var(--ff-mono);font-size:.62rem;color:#6b7280;text-transform:uppercase;letter-spacing:2px;padding:14px 10px 6px}
+.sbar-section{
+  color:#4b5563;font-family:var(--ff-mono);font-size:.68rem;font-weight:800;
+  text-transform:uppercase;letter-spacing:2.2px;padding:16px 10px 7px;
+  margin-top:6px;border-top:1px solid #e5e8ec;
+}
+.sbar-section:first-child{margin-top:0;border-top:none;padding-top:6px}
 .sbar-item{
   display:flex;align-items:center;gap:10px;
   padding:10px 12px;border-radius:var(--r-sm);
@@ -373,6 +378,39 @@ select.inp option{background:#eef1f4}
 .modal p.sub{font-size:.78rem;color:#374151;margin-bottom:24px}
 .modal-fields{display:flex;flex-direction:column;gap:14px}
 .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── Course Builder: module/lesson tree + single-lesson editor pane ──
+   Replaces the old "render every module and every lesson's full editor
+   stacked in one long column" layout (unbounded scroll for large
+   courses) with a fixed-height two-pane view: a collapsible module→lesson
+   outline on the left (like the student-facing syllabus view), and the
+   currently-selected lesson's full editor on the right. Each pane scrolls
+   independently instead of the whole modal growing without limit. */
+.cb-editor-shell{display:flex;border:1px solid #e2e5ea;border-radius:var(--r-lg);overflow:hidden;height:460px;margin-top:4px}
+.cb-tree{width:250px;flex-shrink:0;border-right:1px solid #e2e5ea;background:#f6f8fa;overflow-y:auto;padding:8px}
+.cb-tree-mod{margin-bottom:2px}
+.cb-tree-mod-head{display:flex;align-items:center;gap:6px;padding:7px 6px;border-radius:6px;cursor:pointer}
+.cb-tree-mod-head:hover{background:#eef1f4}
+.cb-tree-chevron{display:inline-block;transition:transform .15s ease;font-size:.65rem;color:var(--muted);flex-shrink:0}
+.cb-tree-chevron.open{transform:rotate(90deg)}
+.cb-tree-mod-title-input{flex:1;min-width:0;border:none;background:transparent;font-size:.8rem;font-weight:700;color:var(--head);padding:3px 4px;border-radius:4px}
+.cb-tree-mod-title-input:focus{background:#fff;outline:1px solid var(--stu)}
+.cb-tree-mod-count{font-size:.65rem;color:var(--muted);font-family:var(--ff-mono);background:#e9edf1;border-radius:99px;padding:1px 6px;flex-shrink:0}
+.cb-tree-mod-del{flex-shrink:0;color:var(--danger);font-size:.72rem;padding:2px 5px;border-radius:4px;background:none;border:none;cursor:pointer}
+.cb-tree-mod-del:hover{background:rgba(255,59,92,.1)}
+.cb-tree-lessons{padding-left:18px;margin:2px 0 6px}
+.cb-tree-lessons.hidden{display:none}
+.cb-tree-lesson{display:flex;align-items:center;gap:6px;padding:6px 7px;border-radius:6px;cursor:pointer;font-size:.76rem;color:var(--soft)}
+.cb-tree-lesson:hover{background:#eef1f4}
+.cb-tree-lesson.active{background:rgba(0,229,160,.13);color:var(--head);font-weight:700}
+.cb-tree-lesson-icon{flex-shrink:0;font-size:.75rem}
+.cb-tree-lesson-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cb-tree-add-lesson{font-size:.72rem;color:var(--stu);cursor:pointer;padding:6px 7px;font-weight:700}
+.cb-tree-add-lesson:hover{text-decoration:underline}
+.cb-tree-empty{font-size:.72rem;color:var(--muted);padding:8px}
+.cb-lesson-pane{flex:1;overflow-y:auto;padding:16px;min-width:0}
+.cb-pane-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:.85rem;text-align:center;padding:20px;line-height:1.6}
+.cb-pane-mod-crumb{display:flex;align-items:center;gap:8px;font-size:.68rem;color:var(--muted);font-family:var(--ff-mono);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
 .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
 
 /* Live monitor grid */
@@ -511,6 +549,15 @@ select.inp option{background:#eef1f4}
 }
 .integrity-bar.warn{border-color:rgba(245,166,35,.3);color:var(--amber)}
 .integrity-bar.bad{border-color:rgba(255,59,92,.3);color:var(--danger);animation:tcrit .8s ease infinite}
+
+/* Reactivate toggle switch (professor: terminated-attempt reactivation) */
+.rswitch{position:relative;display:inline-block;width:38px;height:21px;flex-shrink:0}
+.rswitch input{opacity:0;width:0;height:0}
+.rswitch .rslider{position:absolute;cursor:pointer;inset:0;background:#d1d5db;transition:.18s;border-radius:99px}
+.rswitch .rslider::before{content:"";position:absolute;height:15px;width:15px;left:3px;bottom:3px;background:#fff;transition:.18s;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.rswitch input:checked + .rslider{background:var(--stu)}
+.rswitch input:checked + .rslider::before{transform:translateX(17px)}
+.rswitch input:disabled + .rslider{opacity:.5;cursor:not-allowed}
 .int-dot{width:6px;height:6px;border-radius:50%;background:var(--stu)}
 .integrity-bar.warn .int-dot{background:var(--amber)}
 .integrity-bar.bad .int-dot{background:var(--danger)}
@@ -2443,8 +2490,8 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 <div id="ac-overlay">
   <div class="ac-card">
     <div class="ai">⚠️</div>
-    <h2>Integrity Violation!</h2>
-    <p>You navigated away from the exam. This has been <strong>recorded and reported</strong> to your professor. One more violation terminates your exam.</p>
+    <h2>Tab Switch Detected!</h2>
+    <p>You navigated away from the exam. This has been <strong>recorded and reported</strong> to your professor.</p>
     <div class="ac-meter">
       <div class="ac-dot" id="acd-0"></div>
       <div class="ac-dot" id="acd-1"></div>
@@ -2459,8 +2506,8 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
   <div class="term-card">
     <div class="ti">🚫</div>
     <h2>Exam Terminated</h2>
-    <p>Your exam has been automatically terminated due to repeated integrity violations.</p>
-    <p>Your professor has been notified. All violations have been logged with timestamps.</p>
+    <p id="term-reason-text">Your exam has been automatically terminated after switching away from the exam tab 3 times.</p>
+    <p>Your professor has been notified and can reactivate your attempt.</p>
     <div class="term-id" id="term-id-display"></div>
   </div>
 </div>
@@ -2526,15 +2573,17 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
     <div class="prof-sidebar">
       <div class="sbar-section">Overview</div>
       <div class="sbar-item active" id="sb-dashboard" onclick="profNav('dashboard')"><span class="sbar-icon">📊</span>Dashboard</div>
-      <div class="sbar-item" id="sb-monitor"   onclick="profNav('monitor')"><span class="sbar-icon">👁️</span>Live Monitor<span class="sbar-badge" id="live-count">0</span></div>
+      <div class="sbar-item" id="sb-course-analytics" onclick="profNav('course-analytics')"><span class="sbar-icon">🎓</span>Course Platform</div>
 
       <div class="sbar-section">Exam Management</div>
+      <div class="sbar-item" id="sb-monitor"   onclick="profNav('monitor')"><span class="sbar-icon">👁️</span>Live Monitor<span class="sbar-badge" id="live-count">0</span></div>
       <div class="sbar-item" id="sb-questions"  onclick="profNav('questions')"><span class="sbar-icon">📝</span>Questions</div>
       <div class="sbar-item" id="sb-practicequestions" onclick="profNav('practicequestions')"><span class="sbar-icon">🧩</span>Practice Questions</div>
       <div class="sbar-item" id="sb-createexam" onclick="profNav('createexam')"><span class="sbar-icon">🗂️</span>Create Exam</div>
       <div class="sbar-item" id="sb-violations" onclick="profNav('violations')"><span class="sbar-icon">🚨</span>Violations<span class="sbar-badge" id="vio-count-badge">0</span></div>
       <div class="sbar-item" id="sb-results"    onclick="profNav('presults')"><span class="sbar-icon">📈</span>Results</div>
       <div class="sbar-item" id="sb-chronocode" onclick="openChronoAdmin()"><span class="sbar-icon">⏱️</span>ChronoCode</div>
+      <div class="sbar-item" id="sb-analytics"   onclick="profNav('analytics')"><span class="sbar-icon">📊</span>Analytics</div>
 
 
       <div class="sbar-section">University</div>
@@ -2545,9 +2594,7 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
       <div class="sbar-item" id="sb-attendance"  onclick="profNav('attendance')"><span class="sbar-icon">✅</span>Attendance</div>
       <div class="sbar-item" id="sb-examschedule" onclick="profNav('examschedule')"><span class="sbar-icon">📅</span>Exam Schedule</div>
       <div class="sbar-item" id="sb-grades"      onclick="profNav('grades')"><span class="sbar-icon">🎓</span>Grades & Export</div>
-      <div class="sbar-item" id="sb-analytics"   onclick="profNav('analytics')"><span class="sbar-icon">📊</span>Analytics</div>
       <div class="sbar-item" id="sb-security"    onclick="profNav('security')"><span class="sbar-icon">🔒</span>Security</div>
-      <div class="sbar-item" id="sb-course-analytics" onclick="profNav('course-analytics')"><span class="sbar-icon">🎓</span>Course Platform</div>
 
       <div style="margin-top:auto;padding-top:20px">
         <div style="background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.15);border-radius:var(--r);padding:14px;font-size:.75rem;color:var(--soft)">
@@ -2618,7 +2665,14 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
       <!-- Violations panel -->
       <div class="prof-panel" id="pp-violations">
         <div class="sec-hd">
-          <div><h2>Violation Log</h2><p>All recorded integrity violations</p></div>
+          <div><h2>Terminated Attempts</h2><p>Students auto-terminated for switching tabs 3 times — toggle to reactivate</p></div>
+        </div>
+        <div class="vio-list" id="terminated-attempts-el" style="margin-bottom:22px">
+          <div style="color:#6b7280;font-size:.82rem">No terminated attempts.</div>
+        </div>
+
+        <div class="sec-hd">
+          <div><h2>Violation Log</h2><p>All recorded proctoring violations</p></div>
           <button class="btn btn-ghost btn-sm" onclick="exportViolations()">⬇ Export CSV</button>
         </div>
         <div class="vio-list" id="vio-list-el">
@@ -2732,6 +2786,28 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
           <table class="data-table" id="dept-table">
             <thead><tr><th>Department</th><th>HOD</th><th>Students</th><th>Active Exams</th><th>Avg Score</th></tr></thead>
             <tbody id="dept-tbody"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:20px;background:#f6f8fa;border:1px solid #e2e5ea;border-radius:var(--r-lg);padding:20px">
+          <div style="font-size:.82rem;font-weight:700;color:var(--head);margin-bottom:4px">Year-wise Subject Allocation</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Assign subjects to faculty per branch and year</div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+            <select class="inp" id="suballoc-branch" style="max-width:220px" onchange="renderSubjectAllocations()">
+              <option value="">Select Branch</option>
+            </select>
+            <select class="inp" id="suballoc-year" style="max-width:160px" onchange="renderSubjectAllocations()">
+              <option value="">Select Year</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+            <button class="btn btn-a btn-sm" onclick="addSubjectAllocation()">+ Add Subject</button>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Subject</th><th>Faculty</th><th style="width:90px">Actions</th></tr></thead>
+            <tbody id="suballoc-tbody"><tr><td colspan="3" style="color:#6b7280">Select a branch and year.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -3077,27 +3153,29 @@ service cloud.firestore {
         (isProf() || attemptId.split('_')[0] == uid());
 
       // Create: only the owning student, only as a fresh 'active' attempt,
-      // only with integrityScore=100/violationCount=0, and startedAt must be
+      // only with tabSwitchCount=0/violationCount=0, and startedAt must be
       // the server's own timestamp (not something the client can backdate).
       allow create: if isSignedIn() &&
         attemptId.split('_')[0] == uid() &&
         request.resource.data.userId == uid() &&
         request.resource.data.status == 'active' &&
-        request.resource.data.integrityScore == 100 &&
+        request.resource.data.tabSwitchCount == 0 &&
         request.resource.data.violationCount == 0 &&
         request.resource.data.startedAt == request.time;
 
       // Update: only the owning student while the attempt is still active,
-      // and only in the punishing direction — integrityScore can't go back
-      // up and violationCount can't go back down, so a client can't use
-      // this write path to erase its own penalties. status may only move
-      // active → (terminated | submitted), never back to active.
+      // and only in the punishing direction — tabSwitchCount and
+      // violationCount can't go back down, so a client can't use this write
+      // path to erase its own strikes. status may only move active →
+      // (terminated | submitted), never back to active. Professors bypass
+      // all of this (isProf() above) so they can reactivate a terminated
+      // attempt (reset tabSwitchCount, set status back to 'active').
       allow update: if isSignedIn() && (
         isProf() ||
         (
           attemptId.split('_')[0] == uid() &&
           resource.data.status == 'active' &&
-          request.resource.data.integrityScore <= resource.data.integrityScore &&
+          request.resource.data.tabSwitchCount >= resource.data.tabSwitchCount &&
           request.resource.data.violationCount >= resource.data.violationCount &&
           request.resource.data.startedAt == resource.data.startedAt &&
           (request.resource.data.status == 'active' ||
@@ -3472,7 +3550,7 @@ upgrade-insecure-requests;</pre>
       </div>
       <div class="integrity-bar" id="integrity-bar">
         <div class="int-dot"></div>
-        <span id="int-text">Integrity: 100%</span>
+        <span id="int-text">Tab Switches: 0/3</span>
       </div>
       <div id="save-indicator" style="
         display:flex;align-items:center;gap:5px;
@@ -3768,9 +3846,14 @@ upgrade-insecure-requests;</pre>
         <div id="cb-fetch-preview" style="margin-top:10px;font-size:.75rem;color:var(--soft);font-family:var(--ff-mono)"></div>
       </div>
 
-      <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:8px">Manual Modules</div>
-      <div id="cb-modules-list" style="display:flex;flex-direction:column;gap:8px"></div>
-      <button class="btn btn-ghost btn-sm" onclick="addCourseModule()" style="align-self:flex-start">+ Add Module Manually</button>
+      <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:var(--ff-mono);margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+        <span>Modules &amp; Lessons</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addCourseModule()" style="font-size:.68rem;letter-spacing:0;text-transform:none;font-weight:700">+ Add Module</button>
+      </div>
+      <div class="cb-editor-shell">
+        <div class="cb-tree" id="cb-tree"></div>
+        <div class="cb-lesson-pane" id="cb-lesson-editor-pane"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeCourseBuilder()">Cancel</button>
@@ -4508,9 +4591,16 @@ let examAttemptId  = null;  // SECURITY FIX (#1/#2): Firestore doc id governing 
 let currentLang    = 'python';
 let timerSecs      = EXAM_DURATION_MINS * 60;
 let timerInterval  = null;
+// Tab-switch strike counter — replaces the old percentage-based
+// "integrity score". Only literal tab-switch/blur violations count toward
+// this; other violation types (fullscreen exit, DOM tampering, devtools)
+// are still logged to the Violations panel for the professor but no
+// longer auto-terminate the exam on their own. Reaching MAX_TAB_SWITCHES
+// terminates the exam and flags the attempt for the professor, who can
+// reactivate it from the Live Monitor / Violations panel.
 let tabVioCount    = 0;
+const MAX_TAB_SWITCHES = 3;
 let totalVioCount  = 0;
-let integrityScore = 100;
 let domObserver    = null;
 
 // Anti-cheat: keystroke dynamics
@@ -6046,6 +6136,7 @@ function renderQList() {
 }
 
 function renderVioList() {
+  renderTerminatedAttempts();
   const el = document.getElementById('vio-list-el');
   document.getElementById('vio-count-badge').textContent = violations.length;
   if (!violations.length) { el.innerHTML='<div style="color:#6b7280;font-size:.82rem">No violations recorded.</div>'; return; }
@@ -6057,6 +6148,39 @@ function renderVioList() {
       <span class="vio-time">${v.time}</span>
     </div>
   `).join('');
+}
+
+// Students whose exam was auto-terminated after 3 tab switches, awaiting a
+// professor's decision. Fetched fresh each time the Violations panel is
+// opened (matches the rest of this panel's on-nav-render pattern) rather
+// than a live listener — reactivation is an infrequent, deliberate action.
+async function renderTerminatedAttempts() {
+  const el = document.getElementById('terminated-attempts-el');
+  if (!el) return;
+  if (!fsReady()) { el.innerHTML = '<div style="color:#6b7280;font-size:.82rem">Firestore not connected.</div>'; return; }
+  try {
+    const snap = await fsDb().collection('examAttempts').where('needsReactivation', '==', true).get();
+    if (snap.empty) { el.innerHTML = '<div style="color:#6b7280;font-size:.82rem">No terminated attempts.</div>'; return; }
+    const qById = Object.fromEntries(questions.map(q => [q.id, q.title]));
+    el.innerHTML = snap.docs.map(d => {
+      const a = d.data();
+      const studentName = a.userId ? (a.userId.length > 10 ? a.userId.slice(0,10)+'…' : a.userId) : 'Unknown';
+      const probTitle = qById[a.questionId] || a.questionId || 'N/A';
+      return `
+        <div class="vio-row" style="align-items:center">
+          <span class="vio-type">TERMINATED</span>
+          <span class="vio-name" title="${d.id}">${sanitize(studentName)}</span>
+          <span style="color:#374151;font-size:.78rem">${sanitize(probTitle)} — ${a.tabSwitchCount||0} tab switches</span>
+          <label class="rswitch" title="Reactivate this student's attempt">
+            <input type="checkbox" onclick="if(confirm('Reactivate this attempt? The student will get a fresh timer and 3 tab-switch strikes.')) reactivateExamAttempt('${d.id}'); else this.checked=false; return false;">
+            <span class="rslider"></span>
+          </label>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('renderTerminatedAttempts:', e);
+    el.innerHTML = '<div style="color:#6b7280;font-size:.82rem">Could not load terminated attempts.</div>';
+  }
 }
 
 function renderPResults() {
@@ -6592,17 +6716,18 @@ async function startExam(qId) {
 
   // SECURITY FIX (audit findings #1 and #2): claim/resume the exam attempt
   // server-side BEFORE anything else. Previously this function unconditionally
-  // reset integrityScore/violationCount to a clean slate and always started a
-  // fresh 90-minute timer, which meant a student facing termination for low
-  // integrity — or one who'd already submitted — could just refresh and click
-  // the exam card again for a completely clean attempt. Now:
+  // reset state to a clean slate and always started a fresh 90-minute timer,
+  // which meant a student facing termination for tab-switching — or one
+  // who'd already submitted — could just refresh and click the exam card
+  // again for a completely clean attempt. Now:
   //   - a 'terminated' or 'submitted' attempt blocks re-entry entirely
-  //   - a resumed 'active' attempt restores the real integrity/violation
+  //     (a terminated one stays blocked until a professor reactivates it)
+  //   - a resumed 'active' attempt restores the real tab-switch/violation
   //     state and the real remaining time, both from the server record
   const claim = await claimExamAttempt(qId);
   if (!claim.ok) {
     const msgs = {
-      terminated: '🚫 This exam was already terminated for a proctoring violation. You cannot restart it. Contact your professor if you believe this is an error.',
+      terminated: '🚫 This exam was terminated after repeated tab switching. Your professor has been notified and must reactivate your attempt before you can continue.',
       submitted:  '✅ You have already submitted this exam. It cannot be reattempted.',
       expired:    '⏰ Your exam time has already expired. The attempt has been closed. Contact your professor if you believe this is an error.',
     };
@@ -6614,13 +6739,13 @@ async function startExam(qId) {
   document.getElementById('integrity-bar').classList.remove('hidden');
 
   // Reset PER-SESSION (not per-attempt) state — safe to always clear, since
-  // these don't gate anti-cheat penalties or re-entry the way integrity/
-  // violation counts do. integrityScore/totalVioCount are set inside
-  // claimExamAttempt() above (either fresh at 100/0, or restored from the
+  // these don't gate anti-cheat penalties or re-entry the way the
+  // tab-switch/violation counts do. tabVioCount/totalVioCount are set inside
+  // claimExamAttempt() above (either fresh at 0, or restored from the
   // resumed attempt doc) and must NOT be reset here.
   codeSnapshots   = [];
   keystrokeBuffer = [];
-  updateIntegrity(0); // repaint the integrity bar with whatever claimExamAttempt set
+  updateTabSwitchUI(); // repaint the tab-switch bar with whatever claimExamAttempt set
 
   if (claim.resumed) {
     toast('📌 Resuming your in-progress exam attempt.', 'warn', 5000);
@@ -7166,7 +7291,7 @@ function _writeHeartbeat() {
     name:           currentUser.displayName || currentUser.email?.split('@')[0] || 'Student',
     questionId:     currentQ?.id || null,
     examAttemptId:  examAttemptId,
-    integrityScore, violationCount: totalVioCount,
+    tabSwitchCount: tabVioCount, violationCount: totalVioCount,
     lastHeartbeat:  firebase.firestore.FieldValue.serverTimestamp(),
   }, { merge: true }).catch(e => console.warn('heartbeat write failed:', e));
 }
@@ -7212,85 +7337,59 @@ function disableAntiCheat() {
   document.getElementById('ac-overlay').classList.remove('show');
 }
 
-// Penalty weights per violation type
-const INTEGRITY_PENALTIES = {
-  'tab-switch':      15,
-  'fullscreen':      15,
-  'paste':           10,
-  'paste-speed':      8,
-  'devtools':        20,
-  'extension':       12,
-  'dom-guard':       25,   // injected frame/script removal
-  'monaco-paste':    10,
-  'default':         15,
-};
-
 function handleViolation(type) {
   totalVioCount++;
 
-  // Deduct the right amount based on violation type
-  const penalty = INTEGRITY_PENALTIES[type] || INTEGRITY_PENALTIES['default'];
-  updateIntegrity(-penalty);
+  // Only literal tab-switch/blur events count toward the 3-strike limit.
+  // Other violation types (fullscreen exit, DOM tampering, devtools) are
+  // still logged below for the professor's Violation Log, but no longer
+  // carry their own scoring/termination — the professor reviews those from
+  // the log directly instead.
+  if (type !== 'tab-switch') {
+    logViolation(type, type, `${type} activity detected during exam`);
+    saveSnapshot('violation-trigger');
+    toast(`⚠ ${type.replace('-',' ')} activity detected — reported to your professor.`, 'warn', 5000);
+    return;
+  }
 
-  // SECURITY FIX (#1): mirror the live integrity/violation state to the
+  tabVioCount++;
+
+  // SECURITY FIX (#1): mirror the live strike/violation state to the
   // server-side attempt doc as it happens, so a refresh restores this
-  // exact state instead of resetting to 100%/0. Firestore rules only
-  // allow this to move in the punishing direction (score down, count up).
-  syncExamAttempt({ integrityScore, violationCount: totalVioCount });
+  // exact state instead of resetting to a clean slate. Firestore rules
+  // only allow this to move in the punishing direction (strikes/count up).
+  syncExamAttempt({ tabSwitchCount: tabVioCount, violationCount: totalVioCount });
+  updateTabSwitchUI();
 
   // Update the dot meter in the warning overlay (visual feedback)
   const dots = [0, 1, 2];
   dots.forEach(i => {
     const d = document.getElementById(`acd-${i}`);
-    if (d) d.classList.toggle('lit', i < Math.min(totalVioCount, 3));
+    if (d) d.classList.toggle('lit', i < Math.min(tabVioCount, MAX_TAB_SWITCHES));
   });
 
-  // ── Determine response level ─────────────────────────────
-  if (integrityScore <= 0) {
-    // Score bottomed out → terminate
-    terminateExam();
+  logViolation(type, 'Tab Switch', `Tab switch ${tabVioCount} of ${MAX_TAB_SWITCHES}`);
+  saveSnapshot('violation-trigger');
+
+  if (tabVioCount >= MAX_TAB_SWITCHES) {
+    terminateExam('tab-switch-limit');
     return;
   }
 
-  if (integrityScore < 40) {
-    // CRITICAL: one more serious violation will terminate
-    const overlay = document.getElementById('ac-overlay');
-    const card    = overlay.querySelector('.ac-card');
-    if (card) {
-      card.style.borderColor = 'var(--danger)';
-      card.querySelector('h2').style.color = 'var(--danger)';
-      card.querySelector('h2').textContent = '🚨 Final Warning!';
-      card.querySelector('p').innerHTML =
-        `Your integrity score is <strong style="color:var(--danger)">${integrityScore}%</strong>. ` +
-        `One more violation and your exam will be <strong>automatically terminated</strong>.`;
-    }
-    overlay.classList.add('show');
-    logViolation(type, 'critical', `Integrity dropped to ${integrityScore}% (type: ${type})`);
-    saveSnapshot('critical-violation');
-    toast(`🚨 Integrity: ${integrityScore}% — FINAL WARNING`, 'err', 7000);
-
-  } else if (integrityScore < 70) {
-    // SERIOUS: clear warning, amber colour
-    const overlay = document.getElementById('ac-overlay');
-    const card    = overlay.querySelector('.ac-card');
-    if (card) {
-      card.style.borderColor = 'var(--amber)';
-      card.querySelector('h2').style.color = 'var(--amber)';
-      card.querySelector('h2').textContent = '⚠️ Integrity Violation!';
-      card.querySelector('p').innerHTML =
-        `Your integrity score is now <strong style="color:var(--amber)">${integrityScore}%</strong>. ` +
-        `This has been reported. Further violations will result in termination.`;
-    }
-    overlay.classList.add('show');
-    logViolation(type, 'Tab/Focus', `Integrity: ${integrityScore}% after ${type}`);
-    saveSnapshot('violation-trigger');
-    toast(`⚠ Integrity: ${integrityScore}% — violation recorded`, 'warn', 5000);
-
-  } else {
-    // MILD: toast only, no overlay interruption
-    logViolation(type, 'mild', `Minor violation (${type}), integrity: ${integrityScore}%`);
-    toast(`⚠ Integrity: ${integrityScore}% — stay on the exam page`, 'warn', 4000);
+  const remaining = MAX_TAB_SWITCHES - tabVioCount;
+  const overlay = document.getElementById('ac-overlay');
+  const card    = overlay.querySelector('.ac-card');
+  if (card) {
+    const critical = remaining <= 1;
+    card.style.borderColor = critical ? 'var(--danger)' : 'var(--amber)';
+    card.querySelector('h2').style.color = critical ? 'var(--danger)' : 'var(--amber)';
+    card.querySelector('h2').textContent = critical ? '🚨 Final Warning!' : '⚠️ Tab Switch Detected!';
+    card.querySelector('p').innerHTML =
+      `You've switched away from the exam <strong>${tabVioCount} of ${MAX_TAB_SWITCHES}</strong> times allowed. ` +
+      `<strong>${remaining} more</strong> and your exam will be <strong>automatically terminated</strong>.`;
   }
+  overlay.classList.add('show');
+  toast(`⚠ Tab switch ${tabVioCount}/${MAX_TAB_SWITCHES} — your professor has been notified`, remaining<=1?'err':'warn', 6000);
 }
 
 function dismissAC() {
@@ -7303,7 +7402,7 @@ function dismissAC() {
   if (monaco_editor) monaco_editor.focus();
 }
 
-function terminateExam() {
+function terminateExam(reason) {
   examActive = false;
   stopTimer(); stopSnapshots();
   disableAntiCheat(); disableDOMGuard();
@@ -7317,14 +7416,23 @@ function terminateExam() {
 
   const id = `VIO-${Date.now().toString(36).toUpperCase()}`;
   document.getElementById('term-id-display').textContent = `Incident ID: ${id}`;
+  const reasonEl = document.getElementById('term-reason-text');
+  if (reasonEl) {
+    reasonEl.textContent = reason === 'tab-switch-limit'
+      ? `Your exam has been automatically terminated after switching away from the exam tab ${MAX_TAB_SWITCHES} times.`
+      : 'Your exam has been automatically terminated due to a reported violation.';
+  }
   document.getElementById('terminated-overlay').classList.add('show');
 
-  logViolation('terminated','EXAM-TERMINATED','Exam auto-terminated after '+totalVioCount+' violations');
+  logViolation('terminated','EXAM-TERMINATED', reason === 'tab-switch-limit'
+    ? `Exam auto-terminated after ${tabVioCount} tab switches`
+    : 'Exam auto-terminated after '+totalVioCount+' violations');
   toast('Exam terminated. Professor notified.','err',8000);
 
   // SECURITY FIX (#1): permanently lock this attempt server-side so
-  // startExam() refuses to let the student begin a fresh attempt on refresh.
-  lockExamAttempt('terminated', 'integrity-zero');
+  // startExam() refuses to let the student begin a fresh attempt on refresh
+  // — until the professor reactivates it (see reactivateExamAttempt()).
+  lockExamAttempt('terminated', reason || 'tab-switch-limit');
   examAttemptId = null;
 }
 
@@ -7347,19 +7455,19 @@ function logViolation(type, category, detail) {
       ...entry,
       userId:              currentUser?.uid || 'unknown',
       questionId:          currentQ?.id || 'N/A',
-      integrityScoreAtTime: integrityScore,
+      tabSwitchCountAtTime: tabVioCount,
       timestamp:           firebase.firestore.FieldValue.serverTimestamp(),
     }).catch(e => console.warn('logViolation Firestore error:', e));
   }
 }
 
-/* ── Integrity score ─────────────────────────────────────────── */
-function updateIntegrity(delta) {
-  integrityScore = Math.max(0, Math.min(100, integrityScore + delta));
+/* ── Tab-switch strike counter UI ────────────────────────────── */
+function updateTabSwitchUI() {
   const el  = document.getElementById('integrity-bar');
   const txt = document.getElementById('int-text');
-  txt.textContent = `Integrity: ${integrityScore}%`;
-  el.className = `integrity-bar${integrityScore<40?' bad':integrityScore<70?' warn':''}`;
+  if (!txt || !el) return;
+  txt.textContent = `Tab Switches: ${tabVioCount}/${MAX_TAB_SWITCHES}`;
+  el.className = `integrity-bar${tabVioCount>=MAX_TAB_SWITCHES?' bad':tabVioCount>=1?' warn':''}`;
 }
 
 function startSnapshots() {
@@ -7407,10 +7515,11 @@ async function loadDraftFromFirestore(qId) {
 /* ═══════════════════════════════════════════════════════════════
    EXAM ATTEMPT SESSION LOCK  (audit findings #1 and #2)
    ═══════════════════════════════════════════════════════════════
-   #1 — integrityScore/violationCount/status no longer live only in
+   #1 — tabSwitchCount/violationCount/status no longer live only in
         browser memory. A refresh restores them from Firestore instead
-        of silently resetting to a clean 100%/0-violations slate, and a
-        terminated or already-submitted attempt can't be restarted.
+        of silently resetting to a clean 0-violations slate, and a
+        terminated attempt can't be restarted until a professor
+        reactivates it (already-submitted attempts stay locked either way).
    #2 — the timer is anchored to a server timestamp (startedAt) recorded
         when the attempt was first created, so remaining time survives a
         refresh and isn't computed from a local clock the student
@@ -7456,9 +7565,8 @@ async function claimExamAttempt(qId) {
         return { ok:false, reason:'expired' };
       }
       examAttemptId  = ref.id;
-      integrityScore = typeof data.integrityScore === 'number' ? data.integrityScore : 100;
+      tabVioCount    = typeof data.tabSwitchCount === 'number' ? data.tabSwitchCount : 0;
       totalVioCount  = typeof data.violationCount === 'number' ? data.violationCount : 0;
-      tabVioCount    = 0;
       return { ok:true, resumed:true, remainingSecs: remaining };
     }
 
@@ -7469,12 +7577,12 @@ async function claimExamAttempt(qId) {
       if (freshSnap.exists) { const err = new Error('already-exists'); err.code = 'already-exists'; throw err; }
       tx.set(ref, {
         userId: currentUser.uid, questionId: qId, status: 'active',
-        integrityScore: 100, violationCount: 0,
+        tabSwitchCount: 0, violationCount: 0,
         startedAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
     });
     examAttemptId  = ref.id;
-    integrityScore = 100; totalVioCount = 0; tabVioCount = 0;
+    tabVioCount = 0; totalVioCount = 0;
     return { ok:true, resumed:false, remainingSecs: EXAM_DURATION_MINS*60 };
 
   } catch (e) {
@@ -7487,10 +7595,10 @@ async function claimExamAttempt(qId) {
   }
 }
 
-// Fire-and-forget sync of live integrity/violation state. Firestore rules
-// (see updated rules) only allow integrityScore to move DOWN and
-// violationCount to move UP from a client write, so this path can't be used
-// to reset penalties even by a student calling it directly from console.
+// Fire-and-forget sync of live tab-switch/violation state. Firestore rules
+// (see updated rules) only allow tabSwitchCount and violationCount to move
+// UP from a client write, so this path can't be used to reset strikes even
+// by a student calling it directly from console.
 function syncExamAttempt(patch) {
   if (!firebaseReady || !db || !examAttemptId) return;
   db.collection('examAttempts').doc(examAttemptId).update(patch)
@@ -7502,8 +7610,40 @@ function lockExamAttempt(status, endReason) {
   db.collection('examAttempts').doc(examAttemptId).update({
     status, endReason: endReason || status,
     endedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    integrityScore, violationCount: totalVioCount,
+    tabSwitchCount: tabVioCount, violationCount: totalVioCount,
+    needsReactivation: status === 'terminated',
   }).catch(e => console.warn('lockExamAttempt failed:', e));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROFESSOR: REACTIVATE A TERMINATED ATTEMPT
+   ─────────────────────────────────────────────────────────────
+   Called from the Live Monitor / Violations panel's "Reactivate" toggle.
+   Grants the student a completely fresh attempt (new server startedAt,
+   tab-switch/violation counters reset to 0) rather than trying to splice
+   back into the terminated one — simplest and safest behavior for both
+   the student and the anti-cheat bookkeeping.
+   ═══════════════════════════════════════════════════════════════ */
+async function reactivateExamAttempt(attemptId) {
+  if (!firebaseReady || !db) { toast('Not connected to Firestore.', 'err'); return; }
+  try {
+    await db.collection('examAttempts').doc(attemptId).update({
+      status: 'active',
+      needsReactivation: false,
+      tabSwitchCount: 0,
+      violationCount: 0,
+      startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      endedAt: firebase.firestore.FieldValue.delete(),
+      endReason: firebase.firestore.FieldValue.delete(),
+      reactivatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      reactivatedBy: currentUser?.email || currentUser?.uid || 'professor',
+    });
+    toast('✅ Attempt reactivated — the student can resume their exam.', 'ok', 6000);
+    renderVioList(); // refresh so the toggle reflects the new state immediately
+  } catch (e) {
+    console.error('reactivateExamAttempt failed:', e);
+    toast('Could not reactivate: ' + e.message, 'err');
+  }
 }
 
 function setSaveIndicator(state) {
@@ -7539,7 +7679,7 @@ function saveSnapshot(reason) {
     reason,
     code: monaco_editor.getValue(),
     lang: currentLang,
-    integrityScore,
+    tabSwitchCount: tabVioCount,
     charCount: monaco_editor.getValue().length,
   };
   codeSnapshots.push(snap);
@@ -8324,14 +8464,13 @@ async function submitCode() {
   lockExamAttempt('submitted');
   examAttemptId = null;
 
-  // Reset integrity state so the NEXT exam attempt (a different question)
-  // starts clean in the UI — claimExamAttempt() re-derives the real value
-  // for that question the next time startExam() runs, this is just so the
-  // integrity bar doesn't show a stale number in the meantime.
-  integrityScore = 100;
+  // Reset tab-switch/violation state so the NEXT exam attempt (a different
+  // question) starts clean in the UI — claimExamAttempt() re-derives the
+  // real value for that question the next time startExam() runs, this is
+  // just so the tab-switch bar doesn't show a stale number in the meantime.
   totalVioCount  = 0;
   tabVioCount    = 0;
-  updateIntegrity(0); // redraw the integrity bar back to 100%
+  updateTabSwitchUI(); // redraw the tab-switch bar back to 0/3
 
   // Exit fullscreen
   if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
@@ -8578,9 +8717,9 @@ function leaveEditor() {
   document.getElementById('guard-pill').classList.remove('hidden');
   document.getElementById('timer-wrap').classList.remove('hidden');
   document.getElementById('integrity-bar').classList.remove('hidden');
-  // Reset integrity for the next attempt
-  integrityScore = 100; totalVioCount = 0; tabVioCount = 0;
-  updateIntegrity(0);
+  // Reset tab-switch/violation counters for the next attempt
+  totalVioCount = 0; tabVioCount = 0;
+  updateTabSwitchUI();
   if (courseProblemMode) {
     const ctx = courseProblemCtx;
     courseProblemMode = false;
@@ -9032,6 +9171,7 @@ async function renderDepartments() {
 }
 
 function _renderDepartmentsUI(list) {
+  _populateSuballocBranchSelect();
   const grid = document.getElementById('dept-grid');
   if (grid) {
     grid.innerHTML = list.length ? list.map(d => `
@@ -9041,7 +9181,10 @@ function _renderDepartmentsUI(list) {
           <div class="dept-name">${sanitize(d.name)}</div>
           <div class="dept-count">${d.count} students · HOD: ${sanitize(d.hod||'—')}</div>
         </div>
-        <button class="btn btn-r btn-sm btn-icon" style="margin-left:auto" onclick="deleteDept('${d.id}')">🗑</button>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editDept('${d.id}')">✎</button>
+          <button class="btn btn-r btn-sm btn-icon" onclick="deleteDept('${d.id}')">🗑</button>
+        </div>
       </div>`).join('')
     : '<div style="color:#6b7280;font-size:.82rem;grid-column:1/-1">No departments yet. Add one to get started.</div>';
   }
@@ -9087,6 +9230,103 @@ async function deleteDept(id) {
     toast('Department deleted','warn');
     renderDepartments();
   } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+async function editDept(id) {
+  const d = departments.find(x => x.id === id);
+  if (!d) return;
+  const name = prompt('Department name:', d.name);
+  if (!name) return;
+  const v = validateInput(name, 'name', { maxLen: 80 });
+  if (!v.ok) { toast(v.msg,'warn'); return; }
+  const hod = prompt('HOD name:', d.hod || '');
+  if (hod === null) return;
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('departments').doc(id).update({ name: v.value, hod: hod.trim() || 'Dr. TBD' });
+    toast('Department updated!', 'ok');
+    renderDepartments();
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   YEAR-WISE SUBJECT ALLOCATION  —  Collection: subjectAllocations/
+   Branch (department) + Year (1st–4th) → subject → faculty mapping.
+   ═══════════════════════════════════════════════════════════════ */
+function _populateSuballocBranchSelect() {
+  const sel = document.getElementById('suballoc-branch');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select Branch</option>' +
+    departments.map(d => `<option value="${sanitize(d.name)}">${sanitize(d.name)}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+let _suballocRows = [];
+async function renderSubjectAllocations() {
+  const branch = document.getElementById('suballoc-branch')?.value;
+  const year   = document.getElementById('suballoc-year')?.value;
+  const tbody  = document.getElementById('suballoc-tbody');
+  if (!tbody) return;
+  if (!branch || !year) { tbody.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Select a branch and year.</td></tr>'; return; }
+  if (!fsReady()) { tbody.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Firestore not connected.</td></tr>'; return; }
+  tbody.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Loading…</td></tr>';
+  try {
+    const snap = await fsDb().collection('subjectAllocations')
+      .where('branch','==',branch).where('year','==',year).get();
+    _suballocRows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    tbody.innerHTML = _suballocRows.length ? _suballocRows.map(r => `
+      <tr>
+        <td>${sanitize(r.subject)}</td>
+        <td style="color:#374151">${sanitize(r.faculty)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editSubjectAllocation('${r.id}')">✎</button>
+          <button class="btn btn-r btn-sm btn-icon" onclick="deleteSubjectAllocation('${r.id}')">🗑</button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="3" style="color:#6b7280">No subjects allocated yet.</td></tr>';
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--danger)">Error: ${sanitize(e.message)}</td></tr>`;
+  }
+}
+
+async function addSubjectAllocation() {
+  const branch = document.getElementById('suballoc-branch')?.value;
+  const year   = document.getElementById('suballoc-year')?.value;
+  if (!branch || !year) { toast('Select a branch and year first','warn'); return; }
+  const subject = prompt('Subject name:');
+  if (!subject) return;
+  const faculty = prompt('Assign faculty (name):');
+  if (faculty === null) return;
+  if (!fsReady()) { toast('Firestore not connected','err'); return; }
+  try {
+    await fsDb().collection('subjectAllocations').add({
+      branch, year, subject: subject.trim(), faculty: (faculty.trim() || 'TBD'),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast('Subject allocated!','ok');
+    renderSubjectAllocations();
+  } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+function editSubjectAllocation(id) {
+  const r = _suballocRows.find(x => x.id === id);
+  if (!r) return;
+  const subject = prompt('Subject name:', r.subject);
+  if (!subject) return;
+  const faculty = prompt('Faculty name:', r.faculty);
+  if (faculty === null) return;
+  if (!fsReady()) return;
+  fsDb().collection('subjectAllocations').doc(id).update({ subject: subject.trim(), faculty: faculty.trim() || 'TBD' })
+    .then(() => { toast('Updated!','ok'); renderSubjectAllocations(); })
+    .catch(e => toast('Error: '+e.message,'err'));
+}
+
+function deleteSubjectAllocation(id) {
+  if (!confirm('Remove this subject allocation?')) return;
+  if (!fsReady()) return;
+  fsDb().collection('subjectAllocations').doc(id).delete()
+    .then(() => { toast('Removed','warn'); renderSubjectAllocations(); })
+    .catch(e => toast('Error: '+e.message,'err'));
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -11567,7 +11807,10 @@ function openCourseBuilder() {
   document.getElementById('cb-yt-ids').value = '';
   document.getElementById('cb-book-query').value = '';
   document.getElementById('cb-fetch-preview').innerHTML = '';
-  document.getElementById('cb-modules-list').innerHTML = '';
+  _cbExpandedMods = new Set();
+  _cbActiveModIdx = null;
+  _cbActiveLessonIdx = null;
+  cbRenderModulesList();
   const h3 = document.querySelector('#course-builder-modal h3');
   if (h3) h3.textContent = '📚 Create New Course';
   const saveBtn = document.querySelector('#course-builder-modal .modal-footer .btn-a');
@@ -11621,90 +11864,163 @@ async function openEditCourseModal(courseId) {
   const saveBtn = document.querySelector('#course-builder-modal .modal-footer .btn-a');
   if (saveBtn) saveBtn.textContent = 'Save Changes';
 
+  _cbExpandedMods = new Set(courseBuilderModules.length ? [0] : []);
+  _cbActiveModIdx = courseBuilderModules.length ? 0 : null;
+  _cbActiveLessonIdx = (courseBuilderModules.length && courseBuilderModules[0].lessons?.length) ? 0 : null;
   cbRenderModulesList();
   document.getElementById('course-builder-modal').classList.add('open');
 }
 function closeCourseBuilder() { document.getElementById('course-builder-modal').classList.remove('open'); }
 
-// Renders (or re-renders, e.g. after deleting a lesson) all modules +
-// lessons + content blocks into #cb-modules-list. Pulled out of
-// openCourseBuilder/openEditCourseModal so cbDeleteLesson() can rebuild the
-// list cleanly after splicing a lesson out, instead of hand-patching indices.
+// Module/lesson tree state — which modules are expanded, and which single
+// lesson is currently shown in the editor pane. Only that one lesson's full
+// editor (title/type/video/problem/content-blocks) is ever in the DOM at a
+// time, which is what actually bounds the scroll height regardless of how
+// large the course gets.
+let _cbExpandedMods    = new Set();
+let _cbActiveModIdx    = null;
+let _cbActiveLessonIdx = null;
+
+// Renders both the left tree and the right lesson-editor pane. Pulled out of
+// openCourseBuilder/openEditCourseModal so cbDeleteLesson()/cbDeleteModule()
+// can rebuild everything cleanly after splicing an item out, instead of
+// hand-patching every onclick-baked modIdx/lessonIdx pair in the DOM after
+// an index shift.
 function cbRenderModulesList() {
   cbModuleCount = courseBuilderModules.length;
-  const listEl = document.getElementById('cb-modules-list');
-  listEl.innerHTML = '';
-  courseBuilderModules.forEach((mod, modIdx) => {
-    const row = document.createElement('div');
-    row.className = 'builder-step';
-    row.id = 'cbmod-' + modIdx;
-    row.innerHTML = `
-      <div class="builder-step-head">
-        <div class="step-num">${modIdx+1}</div>
-        <input class="inp" placeholder="Module title e.g. Basics" style="flex:1" value="${cbAttrEsc(mod.title)}"
-          oninput="courseBuilderModules[${modIdx}].title=this.value">
-        <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--soft)">
-          <input type="checkbox" ${mod.hasQuiz ? 'checked' : ''} onchange="courseBuilderModules[${modIdx}].hasQuiz=this.checked" style="accent-color:var(--stu)">
-          Has Quiz
-        </label>
-      </div>
-      <div id="cbmod-lessons-${modIdx}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBLesson(${modIdx})">+ Add Lesson</button>`;
-    listEl.appendChild(row);
-
-    const lessonsEl = document.getElementById('cbmod-lessons-' + modIdx);
-    (mod.lessons || []).forEach((lesson, lessonIdx) => {
-      const lrow = document.createElement('div');
-      lrow.className = 'lesson-builder-item-wrap';
-      lrow.innerHTML = `
-        <div class="lesson-builder-item">
-          <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
-          <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px" value="${cbAttrEsc(lesson.title)}"
-                 oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
-          <select class="inp" style="width:100px;padding:7px" id="cb-ltype-${modIdx}-${lessonIdx}"
-                  onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx})">
-            <option value="article" ${lesson.type!=='video'&&lesson.type!=='problem'?'selected':''}>Article</option>
-            <option value="video" ${lesson.type==='video'?'selected':''}>Video</option>
-            <option value="problem" ${lesson.type==='problem'?'selected':''}>Coding Problem</option>
-          </select>
-          <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px" value="${cbAttrEsc(lesson.duration)}"
-                 oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
-          <button type="button" class="btn btn-ghost btn-sm" title="Delete this lesson" style="color:var(--danger)"
-                  onclick="cbDeleteLesson(${modIdx},${lessonIdx})">🗑 Delete</button>
-        </div>
-        <input class="inp cb-video-url ${lesson.type==='video'?'':'hidden'}" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
-               style="margin:6px 0;padding:7px 10px" value="${cbAttrEsc(lesson.videoUrl)}"
-               oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
-        ${cbProblemBlockHtml('cb-problem-'+modIdx+'-'+lessonIdx, lesson)}
-        <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, table, points, note.</div>
-        <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
-        <div class="cb-block-add-row">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h3')">+ Sub-heading</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'list')">+ Points</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'vidblock')">+ Video</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'imgblock')">+ Image</button>
-        </div>`;
-      lessonsEl.appendChild(lrow);
-      window._cbProblemRegistry['cb-problem-'+modIdx+'-'+lessonIdx] = () => courseBuilderModules[modIdx].lessons[lessonIdx];
-      renderCBBlocks(modIdx, lessonIdx);
-    });
-  });
+  cbRenderTree();
+  cbRenderActiveLessonPane();
 }
 
-// Deletes a lesson from a module, then fully re-renders the modules list —
-// simpler and safer than hand-patching every onclick-baked modIdx/lessonIdx
-// pair in the DOM after an index shift.
+function cbRenderTree() {
+  const treeEl = document.getElementById('cb-tree');
+  if (!treeEl) return;
+  if (!courseBuilderModules.length) {
+    treeEl.innerHTML = '<div class="cb-tree-empty">No modules yet. Click "+ Add Module" above to get started.</div>';
+    return;
+  }
+  treeEl.innerHTML = courseBuilderModules.map((mod, modIdx) => {
+    const expanded = _cbExpandedMods.has(modIdx);
+    const lessons  = mod.lessons || [];
+    const lessonsHtml = lessons.map((lesson, lessonIdx) => {
+      const active = _cbActiveModIdx === modIdx && _cbActiveLessonIdx === lessonIdx;
+      const icon = lesson.type === 'video' ? '🎬' : lesson.type === 'problem' ? '💻' : '📄';
+      return `<div class="cb-tree-lesson ${active?'active':''}" onclick="cbSelectLesson(${modIdx},${lessonIdx})">
+        <span class="cb-tree-lesson-icon">${icon}</span>
+        <span class="cb-tree-lesson-title">${sanitize(lesson.title) || `Lesson ${lessonIdx+1}`}</span>
+      </div>`;
+    }).join('');
+    return `
+      <div class="cb-tree-mod">
+        <div class="cb-tree-mod-head">
+          <span class="cb-tree-chevron ${expanded?'open':''}" onclick="cbToggleModuleExpand(${modIdx})">▸</span>
+          <input class="cb-tree-mod-title-input" value="${cbAttrEsc(mod.title)}" placeholder="Module ${modIdx+1}"
+            oninput="courseBuilderModules[${modIdx}].title=this.value" onclick="event.stopPropagation()">
+          <span class="cb-tree-mod-count">${lessons.length}</span>
+          <button type="button" class="cb-tree-mod-del" title="Delete module" onclick="event.stopPropagation();cbDeleteModule(${modIdx})">🗑</button>
+        </div>
+        <div class="cb-tree-lessons ${expanded?'':'hidden'}">
+          ${lessonsHtml || '<div class="cb-tree-empty">No lessons yet</div>'}
+          <div class="cb-tree-add-lesson" onclick="addCBLesson(${modIdx})">+ Add Lesson</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--soft);padding:6px 7px">
+            <input type="checkbox" ${mod.hasQuiz?'checked':''} onchange="courseBuilderModules[${modIdx}].hasQuiz=this.checked" style="accent-color:var(--stu)">
+            Module has quiz
+          </label>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Renders ONLY the currently-selected lesson's full editor into the right
+// pane — this is what replaces the old "every lesson's editor stacked in
+// one unbounded column" layout.
+function cbRenderActiveLessonPane() {
+  const paneEl = document.getElementById('cb-lesson-editor-pane');
+  if (!paneEl) return;
+  const modIdx = _cbActiveModIdx, lessonIdx = _cbActiveLessonIdx;
+  const mod    = modIdx != null ? courseBuilderModules[modIdx] : null;
+  const lesson = mod && lessonIdx != null ? mod.lessons[lessonIdx] : null;
+  if (!mod || !lesson) {
+    paneEl.innerHTML = `<div class="cb-pane-empty">👈 Select a lesson on the left to edit it — or add a new module/lesson.</div>`;
+    return;
+  }
+  paneEl.innerHTML = `
+    <div class="cb-pane-mod-crumb">📦 ${sanitize(mod.title) || 'Untitled module'}</div>
+    <div class="lesson-builder-item">
+      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
+      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px" value="${cbAttrEsc(lesson.title)}"
+             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value;cbRenderTree()">
+      <select class="inp" style="width:100px;padding:7px" id="cb-ltype-${modIdx}-${lessonIdx}"
+              onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx});cbRenderTree()">
+        <option value="article" ${lesson.type!=='video'&&lesson.type!=='problem'?'selected':''}>Article</option>
+        <option value="video" ${lesson.type==='video'?'selected':''}>Video</option>
+        <option value="problem" ${lesson.type==='problem'?'selected':''}>Coding Problem</option>
+      </select>
+      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px" value="${cbAttrEsc(lesson.duration)}"
+             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
+      <button type="button" class="btn btn-ghost btn-sm" title="Delete this lesson" style="color:var(--danger)"
+              onclick="cbDeleteLesson(${modIdx},${lessonIdx})">🗑 Delete</button>
+    </div>
+    <input class="inp cb-video-url ${lesson.type==='video'?'':'hidden'}" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
+           style="margin:6px 0;padding:7px 10px" value="${cbAttrEsc(lesson.videoUrl)}"
+           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
+    ${cbProblemBlockHtml('cb-problem-'+modIdx+'-'+lessonIdx, lesson)}
+    <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, table, points, note.</div>
+    <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
+    <div class="cb-block-add-row">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h3')">+ Sub-heading</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'list')">+ Points</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'vidblock')">+ Video</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'imgblock')">+ Image</button>
+    </div>`;
+  window._cbProblemRegistry['cb-problem-'+modIdx+'-'+lessonIdx] = () => courseBuilderModules[modIdx].lessons[lessonIdx];
+  renderCBBlocks(modIdx, lessonIdx);
+}
+
+function cbToggleModuleExpand(modIdx) {
+  if (_cbExpandedMods.has(modIdx)) _cbExpandedMods.delete(modIdx);
+  else _cbExpandedMods.add(modIdx);
+  cbRenderTree();
+}
+
+function cbSelectLesson(modIdx, lessonIdx) {
+  _cbActiveModIdx = modIdx;
+  _cbActiveLessonIdx = lessonIdx;
+  _cbExpandedMods.add(modIdx);
+  cbRenderTree();
+  cbRenderActiveLessonPane();
+}
+
+function cbDeleteModule(modIdx) {
+  const mod = courseBuilderModules[modIdx];
+  if (!mod) return;
+  if (!confirm(`Delete module "${mod.title||'Untitled module'}" and all ${(mod.lessons||[]).length} of its lessons? This cannot be undone.`)) return;
+  courseBuilderModules.splice(modIdx, 1);
+  if (_cbActiveModIdx === modIdx) { _cbActiveModIdx = null; _cbActiveLessonIdx = null; }
+  else if (_cbActiveModIdx > modIdx) { _cbActiveModIdx--; }
+  _cbExpandedMods = new Set([..._cbExpandedMods].filter(i => i !== modIdx).map(i => i > modIdx ? i - 1 : i));
+  cbRenderModulesList();
+}
+
+// Deletes a lesson from a module, then fully re-renders — simpler and safer
+// than hand-patching every onclick-baked modIdx/lessonIdx pair in the DOM
+// after an index shift.
 function cbDeleteLesson(modIdx, lessonIdx) {
   const mod = courseBuilderModules[modIdx];
   if (!mod || !mod.lessons || !mod.lessons[lessonIdx]) return;
   const title = mod.lessons[lessonIdx].title || 'this lesson';
   if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
   mod.lessons.splice(lessonIdx, 1);
+  if (_cbActiveModIdx === modIdx && _cbActiveLessonIdx === lessonIdx) {
+    _cbActiveModIdx = null; _cbActiveLessonIdx = null;
+  } else if (_cbActiveModIdx === modIdx && _cbActiveLessonIdx > lessonIdx) {
+    _cbActiveLessonIdx--;
+  }
   cbRenderModulesList();
 }
 
@@ -11766,67 +12082,21 @@ async function fetchAndPreviewWebContent() {
 
 let cbModuleCount = 0;
 function addCourseModule() {
-  const idx = cbModuleCount++;
+  const idx = courseBuilderModules.length;
   courseBuilderModules.push({ id:'mod-'+genId(), title:'', lessons:[], hasQuiz:false });
-  const el = document.getElementById('cb-modules-list');
-  const row = document.createElement('div');
-  row.className = 'builder-step';
-  row.id = 'cbmod-'+idx;
-  row.innerHTML = `
-    <div class="builder-step-head">
-      <div class="step-num">${idx+1}</div>
-      <input class="inp" placeholder="Module title e.g. Basics" style="flex:1" oninput="courseBuilderModules[${idx}].title=this.value">
-      <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--soft)">
-        <input type="checkbox" onchange="courseBuilderModules[${idx}].hasQuiz=this.checked" style="accent-color:var(--stu)">
-        Has Quiz
-      </label>
-    </div>
-    <div id="cbmod-lessons-${idx}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-    <button class="btn btn-ghost btn-sm" onclick="addCBLesson(${idx})">+ Add Lesson</button>`;
-  el.appendChild(row);
+  cbModuleCount = courseBuilderModules.length;
+  _cbExpandedMods.add(idx);
+  cbRenderModulesList();
 }
 
 function addCBLesson(modIdx) {
   const lessonIdx = courseBuilderModules[modIdx].lessons.length;
   const newLesson = { id:'l-'+genId(), title:'', type:'article', videoUrl:'', content:'', duration:'', sections:[] };
   courseBuilderModules[modIdx].lessons.push(newLesson);
-  const el = document.getElementById('cbmod-lessons-'+modIdx);
-  const row = document.createElement('div');
-  row.className = 'lesson-builder-item-wrap';
-  row.innerHTML = `
-    <div class="lesson-builder-item">
-      <span style="font-size:.75rem;color:var(--muted);font-family:var(--ff-mono);width:20px">${lessonIdx+1}</span>
-      <input class="inp" placeholder="Lesson title" style="flex:1;padding:7px 10px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].title=this.value">
-      <select class="inp" style="width:100px;padding:7px" id="cb-ltype-${modIdx}-${lessonIdx}"
-              onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx})">
-        <option value="article">Article</option>
-        <option value="video">Video</option>
-        <option value="problem">Coding Problem</option>
-      </select>
-      <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
-             oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
-    </div>
-    <input class="inp cb-video-url hidden" id="cb-video-${modIdx}-${lessonIdx}" placeholder="YouTube embed URL"
-           style="margin:6px 0;padding:7px 10px"
-           oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].videoUrl=this.value">
-    ${cbProblemBlockHtml('cb-problem-'+modIdx+'-'+lessonIdx, newLesson)}
-    <div class="cb-blocks-hint">Build the lesson as separate blocks — heading, paragraph, code, note — so they render cleanly (not as one mixed paragraph).</div>
-    <div class="cb-blocks-wrap" id="cb-blocks-${modIdx}-${lessonIdx}"></div>
-    <div class="cb-block-add-row">
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h2')">+ Heading</button>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'h3')">+ Sub-heading</button>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'text')">+ Paragraph</button>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'example')">+ Code</button>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'table')">+ Table</button>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'list')">+ Points</button>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'note')">+ Note</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'vidblock')">+ Video</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addCBBlock(${modIdx},${lessonIdx},'imgblock')">+ Image</button>
-    </div>`;
-  el.appendChild(row);
-  window._cbProblemRegistry['cb-problem-'+modIdx+'-'+lessonIdx] = () => courseBuilderModules[modIdx].lessons[lessonIdx];
-  renderCBBlocks(modIdx, lessonIdx);
+  _cbExpandedMods.add(modIdx);
+  _cbActiveModIdx = modIdx;
+  _cbActiveLessonIdx = lessonIdx;
+  cbRenderModulesList();
 }
 
 function cbToggleLessonType(modIdx, lessonIdx) {
@@ -12635,6 +12905,15 @@ const _origRenderProfPanel = window.renderProfPanel || function(){};
 window.renderProfPanel = function(panel) {
   _origRenderProfPanel(panel);
   if (panel === 'course-analytics') renderCourseAnalytics();
+  if (panel === 'analytics')    renderAnalytics();
+  if (panel === 'semesters')    renderSemesters();
+  if (panel === 'departments')  renderDepartments();
+  if (panel === 'hallalloc')    renderHallAlloc();
+  if (panel === 'students')     renderStudentsPanel();
+  if (panel === 'attendance')   renderAttendance();
+  if (panel === 'examschedule') renderExamSchedule();
+  if (panel === 'grades')       renderGrades();
+  if (panel === 'security')     renderSecurityPanel();
 };
 
 /* ──────────────────────────────────────────────────────────────────
