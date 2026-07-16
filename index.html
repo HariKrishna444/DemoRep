@@ -64,7 +64,7 @@
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:21px;height:100%}
+html{font-size:19.5px;height:100%}
 body{
   background:#ffffff;
   color:#1f2328;
@@ -573,13 +573,14 @@ select.inp option{background:#eef1f4}
 .resize-h{width:3px;background:var(--line);cursor:col-resize;flex-shrink:0;transition:background .18s}
 .resize-h:hover{background:var(--stu)}
 .code-half{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.editor-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;min-width:0}
 
 /* Compiler tab: left = code editor, right = output/console, side by side.
    Applied via JS (w3EnterCompilerUI/w3ExitCompilerUI) as #ed-body.compiler-mode. */
 #ed-body.compiler-mode .prob-panel,
 #ed-body.compiler-mode .resize-h{display:none}
 #ed-body.compiler-mode .code-half{flex-direction:row}
-#ed-body.compiler-mode .editor-col{flex:1 1 55%;display:flex;flex-direction:column;min-width:0;border-right:1px solid #e2e5ea}
+#ed-body.compiler-mode .editor-col{flex:1 1 55%;border-right:1px solid #e2e5ea}
 #ed-body.compiler-mode .console{flex:1 1 45%;height:auto;width:auto;border-top:none;min-width:0}
 
 /* Panel tabs */
@@ -600,16 +601,16 @@ select.inp option{background:#eef1f4}
 
 /* Problem statement */
 .prob-stmt h3{font-size:1.15rem;font-weight:800;color:#0f172a;margin-bottom:12px}
-.prob-stmt p{font-size:19px;color:#374151;line-height:1.8;margin-bottom:14px}
+.prob-stmt p{font-size:17.5px;color:#374151;line-height:1.8;margin-bottom:14px}
 .prob-stmt h4{font-size:.78rem;font-weight:700;color:var(--stu);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
 .ex-block{
   background:#ffffff;border:1px solid #e2e5ea;
   border-radius:var(--r-sm);padding:13px;margin-bottom:12px;
 }
 .ex-block strong{font-family:var(--ff-mono);font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
-.ex-block code{font-family:var(--ff-mono);font-size:19px;color:var(--green);display:block;white-space:pre;line-height:1.6}
+.ex-block code{font-family:var(--ff-mono);font-size:17.5px;color:var(--green);display:block;white-space:pre;line-height:1.6}
 .con-list{list-style:none}
-.con-list li{font-size:19px;color:#374151;padding:3px 0;display:flex;gap:7px}
+.con-list li{font-size:17.5px;color:#374151;padding:3px 0;display:flex;gap:7px}
 .con-list li::before{content:'›';color:var(--stu);flex-shrink:0}
 
 /* Test cases */
@@ -620,9 +621,9 @@ select.inp option{background:#eef1f4}
 .tc-stat.pass{background:rgba(0,229,160,.12);color:var(--stu)}
 .tc-stat.fail{background:rgba(255,59,92,.12);color:var(--danger)}
 .tc-stat.pending{background:#eef1f4;color:#6b7280}
-.tc-body{padding:11px 12px;font-size:19px;font-family:var(--ff-mono)}
+.tc-body{padding:11px 12px;font-size:17.5px;font-family:var(--ff-mono)}
 .tc-lbl{color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
-.tc-val{color:var(--green);margin-bottom:8px;font-size:19px}
+.tc-val{color:var(--green);margin-bottom:8px;font-size:17.5px}
 
 /* Code toolbar */
 .code-tb{
@@ -915,7 +916,7 @@ select.inp option{background:#eef1f4}
 
 /* Extra small (phones < 480px) */
 @media(max-width:480px){
-  html{font-size:19px}
+  html{font-size:15.5px}
   .stat-grid{grid-template-columns:1fr 1fr}
   .res-stats{grid-template-columns:1fr 1fr}
   .monitor-grid{grid-template-columns:1fr}
@@ -1776,7 +1777,7 @@ select.inp option{background:#eef1f4}
 }
 
 @media(max-width:480px){
-  html{font-size:17px}
+  html{font-size:15.5px}
   .course-card{border-radius:var(--r)}
   .stat-grid{grid-template-columns:1fr 1fr!important}
   .quiz-opt-letter{width:22px;height:22px;font-size:.65rem}
@@ -2452,7 +2453,7 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 .chrono-stage-pill.past{background:rgba(0,229,160,.12);color:var(--stu);border-color:rgba(0,229,160,.3)}
 .chrono-req-block{border-left:2px solid var(--stu);padding-left:12px;margin-bottom:16px}
 .chrono-req-block h4{margin:0 0 6px;font-size:.9rem;color:var(--stu)}
-.chrono-req-block .body{font-size:19px;color:#374151;line-height:1.55;white-space:pre-wrap}
+.chrono-req-block .body{font-size:17.5px;color:#374151;line-height:1.55;white-space:pre-wrap}
 .chrono-flash{animation:chronoFlash 1.4s ease}
 @keyframes chronoFlash{0%{background:rgba(0,229,160,.18)}100%{background:transparent}}
 
@@ -7806,7 +7807,7 @@ function _monacoFallback() {
   if (!wrap) return;
   wrap.innerHTML = `<textarea id="monaco-fallback-ta"
     style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;
-           font-family:'DM Mono',monospace;font-size:19px;padding:16px;
+           font-family:'DM Mono',monospace;font-size:17.5px;padding:16px;
            border:none;outline:none;resize:none;box-sizing:border-box;line-height:1.6;tab-size:4"
     spellcheck="false" autocomplete="off" autocorrect="off"
     placeholder="// Type your code here..."
@@ -15272,7 +15273,7 @@ function chronoLoadMonaco(initialCode, lang, onReady) {
 function chronoMonacoFallback(code) {
   const host = document.getElementById('chrono-monaco-wrap');
   if (!host) return;
-  host.innerHTML = `<textarea id="chrono-fallback-ta" style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;font-family:'DM Mono',monospace;font-size:17px;padding:14px;border:none;outline:none;resize:none;box-sizing:border-box"></textarea>`;
+  host.innerHTML = `<textarea id="chrono-fallback-ta" style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;font-family:'DM Mono',monospace;font-size:15.5px;padding:14px;border:none;outline:none;resize:none;box-sizing:border-box"></textarea>`;
   const ta = document.getElementById('chrono-fallback-ta');
   ta.value = code;
   chronoEditor = { getValue: () => ta.value, setValue: (v) => { ta.value = v; }, dispose: () => {} };
