@@ -1844,7 +1844,7 @@ select.inp option{background:#eef1f4}
 /* 3-panel body */
 .w3-body{
   display:grid;
-  grid-template-columns:220px 1fr 380px;
+  grid-template-columns:260px 1fr 360px;
   flex:1;overflow:hidden;
   height:calc(100vh - 68px);
 }
@@ -2399,7 +2399,7 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 .w3-notes-status{font-size:.65rem;color:#6b7280;font-family:var(--ff-mono);margin-top:6px}
 
 /* Playground panel extra actions */
-.w3-try-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;row-gap:6px;justify-content:flex-end}
+.w3-try-actions{display:flex;gap:5px;align-items:center}
 .w3-try-icon-btn{
   background:transparent;border:1px solid #d2d7dd;color:#6b7280;
   border-radius:6px;padding:4px 8px;font-size:.7rem;cursor:pointer;transition:all .15s;
@@ -4548,7 +4548,11 @@ async function judge0Execute(code, lang, stdin) {
     const callResult = await runCodeSandbox({ code, lang, stdin: stdin || '' });
     result = callResult.data; // { status:{id,description}, stdout, stderr, compile_output, time, memory }
   } catch (e) {
-    throw new Error(e?.message || 'Sandbox execution failed.');
+    const rateLimited = e?.code === 'functions/resource-exhausted' || e?.code === 'resource-exhausted';
+    throw new Error(
+      (e?.message || 'Sandbox execution failed.') +
+      (rateLimited ? '' : '\n\nTip: Judge0 free instances have rate limits. Try again in a moment.')
+    );
   }
 
   // ── Parse result (same logic as before — source is now the Cloud Function) ──
@@ -7316,8 +7320,6 @@ function onContextMenu(e) {
   if (practiceMode) return;
   e.preventDefault();
   toast('Right-click is disabled during the exam','warn');
-  // Right-click is still blocked during exams — just no longer announced
-  // with a toast every time a student clicks.
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -10341,17 +10343,13 @@ function sanitize(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&g
 // courses created before this dropdown existed.
 function inferCourseCodeLang(course) {
   if (course?.codeLanguage) return course.codeLanguage;
-  const t = (course?.language || '').toLowerCase().trim();
+  const t = (course?.language || '').toLowerCase();
   if (/c\+\+|cpp/.test(t)) return 'cpp';
   if (/\bjava\b/.test(t)) return 'java';
   if (/javascript|\bjs\b|node/.test(t)) return 'javascript';
   if (/\bc\b/.test(t)) return 'c';
   if (/python|\bpy\b/.test(t)) return 'python';
-  // No recognizable runnable language (e.g. "Ubuntu", "General", empty,
-  // or any non-code topic) → this course has no inline compiler at all,
-  // so let the .no-compiler CSS branch give the sidebar its full width
-  // instead of silently defaulting to Python.
-  return 'none';
+  return 'python';
 }
 // Course thumbnails are either a pasted/uploaded image (URL or data-URL) or,
 // for courses created before image thumbnails existed, a plain emoji string.
@@ -13497,47 +13495,13 @@ async function saveNewModule() {
 
 /* ── Default playground starter code (used only when a lesson has no
    sections / content of its own — never overrides real lesson data) ── */
-const W3_DEFAULT_STARTERS = {
-  python: `# Python Playground — edit and run!
+const W3_DEFAULT_LESSON = {
+  hint: 'Edit the code on the right and press ▶ Run to execute it!',
+  starterCode: `# Python Playground — edit and run!
 print("Hello from CodingHub! 💻")
 
 for i in range(1, 6):
     print(f"Line {i}: {'⭐' * i}")`,
-  javascript: `// JavaScript Playground — edit and run!
-console.log("Hello from CodingHub! 💻");
-
-for (let i = 1; i <= 5; i++) {
-  console.log("Line " + i + ": " + "⭐".repeat(i));
-}`,
-  java: `// Java Playground — edit and run!
-public class Main {
-  public static void main(String[] args) {
-    System.out.println("Hello from CodingHub! 💻");
-    for (int i = 1; i <= 5; i++) {
-      System.out.println("Line " + i);
-    }
-  }
-}`,
-  cpp: `// C++ Playground — edit and run!
-#include <iostream>
-using namespace std;
-int main() {
-  cout << "Hello from CodingHub! 💻" << endl;
-  for (int i = 1; i <= 5; i++) cout << "Line " << i << endl;
-  return 0;
-}`,
-  c: `// C Playground — edit and run!
-#include <stdio.h>
-int main() {
-  printf("Hello from CodingHub! 💻\\n");
-  for (int i = 1; i <= 5; i++) printf("Line %d\\n", i);
-  return 0;
-}`,
-};
-
-const W3_DEFAULT_LESSON = {
-  hint: 'Edit the code on the right and press ▶ Run to execute it!',
-  get starterCode() { return W3_DEFAULT_STARTERS[currentLessonCodeLang] || W3_DEFAULT_STARTERS.python; },
   sections: [],
 };
 
@@ -15605,4 +15569,3 @@ async function chronoTriggerAIEval(sessionId, challenge) {
 </script>
 </body>
 </html>
-
