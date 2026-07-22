@@ -1914,7 +1914,7 @@ select.inp option{background:#eef1f4}
 }
 .lesson-row.done .lesson-icon{background:rgba(0,229,160,.1);border-color:rgba(0,229,160,.3)}
 .lesson-row.active .lesson-icon{background:rgba(0,229,160,.15);border-color:var(--stu)}
-.lesson-title{flex:1;color:inherit;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lesson-title{flex:1;color:inherit;line-height:1.3;overflow-wrap:break-word;word-break:break-word}
 .lesson-dur{font-size:.62rem;color:#6b7280;font-family:var(--ff-mono);white-space:nowrap}
 
 /* ─── Center column ─── */
@@ -2037,6 +2037,7 @@ select.inp option{background:#eef1f4}
 .w3-py-badge{
   font-family:var(--ff-mono);font-size:.65rem;padding:3px 9px;
   border-radius:99px;border:1px solid;
+  max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .w3-py-badge-loading{color:var(--amber);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.07)}
 .w3-py-badge-ready{color:var(--stu);border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.07)}
@@ -2047,6 +2048,7 @@ select.inp option{background:#eef1f4}
   border:none;border-radius:var(--r-sm);
   font-family:var(--ff-head);font-size:.78rem;font-weight:700;
   padding:5px 16px;cursor:pointer;transition:all .15s;
+  flex-shrink:0;white-space:nowrap;order:99;margin-left:auto;
 }
 .w3-run-btn:hover:not(:disabled){background:#00fbb3;transform:translateY(-1px)}
 .w3-run-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -10853,7 +10855,7 @@ function renderLearnSidebar(course) {
       <div class="sb-mod-group ${isOpen?'open':''}" id="sbmod-${mod.id}">
         <div class="sb-mod-label" onclick="toggleSbMod('${mod.id}')">
           <span style="width:18px;height:18px;border-radius:50%;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--amber);flex-shrink:0">${mi+1}</span>
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sanitize(mod.title||`Module ${mi+1}`)}</span>
+          <span style="flex:1;overflow-wrap:break-word;word-break:break-word">${sanitize(mod.title||`Module ${mi+1}`)}</span>
           <span style="font-size:.6rem;color:var(--muted);font-family:var(--ff-mono);margin-right:4px">${doneCount}/${lessons.length}</span>
           <span class="lesson-share-btn" title="Copy module link"
             onclick="event.stopPropagation();shareLink('module','${currentCourseId}','${mod.id}')">🔗</span>
@@ -12046,7 +12048,7 @@ function cbRenderActiveLessonPane() {
               onchange="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].type=this.value;cbToggleLessonType(${modIdx},${lessonIdx});cbRenderTree()">
         <option value="article" ${lesson.type!=='video'&&lesson.type!=='problem'?'selected':''}>Article</option>
         <option value="video" ${lesson.type==='video'?'selected':''}>Video</option>
-        <option value="problem" ${lesson.type==='problem'?'selected':''}>Coding Problem</option>
+        ${document.getElementById('cb-code-lang')?.value !== 'none' ? `<option value="problem" ${lesson.type==='problem'?'selected':''}>Coding Problem</option>` : ''}
       </select>
       <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px" value="${cbAttrEsc(lesson.duration)}"
              oninput="courseBuilderModules[${modIdx}].lessons[${lessonIdx}].duration=this.value">
@@ -13246,7 +13248,7 @@ function addAmmLesson() {
               onchange="_addModuleLessons[${idx}].type=this.value;ammToggleLessonType(${idx})">
         <option value="article" selected>Article</option>
         <option value="video">Video</option>
-        <option value="problem">Coding Problem</option>
+        ${inferCourseCodeLang(coursesCatalog.find(c=>c.id===_addModuleCourseId)) !== 'none' ? '<option value="problem">Coding Problem</option>' : ''}
       </select>
       <input class="inp" placeholder="5m" style="width:60px;padding:7px 10px"
              oninput="_addModuleLessons[${idx}].duration=this.value">
@@ -13977,7 +13979,7 @@ window.renderLearnSidebar = function(course) {
       <div class="sb-mod-group ${isOpen?'open':''}" id="sbmod-${mod.id}">
         <div class="sb-mod-label" onclick="toggleSbMod('${mod.id}')">
           <span style="width:18px;height:18px;border-radius:50%;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--amber);flex-shrink:0">${mi+1}</span>
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.79rem">${sanitize(mod.title||`Module ${mi+1}`)}</span>
+          <span style="flex:1;overflow-wrap:break-word;word-break:break-word;font-size:.79rem">${sanitize(mod.title||`Module ${mi+1}`)}</span>
           <span style="font-size:.6rem;color:var(--muted);font-family:var(--ff-mono);margin-right:4px">${doneCount}/${lessons.length}</span>
           <span class="sb-mod-chevron">▶</span>
         </div>
