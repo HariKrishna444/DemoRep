@@ -2024,7 +2024,7 @@ select.inp option{background:#eef1f4}
 .w3-try-header{
   display:flex;align-items:center;justify-content:space-between;
   padding:10px 14px;background:#ffffff;border-bottom:1px solid #e2e5ea;
-  flex-shrink:0;
+  flex-shrink:0;flex-wrap:wrap;row-gap:8px;
 }
 .w3-try-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .w3-try-dot-r{background:#ff5f57}
@@ -2223,7 +2223,7 @@ select.inp option{background:#eef1f4}
 
 /* ─── Responsive: hide try panel on narrow screens ─── */
 @media(max-width:1200px){
-  .w3-body{grid-template-columns:240px 1fr 320px}
+  .w3-body{grid-template-columns:220px 1fr 340px}
 }
 @media(max-width:980px){
   .w3-body{grid-template-columns:220px 1fr}
@@ -2235,9 +2235,10 @@ select.inp option{background:#eef1f4}
    on every screen size (not just the narrow breakpoints above). Toggled
    via JS by adding/removing the "no-compiler" class on .w3-body. ─── */
 .w3-body.no-compiler .w3-try-panel{display:none}
-.w3-body.no-compiler{grid-template-columns:260px 1fr}
+.w3-body.no-compiler{grid-template-columns:300px 1fr}
+.w3-body.no-compiler .lesson-title{white-space:normal;overflow:visible;text-overflow:clip}
 @media(max-width:1200px){
-  .w3-body.no-compiler{grid-template-columns:240px 1fr}
+  .w3-body.no-compiler{grid-template-columns:280px 1fr}
 }
 @media(max-width:980px){
   .w3-body.no-compiler{grid-template-columns:220px 1fr}
@@ -2399,7 +2400,7 @@ mark.w3-search-hit.current{background:var(--amber);color:#1a1200}
 .w3-notes-status{font-size:.65rem;color:#6b7280;font-family:var(--ff-mono);margin-top:6px}
 
 /* Playground panel extra actions */
-.w3-try-actions{display:flex;gap:5px;align-items:center}
+.w3-try-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .w3-try-icon-btn{
   background:transparent;border:1px solid #d2d7dd;color:#6b7280;
   border-radius:6px;padding:4px 8px;font-size:.7rem;cursor:pointer;transition:all .15s;
@@ -4065,7 +4066,7 @@ upgrade-insecure-requests;</pre>
             oninput="w3SyncLineNums()"
             onkeydown="w3HandleTab(event)"
             onscroll="w3SyncEditorScroll()"
-            placeholder="# Python code here…"></textarea>
+            placeholder="Code here…"></textarea>
         </div>
       </div>
 
@@ -4548,11 +4549,9 @@ async function judge0Execute(code, lang, stdin) {
     const callResult = await runCodeSandbox({ code, lang, stdin: stdin || '' });
     result = callResult.data; // { status:{id,description}, stdout, stderr, compile_output, time, memory }
   } catch (e) {
-    const rateLimited = e?.code === 'functions/resource-exhausted' || e?.code === 'resource-exhausted';
-    throw new Error(
-      (e?.message || 'Sandbox execution failed.') +
-      (rateLimited ? '' : '\n\nTip: Judge0 free instances have rate limits. Try again in a moment.')
-    );
+    // No "rate limit" tip appended here on purpose — just surface the
+    // actual error message from the Cloud Function.
+    throw new Error(e?.message || 'Sandbox execution failed.');
   }
 
   // ── Parse result (same logic as before — source is now the Cloud Function) ──
@@ -7203,7 +7202,7 @@ function onPaste(e) {
   e.preventDefault(); e.stopPropagation();
   logViolation('paste','Paste','Attempted Ctrl+V paste');
   outLine('err','⛔ Paste is disabled. Type your code manually.');
-  toast('⛔ Paste blocked! Logged.','err',4000);
+  // No toast popup here on purpose — still blocked and logged, just quieter.
 }
 
 /* ── 3. Key combination blocks ───────────────────────────────── */
@@ -7319,7 +7318,8 @@ function disableDOMGuard() {
 function onContextMenu(e) {
   if (practiceMode) return;
   e.preventDefault();
-  toast('Right-click is disabled during the exam','warn');
+  // No toast here on purpose — right-click stays blocked during the exam,
+  // but we no longer interrupt the student with a warning popup every time.
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -7966,7 +7966,7 @@ function _onMonacoReady(mono) {
         if (!examActive || !acEnabled) return;
         logViolation('monaco-paste', 'Paste', 'Monaco paste blocked');
         outLine('err', '⛔ Paste is disabled. Type your code manually.');
-        toast('⛔ Paste blocked!', 'err', 4000);
+        // No toast popup here on purpose — still blocked and logged, just quieter.
       });
     }
 
@@ -10349,7 +10349,11 @@ function inferCourseCodeLang(course) {
   if (/javascript|\bjs\b|node/.test(t)) return 'javascript';
   if (/\bc\b/.test(t)) return 'c';
   if (/python|\bpy\b/.test(t)) return 'python';
-  return 'python';
+  // No recognized runnable language (e.g. "Ubuntu Basics", "Business Studies",
+  // shell/CLI courses) — 'none' triggers no-compiler mode: full-width sidebar,
+  // no playground panel. Previously defaulted to 'python' here by mistake,
+  // which is why non-coding courses still showed a squeezed sidebar.
+  return 'none';
 }
 // Course thumbnails are either a pasted/uploaded image (URL or data-URL) or,
 // for courses created before image thumbnails existed, a plain emoji string.
@@ -13495,13 +13499,53 @@ async function saveNewModule() {
 
 /* ── Default playground starter code (used only when a lesson has no
    sections / content of its own — never overrides real lesson data) ── */
-const W3_DEFAULT_LESSON = {
-  hint: 'Edit the code on the right and press ▶ Run to execute it!',
-  starterCode: `# Python Playground — edit and run!
+const W3_STARTER_CODE_BY_LANG = {
+  python: `# Python Playground — edit and run!
 print("Hello from CodingHub! 💻")
 
 for i in range(1, 6):
     print(f"Line {i}: {'⭐' * i}")`,
+  javascript: `// JavaScript Playground — edit and run!
+console.log("Hello from CodingHub! 💻");
+
+for (let i = 1; i <= 5; i++) {
+  console.log(\`Line \${i}: \${'⭐'.repeat(i)}\`);
+}`,
+  c: `// C Playground — edit and run!
+#include <stdio.h>
+
+int main() {
+    printf("Hello from CodingHub!\\n");
+    for (int i = 1; i <= 5; i++) {
+        printf("Line %d\\n", i);
+    }
+    return 0;
+}`,
+  cpp: `// C++ Playground — edit and run!
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Hello from CodingHub!" << endl;
+    for (int i = 1; i <= 5; i++) {
+        cout << "Line " << i << endl;
+    }
+    return 0;
+}`,
+  java: `// Java Playground — edit and run!
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello from CodingHub!");
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("Line " + i);
+        }
+    }
+}`,
+};
+
+const W3_DEFAULT_LESSON = {
+  hint: 'Edit the code on the right and press ▶ Run to execute it!',
+  get starterCode() { return W3_STARTER_CODE_BY_LANG[currentLessonCodeLang] || W3_STARTER_CODE_BY_LANG.python; },
   sections: [],
 };
 
